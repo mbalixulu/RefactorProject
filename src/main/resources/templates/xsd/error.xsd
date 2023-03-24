@@ -1,0 +1,37 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:comm="http://ws.online.fnb.co.za/v1/common/" xmlns:restrictions="http://ws.online.fnb.co.za/v1/restrictions/" elementFormDefault="qualified">
+    <xs:import schemaLocation="common.xsd" namespace="http://ws.online.fnb.co.za/v1/common/"/>
+    <xs:import schemaLocation="restrictions.xsd" namespace="http://ws.online.fnb.co.za/v1/restrictions/"/>
+    <xs:element name="page">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="error" type="errorType" minOccurs="1" maxOccurs="1"/>
+            </xs:sequence>
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="template" type="xs:string"/>
+            <xs:attribute name="version" type="xs:string"/>
+            <xs:attribute name="heading" type="restrictions:pageheading-labellimit"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:complexType name="errorType" abstract="true"/>
+    <xs:complexType name="validationError">
+        <xs:complexContent>
+            <xs:extension base="errorType">
+                <xs:sequence maxOccurs="unbounded">
+                    <xs:element name="name" type="xs:string"/>
+                    <xs:element name="code" type="xs:integer"/>
+                    <xs:element name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="systemError">
+        <xs:complexContent>
+            <xs:extension base="errorType">
+                <xs:sequence>
+                    <xs:element name="code" type="restrictions:systemErrorCodeRestriction" minOccurs="0"/>
+                    <xs:element name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+</xs:schema>

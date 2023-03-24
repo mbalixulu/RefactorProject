@@ -1,0 +1,2108 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:vc="http://www.w3.org/2007/XMLSchema-versioning"
+           xmlns:comm="http://ws.online.fnb.co.za/v1/common/"
+           xmlns:restrictions="http://ws.online.fnb.co.za/v1/restrictions/"
+           targetNamespace="http://ws.online.fnb.co.za/v1/common/" elementFormDefault="qualified"
+           attributeFormDefault="qualified" vc:minVersion="1.1">
+    <xs:import schemaLocation="restrictions.xsd" namespace="http://ws.online.fnb.co.za/v1/restrictions/"/>
+    <xs:complexType name="symbol" abstract="true">
+        <xs:attribute name="tooltip" type="restrictions:tooltip-limit"/>
+        <xs:attribute name="label" type="restrictions:bifrost-string"/>
+        <xs:attribute name="symbol-type" type="restrictions:bifrost-string" fixed=""/>
+        <xs:attribute name="errorMessage" type="restrictions:bifrost-string"/>
+        <xs:attribute name="required" type="xs:boolean" default="false"/>
+    </xs:complexType>
+    <xs:complexType name="subTabGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="subTab" type="comm:subTab" minOccurs="0" maxOccurs="7"/>
+                </xs:sequence>
+                <xs:attribute name="subTabGroupHeading" type="restrictions:subTabGroupHeading-limit" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="subTab">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subTabLabel" type="restrictions:subtab-label-limit" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="selected" type="xs:boolean" default="false"/>
+                <xs:attribute name="notifications" type="xs:int"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="viewGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="view" type="comm:view" minOccurs="2" maxOccurs="6"/>
+                </xs:sequence>
+                <xs:attribute name="align" type="restrictions:align" use="optional" default="left"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="view">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="type" type="restrictions:view-restriction" use="required"/>
+                <xs:attribute name="text" type="restrictions:views-text-limit" use="required"/>
+                <xs:attribute name="width" type="restrictions:small-ints" default="2"/>
+                <xs:attribute name="notifications" type="xs:int"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="formLayout">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="form" type="comm:form" minOccurs="1" maxOccurs="1"/>
+                    <xs:element name="footerElements" type="comm:footerElement" minOccurs="0" maxOccurs="5"/>
+                    <xs:element name="techReference" type="restrictions:bifrost-string" minOccurs="0" maxOccurs="1"/>
+                </xs:sequence>
+                <xs:attribute name="template" type="restrictions:formLayout-templates" default="standard"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="form">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="sections" type="comm:section" minOccurs="0" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="action" type="xs:string"/>
+                <xs:attribute name="name" type="restrictions:limitAlphanumericAndUnderscore"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="section">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="symbol" type="comm:symbol" minOccurs="0" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="align" type="restrictions:align" use="optional" default="left"/>
+                <xs:attribute name="width" type="restrictions:width-types" use="optional" default="half"/>
+                <xs:attribute name="flexiWidth" type="restrictions:flexi-width-limit" use="optional" default="6"/>
+                <xs:attribute name="contentAlign" type="restrictions:align" use="optional" default="left"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="flexiDashboardSection">
+        <xs:complexContent>
+            <xs:extension base="comm:section">
+                <xs:sequence>
+                    <xs:element name="flexiDashboardSubSection" type="comm:flexiDashboardSubSection" minOccurs="1"
+                                maxOccurs="10"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="flexiDashboardSubSection">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="flexiDashboardCard" type="comm:flexiDashboardCard" minOccurs="0" maxOccurs="30"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="width" type="restrictions:flexiDashboardSubSection-widths" default="full"/>
+                <xs:attribute name="height" type="restrictions:flexiDashboardSubSection-height" default="8"/>
+                <xs:attribute name="maxCardsInRow" type="restrictions:flexiDashboardSubSection-maxCardsInRow"
+                              default="1"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="flexiDashboardCard">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="flexiDashboardCardColumn" type="comm:flexiDashboardCardColumn" minOccurs="1"
+                                maxOccurs="12"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="height" type="restrictions:flexiDashboardSubSection-height" default="8"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="flexiDashboardCardColumn">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="symbol" type="comm:symbol" minOccurs="0" maxOccurs="50"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="width" type="restrictions:flexi-width-limit" default="3"/>
+                <xs:attribute name="backgroundColor" type="restrictions:background-colors" default="paper"/>
+                <xs:attribute name="textColor" type="restrictions:text-colors" default="black"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="divContainer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="0" maxOccurs="25">
+                    <xs:element name="divElement" type="comm:symbol"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="hidden" use="optional" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="boxContainer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="boxSymbol" type="comm:symbol" minOccurs="0" maxOccurs="25"/>
+                    <!--  Please don't make use of this collection, it has been deprecated  -->
+                    <xs:element name="box" type="comm:box" minOccurs="0" maxOccurs="25"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="minHeight" type="restrictions:boxContainer-height" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="box">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="0" maxOccurs="50">
+                    <xs:element name="boxSymbol" type="comm:symbol"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="boxSplit">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="0" maxOccurs="50">
+                    <xs:element name="boxSplitSymbol" type="comm:symbol"/>
+                </xs:sequence>
+                <xs:attribute name="width" type="restrictions:boxSplitWidth" default="100"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="cardLayout">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="breadcrumb" type="comm:breadcrumb" minOccurs="0"/>
+                    <xs:element name="cards" type="comm:card" maxOccurs="4"/>
+                </xs:sequence>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="headingSize" type="restrictions:heading-sizes" default="3"/>
+                <xs:attribute name="headingStyle" type="restrictions:heading-styles" default="dark"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="subHeadingSize" type="restrictions:heading-sizes" default="2"/>
+                <xs:attribute name="subHeadingStyle" type="restrictions:heading-styles" default="dark"/>
+                <xs:attribute name="backgroundImageSrc" type="xs:string"/>
+                <!--  The ID of the card that the carousel must scroll to on load, if any  -->
+                <xs:attribute name="selectedCardOnCarousel" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="dashboardLayout">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="widget" type="comm:widget" minOccurs="2" maxOccurs="6"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="headingColor" type="restrictions:text-colors" default="black"/>
+                <xs:attribute name="dashboardTemplate" type="restrictions:dashboard-templates" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="widget">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="symbol" type="comm:symbol" minOccurs="1" maxOccurs="25"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="backgroundImageSrc" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="webContentRenderLayout">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="redirect">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" use="required"/>
+                <xs:attribute name="raw" type="xs:boolean"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="card" abstract="true">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="align" type="restrictions:align" default="center"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="headingStyle" type="restrictions:heading-styles" use="required"/>
+                <xs:attribute name="bgImageSrc" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="simple-card">
+        <xs:complexContent>
+            <xs:extension base="comm:card">
+                <xs:sequence>
+                    <xs:element name="text" type="comm:rich-text"/>
+                    <xs:element name="button" type="comm:atom-button" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="subHeadingStyle" type="restrictions:heading-styles" default="dark"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="icon-card">
+        <xs:complexContent>
+            <xs:extension base="comm:card">
+                <xs:sequence>
+                    <xs:element name="icon" type="comm:icon-button" minOccurs="0" maxOccurs="4"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="complex-card">
+        <xs:complexContent>
+            <xs:extension base="comm:card">
+                <xs:sequence>
+                    <xs:element name="button" type="comm:atom-button"/>
+                    <xs:element name="text" type="comm:rich-text"/>
+                </xs:sequence>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeadingStyle" type="restrictions:heading-styles" use="required"/>
+                <xs:attribute name="topHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="topHeadingStyle" type="restrictions:heading-styles"/>
+                <!--  If a fgImageSrc is specified, width is automatically assumed to be 6  -->
+                <xs:attribute name="fgImageSrc" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="rich-text">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!-- <xs:complexType name="markdown-text"> -->
+    <!-- <xs:complexContent> -->
+    <!-- <xs:extension base="comm:rich-text"/> -->
+    <!-- </xs:complexContent> -->
+    <!-- </xs:complexType> -->
+    <xs:complexType name="html-text">
+        <xs:complexContent>
+            <xs:extension base="comm:rich-text"/>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="atom-button">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="width" type="restrictions:small-ints" default="3"/>
+                <xs:attribute name="style" type="restrictions:symbol-styles" default="light"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="icon-button">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="icon-name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="icon-buttonGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="icon-button" type="comm:icon-button" maxOccurs="5"/>
+                </xs:sequence>
+                <xs:attribute name="align" type="restrictions:align" default="center"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="breadcrumb">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="hyperlinks" type="comm:hyperlink" maxOccurs="6"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imageType" abstract="true">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="height" type="xs:integer" default="68"/>
+                <xs:attribute name="width" type="xs:integer" default="68"/>
+                <xs:attribute name="sizeMetric" type="restrictions:imgSizeMetric" default="px"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="chartDataSeriesType">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:choice>
+                    <xs:element name="chartDataPoint" type="comm:x-and-y-datapoint" maxOccurs="unbounded"/>
+                    <xs:element name="stackedColumnChartDataPoint" type="comm:stackedColumnChartDataPoint"
+                                maxOccurs="unbounded"/>
+                </xs:choice>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="stackedColumnChartDataPoint">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="data" type="xs:double" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="stack" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="pointWidth" type="xs:positiveInteger" default="12"/>
+                <xs:attribute name="linkedTo" type="restrictions:bifrost-string" default=":previous"/>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="color" type="restrictions:colorPalette" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="stackedColumnChartLabel">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="left" type="xs:int" use="required"/>
+                <xs:attribute name="top" type="xs:int" use="required"/>
+                <xs:attribute name="sizeMetric" type="restrictions:imgSizeMetric" default="px"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="x-and-y-datapoint">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="xAxisValue" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="yAxisValue" type="xs:double" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="deepLink">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="params" type="comm:params" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="renderURL" type="xs:anyURI" use="required"/>
+                <xs:attribute name="sourceApplication" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="destinationApplication" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="overrideBridgeKey" type="xs:boolean" default="false"/>
+                <xs:attribute name="bridgeKey" type="restrictions:bifrost-string" default="bridge"/>
+                <xs:attribute name="encrypted" type="xs:boolean" default="true"/>
+                <xs:attribute name="echoContextCache" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="text" abstract="true">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="boldTableCell" type="xs:boolean" default="false"/>
+                <xs:attribute name="align" type="restrictions:align"/>
+                <xs:attribute name="color" type="restrictions:text-colors"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="simpleText">
+        <xs:complexContent>
+            <xs:extension base="comm:text"></xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="textHeading">
+        <xs:complexContent>
+            <xs:extension base="comm:text">
+                <xs:attribute name="size" type="restrictions:heading-sizes" default="4"/>
+                <xs:attribute name="mobiSize" type="restrictions:heading-sizes"/>
+                <xs:attribute name="inline" type="xs:boolean"/>
+                <xs:attribute name="marginBottom" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="textReadout">
+        <xs:complexContent>
+            <xs:extension base="comm:text">
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="headingColor" type="restrictions:text-colors" default="black"/>
+                <xs:attribute name="valueColor" type="restrictions:text-colors" default="black"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="textParagraph">
+        <xs:complexContent>
+            <xs:extension base="comm:text">
+                <xs:attribute name="type" type="restrictions:textParagraph-types"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="bold" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="textList">
+        <xs:complexContent>
+            <xs:extension base="comm:text">
+                <xs:sequence>
+                    <xs:element name="textListItem" type="comm:textListItem" minOccurs="0" maxOccurs="50"/>
+                </xs:sequence>
+                <xs:attribute name="type" type="restrictions:textList-types" default="ul"/>
+                <xs:attribute name="style" type="restrictions:textList-styles"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="bold" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="textListItem">
+        <xs:complexContent>
+            <xs:extension base="comm:text"></xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="rawHTML">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="html" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="amount">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:decimal"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string"/>
+                <xs:attribute name="autocomplete" type="restrictions:onOff"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="input">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                    <xs:element name="inputItem" type="comm:inputItem" minOccurs="0" maxOccurs="50"/>
+                </xs:sequence>
+                <xs:attribute name="inputType" type="restrictions:input-types"/>
+                <xs:attribute name="name" type="restrictions:bifrost-string"/>
+                <xs:attribute name="maxlength" type="restrictions:input-length" default="50"/>
+                <xs:attribute name="message" type="restrictions:bifrost-string"/>
+                <xs:attribute name="placeHolder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="unCheckedValue" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selected" type="xs:boolean" default="false"/>
+                <xs:attribute name="disabled" type="xs:boolean" default="false"/>
+                <xs:attribute name="mapSearchPlaceholder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="autofocus" type="xs:boolean" default="false"/>
+                <xs:attribute name="legend" type="restrictions:bifrost-string"/>
+                <xs:attribute name="minVal" type="xs:int"/>
+                <xs:attribute name="maxVal" type="xs:int"/>
+                <xs:attribute name="rangeType" type="restrictions:range-types" default="single"/>
+                <xs:attribute name="url" type="xs:anyURI" use="optional"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="readonly" type="xs:boolean" default="false"/>
+                <xs:attribute name="predictive" type="xs:boolean" default="false"/>
+                <xs:attribute name="predictiveText" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="predictiveTextNav" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="predictiveSubmit" type="xs:boolean" default="false"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="formName" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="inputItem">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:inputItem-types"/>
+                <xs:attribute name="selected" type="xs:boolean"/>
+                <xs:attribute name="unCheckedValue" type="restrictions:bifrost-string"/>
+                <xs:attribute name="disabled" type="xs:boolean"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="buttonOrInput">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string" minOccurs="0"/>
+                    <xs:element name="placeHolder" type="restrictions:bifrost-string" minOccurs="0"/>
+                    <xs:element name="buttonLabel" type="restrictions:button-labellimit"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" use="required"/>
+                <xs:attribute name="maxlength" type="xs:positiveInteger" use="required"/>
+                <xs:attribute name="inputWidth" type="restrictions:input-width-types"/>
+                <xs:attribute name="disableInput" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="timeSplitInput">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:time" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="now" type="xs:boolean"/>
+                <xs:attribute name="hoursName" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="minutesName" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="dateSplitInput">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:date" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="now" type="xs:boolean"/>
+                <xs:attribute name="monthName" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="yearName" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="phone">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="code" type="restrictions:bifrost-string"/>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                    <xs:element name="noteContent" type="restrictions:notecontent-limit" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="radiobutton">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="groupName" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="selected" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="pillboxswitcher">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence maxOccurs="2">
+                    <xs:element name="label" type="restrictions:pillboxswitcher-labellimit"/>
+                    <xs:element name="value" type="comm:eventValue"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selectedValue" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="eventValue">
+        <xs:sequence>
+            <xs:element name="value" type="restrictions:bifrost-string"/>
+            <xs:element name="hideDiv" type="restrictions:bifrost-string" minOccurs="0" maxOccurs="15"/>
+            <xs:element name="showDiv" type="restrictions:bifrost-string" minOccurs="0" maxOccurs="15"/>
+            <xs:element name="ajaxLoad" type="comm:ajaxLoad" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="ajaxLoad">
+        <xs:sequence>
+            <xs:element name="url" type="xs:anyURI"/>
+            <xs:element name="divContainerId" type="restrictions:bifrost-string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="checkbox">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="uncheckedValue" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="selected" type="xs:boolean" default="false"/>
+                <xs:attribute name="text" type="restrictions:bifrost-string"/>
+                <xs:attribute name="secondaryText" type="restrictions:bifrost-string"/>
+                <xs:attribute name="checkboxText" type="restrictions:bifrost-string"/>
+                <xs:attribute name="checkboxSecText" type="restrictions:bifrost-string"/>
+                <xs:attribute name="disabled" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="checkboxGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="checkboxItem" type="comm:checkbox" minOccurs="0" maxOccurs="200"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="min" type="xs:int"/>
+                <xs:attribute name="max" type="xs:int"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="hyperlinkListItem">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="secondaryLabel" type="restrictions:bifrost-string"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="color" type="restrictions:text-colors"/>
+                <xs:attribute name="notificationLabel" type="restrictions:bifrost-string"/>
+                <xs:attribute name="imageSrc" type="xs:string"/>
+                <xs:attribute name="showCheckbox" type="xs:boolean" default="false"/>
+                <xs:attribute name="selected" type="xs:boolean" default="false"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="uncheckedValue" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="hyperlinkList">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence maxOccurs="10">
+                    <xs:element name="hyperlinkListItem" type="comm:hyperlinkListItem"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="dropdown">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="1" maxOccurs="unbounded">
+                    <xs:element name="label" type="restrictions:bifrost-string"/>
+                    <xs:element name="value" type="comm:eventValue"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="placeholder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selectedValue" type="restrictions:bifrost-string"/>
+                <xs:attribute name="search" type="xs:boolean" default="false"/>
+                <xs:attribute name="pleaseSelectOptionEnabled" type="xs:boolean" default="true"/>
+                <xs:attribute name="tooltipType" type="restrictions:tooltipType" default="info"/>
+                <xs:attribute name="tooltipPosition" type="restrictions:tooltipPosition" default="bottomRight"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="dropdown3">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="2" maxOccurs="unbounded">
+                    <xs:element name="label" type="restrictions:bifrost-string"/>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                    <xs:element name="subHeading" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selectedValue" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="hyperlink">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="text" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="tracking" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="underline" type="xs:boolean" use="optional"/>
+                <xs:attribute name="crumbType" type="restrictions:crumb-type" use="optional"/>
+                <xs:attribute name="crumbPos" type="restrictions:position" use="optional"/>
+                <xs:attribute name="verticalAlign" type="xs:boolean" use="optional" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="advanceSearch">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="advancedSearchTarget" type="restrictions:advancedSearchHyperLinkTarget"
+                              default="main"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="date">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="placeholder" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="range" type="xs:boolean" default="false"/>
+                <xs:attribute name="renderOnSlide" type="xs:boolean" default="false"/>
+                <xs:attribute name="minDate" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="maxDate" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="unavailable" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="yearSelector" type="xs:boolean" default="false"/>
+                <xs:attribute name="monthsToShow" type="xs:int" default="2"/>
+                <xs:attribute name="nav" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="button">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:button-types" default="action"/>
+                <xs:attribute name="width" type="xs:integer"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="formSubmit" type="xs:boolean" default="false"/>
+                <xs:attribute name="buttonSymbol" type="restrictions:button-symbol-types" default="none"/>
+                <xs:attribute name="formName" type="restrictions:bifrost-string"/>
+                <xs:attribute name="align" type="restrictions:buttonAlign"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="baseButton">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:button-types" default="action"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="formSubmit" type="xs:boolean" default="false"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="footer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="baseButton" type="comm:baseButton" minOccurs="0" maxOccurs="5"/>
+                </xs:sequence>
+                <xs:attribute name="text" type="restrictions:bifrost-string"/>
+                <xs:attribute name="textAlign" type="restrictions:align" default="left"/>
+                <xs:attribute name="buttonAlign" type="restrictions:align" default="right"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="note">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="noteType" type="restrictions:noteTypes" default="defaultNote"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imagelink">
+        <xs:complexContent>
+            <xs:extension base="comm:imageType">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="lazy" type="xs:boolean"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="selected" type="xs:boolean"/>
+                <xs:attribute name="align" type="restrictions:imgAlign"/>
+                <xs:attribute name="illustration" type="xs:boolean" default="true"/>
+                <xs:attribute name="badgeUrl" type="xs:anyURI"/>
+                <xs:attribute name="badgeAlign" type="restrictions:badgeAlign"/>
+                <xs:attribute name="textUpper" type="restrictions:bifrost-string"/>
+                <xs:attribute name="textMiddle" type="restrictions:bifrost-string"/>
+                <xs:attribute name="textLower" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:imageTypes"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="progressTracker">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="day" type="restrictions:bifrost-string"/>
+                <xs:attribute name="date" type="restrictions:bifrost-string"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:progress-types" default="completed"/>
+                <xs:attribute name="showLiner" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="gallery">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="image" type="comm:thumbnail" maxOccurs="5"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="thumbnail">
+        <xs:complexContent>
+            <xs:extension base="comm:imagelink">
+                <xs:attribute name="editOrUploadUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="deleteUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imageCropper">
+        <xs:complexContent>
+            <xs:extension base="comm:imageType">
+                <xs:attribute name="canvasName" use="required" type="restrictions:bifrost-string"/>
+                <xs:attribute name="fileInputName" use="required" type="restrictions:bifrost-string"/>
+                <xs:attribute name="base64InputName" use="required" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="fileUpload">
+        <xs:complexContent>
+            <xs:extension base="comm:input">
+                <xs:attribute name="showInput" type="xs:boolean" default="false"/>
+                <xs:attribute name="fileUploadUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="fileErrorUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="buttonLabel" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imagebin">
+        <xs:complexContent>
+            <xs:extension base="comm:imageType">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="bin" type="restrictions:img-restriction" use="required"/>
+                <xs:attribute name="align" type="restrictions:imgAlign"/>
+                <xs:attribute name="illustration" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="commentbox">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="placeHolder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="rowsNo" type="restrictions:rows-limit"/>
+                <xs:attribute name="name" type="restrictions:bifrost-string"/>
+                <xs:attribute name="className" type="restrictions:bifrost-string"/>
+                <xs:attribute name="commentLimit" type="restrictions:comment-limit" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="icon">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="type" type="restrictions:icon-types"/>
+                <xs:attribute name="filename" type="restrictions:bifrost-string"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="target" type="restrictions:target"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="iconGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="icon" type="comm:icon" maxOccurs="12"/>
+                </xs:sequence>
+                <xs:attribute name="type" type="restrictions:icon-group-types"/>
+                <xs:attribute name="align" type="restrictions:align"/>
+                <xs:attribute name="position" type="restrictions:position" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!--  end element types  -->
+    <!--  Range Slider  -->
+    <xs:complexType name="slider">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="headings" type="comm:sliderHeadings"/>
+                    <xs:element name="rangeSlider" type="comm:rangeSlider" maxOccurs="unbounded"/>
+                    <xs:element name="totals" type="comm:sliderTotals" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="sliderHeadings">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="minHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="maxHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="inputHeading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="outputHeading" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="rangeSlider">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:long"/>
+                    <xs:element name="outputValue" type="xs:long"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="tally" type="xs:boolean" default="false"/>
+                <xs:attribute name="showInput" type="xs:boolean" default="true"/>
+                <xs:attribute name="color" type="restrictions:colorPalette" use="required"/>
+                <xs:attribute name="zeroAllowed" type="xs:boolean" default="true"/>
+                <xs:attribute name="minValue" type="xs:long" use="required"/>
+                <xs:attribute name="maxValue" type="xs:long" use="required"/>
+                <xs:attribute name="rounding" type="xs:positiveInteger" use="required"/>
+                <xs:attribute name="type" type="restrictions:bifrost-string" default="currency"/>
+                <xs:attribute name="ajaxOutputId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="processType" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="sliderTotals">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="inputTotal" type="xs:double"/>
+                    <xs:element name="outputTotal" type="xs:double"/>
+                </xs:sequence>
+                <xs:attribute name="inputTotalHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="outputTotalHeading" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="menu">
+        <xs:sequence>
+            <xs:element name="items" type="comm:menuItem" maxOccurs="20" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="groupheading" type="restrictions:bifrost-string"/>
+    </xs:complexType>
+    <xs:complexType name="menuItem">
+        <xs:attribute name="text" type="restrictions:bifrost-string"/>
+        <xs:attribute name="url" type="xs:anyURI"/>
+        <xs:attribute name="itemHeading" type="restrictions:bifrost-string"/>
+        <xs:attribute name="column" type="xs:int"/>
+        <xs:attribute name="target" type="xs:int"/>
+    </xs:complexType>
+    <xs:complexType name="table">
+        <xs:annotation>
+            <xs:documentation>@Deprecated, replaced by comm:fullTable</xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="tableColumn" type="comm:tableColumn" maxOccurs="16"/>
+                    <xs:element name="row" type="comm:row" maxOccurs="unbounded" minOccurs="0"/>
+                    <xs:element name="tableHeaderButton" type="comm:tableHeaderButton" maxOccurs="5" minOccurs="0"/>
+                    <xs:element name="tableSwitcher" type="comm:tableSwitcher" maxOccurs="5" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="action" type="restrictions:bifrost-string"/>
+                <xs:attribute name="endpoint" type="restrictions:bifrost-string"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="showSearch" type="xs:boolean"/>
+                <xs:attribute name="downloadLink" type="restrictions:bifrost-string"/>
+                <xs:attribute name="showTotal" type="xs:boolean"/>
+                <xs:attribute name="showTotalPosition" type="restrictions:table-total-position"/>
+                <xs:attribute name="showSaveAndPrint" type="xs:boolean"/>
+                <xs:attribute name="pagingOff" type="xs:boolean"/>
+                <xs:attribute name="pageSize" type="restrictions:pageSize-limit"/>
+                <xs:attribute name="advancedSearchUrl" type="xs:anyURI"/>
+                <xs:attribute name="disableSorting" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!--  Table column  -->
+    <xs:complexType name="tableColumn">
+        <xs:attribute name="id" type="restrictions:bifrost-string"/>
+        <xs:attribute name="groupId" type="restrictions:bifrost-string"/>
+        <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+        <xs:attribute name="fieldName" type="restrictions:bifrost-string"/>
+        <xs:attribute name="align" type="restrictions:bifrost-string"/>
+        <xs:attribute name="maxlength" type="xs:integer"/>
+        <xs:attribute name="calcTotal" type="xs:boolean"/>
+        <xs:attribute name="selectAll" type="xs:boolean" default="false"/>
+        <xs:attribute name="selectAllStatus" type="restrictions:selectAllStatus" default="none"/>
+        <xs:attribute name="onClick" type="restrictions:bifrost-string"/>
+        <xs:attribute name="disableSorting" type="xs:boolean" default="false"/>
+        <xs:attribute name="widthPercent" type="xs:int"/>
+    </xs:complexType>
+    <!--  Table group  -->
+    <xs:complexType name="tableHeaderGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:tableColumn">
+                <xs:attribute name="colSpan" type="xs:int" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!--  Table Search : Appears just above the table   -->
+    <xs:complexType name="tableSearch">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="searchPlaceholder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!--  Table Row  -->
+    <xs:complexType name="row">
+        <xs:sequence>
+            <xs:element name="cell" type="comm:cell" maxOccurs="16"/>
+            <xs:element name="moreOptions" type="comm:moreOptionsItem" maxOccurs="5" minOccurs="0"/>
+            <xs:element name="eZiButtons" type="comm:eziButton" maxOccurs="5" minOccurs="0"/>
+            <xs:element name="groupButton" type="comm:groupButton" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="category" type="restrictions:bifrost-string"/>
+        <xs:attribute name="showTotal" type="xs:boolean"/>
+    </xs:complexType>
+    <!--  Full Table Row  -->
+    <xs:complexType name="fullTableRow">
+        <xs:sequence>
+            <xs:element name="cell" type="comm:cell" maxOccurs="16"/>
+            <xs:element name="moreOptions" type="comm:moreOptionsItem" maxOccurs="5" minOccurs="0"/>
+            <xs:element name="eZiButtons" type="comm:eziButton" maxOccurs="5" minOccurs="0"/>
+            <xs:element name="groupButton" type="comm:groupButton" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="groupId" type="restrictions:bifrost-string" use="required"/>
+    </xs:complexType>
+    <!--  Table Cell  -->
+    <xs:complexType name="cell">
+        <xs:sequence>
+            <xs:element name="cellItem" type="comm:cellItem" maxOccurs="10" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="col_id" type="restrictions:bifrost-string"/>
+        <xs:attribute name="colSpan" type="xs:int"/>
+        <xs:attribute name="align" type="restrictions:align" default="left"/>
+    </xs:complexType>
+    <!--  Table Cell Item  -->
+    <xs:complexType name="cellItem">
+        <xs:sequence>
+            <xs:element name="item" type="comm:symbol"/>
+        </xs:sequence>
+        <xs:attribute name="align" type="restrictions:bifrost-string"/>
+    </xs:complexType>
+    <xs:complexType name="tableNavigator">
+        <xs:attribute name="currentPage" type="xs:integer"/>
+        <xs:attribute name="hasMorePages" type="xs:boolean"/>
+        <xs:attribute name="pageSize" type="restrictions:pageSize-limit"/>
+    </xs:complexType>
+    <!--  Table More options item  -->
+    <xs:complexType name="moreOptionsItem">
+        <xs:attribute name="text" type="restrictions:bifrost-string"/>
+        <xs:attribute name="url" type="xs:anyURI" use="required"/>
+    </xs:complexType>
+    <!--  Table eZiButton  -->
+    <xs:complexType name="eziButton">
+        <xs:sequence minOccurs="0">
+            <xs:element name="overlay" type="comm:overlay"/>
+        </xs:sequence>
+        <xs:attribute name="label" type="restrictions:bifrost-string" use="required"/>
+        <xs:attribute name="url" type="xs:anyURI" use="required"/>
+        <xs:attribute name="target" type="xs:int"/>
+    </xs:complexType>
+    <!--  Table Header Button  -->
+    <xs:complexType name="tableHeaderButton">
+        <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+        <xs:attribute name="label" type="restrictions:bifrost-string"/>
+        <xs:attribute name="url" type="xs:anyURI"/>
+        <xs:attribute name="target" type="restrictions:target"/>
+    </xs:complexType>
+    <!--  Table Switcher   -->
+    <xs:complexType name="tableSwitcher">
+        <xs:attribute name="label" type="restrictions:bifrost-string"/>
+        <xs:attribute name="url" type="xs:anyURI"/>
+        <xs:attribute name="selected" type="xs:boolean"/>
+    </xs:complexType>
+    <!--  Table groupButton  -->
+    <xs:complexType name="groupButton">
+        <xs:attribute name="label" type="restrictions:bifrost-string" use="required"/>
+        <xs:attribute name="url" type="xs:anyURI" use="required"/>
+        <xs:attribute name="target" type="xs:int"/>
+        <xs:attribute name="type" type="restrictions:button-types" default="highlight"/>
+        <xs:attribute name="width" type="xs:int" default="3"/>
+    </xs:complexType>
+    <!--  Footer Elements -->
+    <xs:complexType name="footerElement" abstract="true"/>
+    <xs:complexType name="dropdownOnFooter">
+        <xs:complexContent>
+            <xs:extension base="comm:footerElement">
+                <xs:sequence minOccurs="0" maxOccurs="unbounded">
+                    <xs:element name="label" type="restrictions:dropdownOnFooter-labellimit"/>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                    <xs:element name="subHeading" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="description" type="restrictions:bifrost-string"/>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selectedValue" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="dateOnFooter">
+        <xs:complexContent>
+            <xs:extension base="comm:footerElement">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="label" type="restrictions:dateOnFooter-labellimit"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="footerbutton">
+        <xs:complexContent>
+            <xs:extension base="comm:footerElement">
+                <xs:sequence minOccurs="0">
+                    <xs:element name="overlay" type="comm:overlay"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="label" type="restrictions:footerbutton-labellimit"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="target" type="restrictions:target"/>
+                <xs:attribute name="doSubmit" type="xs:boolean"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="overlay">
+        <xs:sequence minOccurs="0">
+            <xs:element name="heading" type="restrictions:bifrost-string"/>
+            <xs:element name="subHeading" type="restrictions:bifrost-string"/>
+            <xs:element name="queryStringUrl" type="xs:anyURI" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="contextCache">
+        <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="name" type="restrictions:bifrost-string"/>
+            <xs:element name="value" type="restrictions:bifrost-string"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="pageHeader">
+        <xs:sequence>
+            <xs:element name="contextCache" type="comm:contextCache" minOccurs="0"/>
+            <xs:element name="pageAction" type="restrictions:pageAction" maxOccurs="10" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="config">
+        <xs:sequence>
+            <xs:element name="url" type="comm:url" maxOccurs="2" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    <!--  URL type  -->
+    <xs:complexType name="url">
+        <xs:sequence>
+            <xs:element name="params" type="comm:params"/>
+        </xs:sequence>
+        <xs:attribute name="type" type="restrictions:urlType" use="required"/>
+        <xs:attribute name="value" type="xs:anyURI"/>
+    </xs:complexType>
+    <xs:complexType name="params">
+        <xs:sequence minOccurs="0" maxOccurs="30">
+            <xs:element name="name" type="restrictions:bifrost-string"/>
+            <xs:element name="value" type="restrictions:bifrost-string"/>
+        </xs:sequence>
+    </xs:complexType>
+    <!--  Page action  -->
+    <xs:complexType name="inlineObject">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:formatType" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="width" type="xs:integer"/>
+                <xs:attribute name="height" type="xs:integer"/>
+                <xs:attribute name="lazy" type="xs:boolean"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="stepLocator">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="totalSteps" type="restrictions:stepLocatorStep" use="required"/>
+                <xs:attribute name="selectedStep" type="restrictions:stepLocatorStep" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="timeLimit">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="timeInSeconds" type="restrictions:timeLimitTimes" use="required"/>
+                <xs:attribute name="noteContent" type="restrictions:notecontent-limit"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="termsAndConditions">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="checkbox" type="comm:checkbox"/>
+                    <xs:element name="button" type="comm:button"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="inputWithButton">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="inputType" type="restrictions:input-types"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="submitOnEnter" type="xs:boolean"/>
+                <xs:attribute name="maxlength" type="xs:integer"/>
+                <xs:attribute name="placeHolder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="buttonId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="buttonLabel" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <!--  For use by POP only  -->
+    <xs:complexType name="imageWithCheckbox">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="checkboxId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="checkboxName" type="restrictions:bifrost-string"/>
+                <xs:attribute name="checkboxLabel" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="alt" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selected" type="xs:boolean"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="illustration">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="filename" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="illustrationGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="image" type="comm:illustration" maxOccurs="3"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="buttonAndImage">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <!--  If polling options not set, will default to 2s interval polling once  -->
+                <xs:sequence>
+                    <xs:element name="pollingOptions" type="comm:pollingOptions" minOccurs="0"/>
+                </xs:sequence>
+                <!--   Image  -->
+                <xs:attribute name="imageId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="height" type="restrictions:image-height-pixel-restriction" use="required"/>
+                <xs:attribute name="width" type="restrictions:image-width-pixel-restriction" use="required"/>
+                <xs:attribute name="defaultSrc" type="xs:anyURI"/>
+                <xs:attribute name="onFailureSrc" type="xs:anyURI" use="required"/>
+                <!--  Button  -->
+                <xs:attribute name="buttonId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="pollingOptions">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="sequentialIntervalInMS" type="restrictions:polling-interval-restriction"
+                                minOccurs="0" maxOccurs="5"/>
+                </xs:sequence>
+                <xs:attribute name="numberOfTimesToPoll" type="restrictions:number-of-times-to-poll-restriction"
+                              use="required"/>
+                <xs:attribute name="defaultIntervalInMS" type="restrictions:polling-interval-restriction"
+                              use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="pollingDivLoad">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="sequentialIntervalInMS" type="restrictions:polling-interval-restriction"
+                                minOccurs="0" maxOccurs="5"/>
+                </xs:sequence>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="numberOfTimesToPoll" type="restrictions:number-of-times-to-poll-restriction"
+                              use="required"/>
+                <xs:attribute name="defaultIntervalInMS" type="restrictions:polling-interval-restriction"
+                              use="required"/>
+                <xs:attribute name="trigger" type="restrictions:polling-trigger-restriction" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="logo">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:choice>
+                        <xs:element name="logoBin" type="comm:imagebin" minOccurs="0"/>
+                        <xs:element name="logoLink" type="comm:imagelink" minOccurs="0"/>
+                    </xs:choice>
+                </xs:sequence>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target"/>
+                <xs:attribute name="buttonLabel" type="restrictions:bifrost-string"/>
+                <xs:attribute name="editable" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="mapPreview">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="pin" type="comm:locationPin"/>
+                </xs:sequence>
+                <xs:attribute name="mapInputId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="mapFullView">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="summary" type="comm:summarySymbol" minOccurs="0"/>
+                    <xs:element name="pin" type="comm:locationPin" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="mapInputId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="summarySymbol">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="logoLink" type="comm:imagelink"/>
+                    <xs:element name="text" type="comm:text"/>
+                    <xs:element name="hyperlink" type="comm:button"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="locationPin">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="location" type="comm:coordinates"/>
+                    <xs:element name="address" type="restrictions:bifrost-string"/>
+                    <xs:element name="logoLink" type="comm:imagelink" minOccurs="0"/>
+                    <xs:element name="button" type="comm:button" minOccurs="0" maxOccurs="3"/>
+                </xs:sequence>
+                <xs:attribute name="pinType" type="restrictions:pin-type-restriction"/>
+                <xs:attribute name="status" type="restrictions:map-status-restriction"/>
+                <xs:attribute name="rating" type="restrictions:star-rating-restriction" default="0"/>
+                <xs:attribute name="statusText" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="coordinates">
+        <xs:all>
+            <xs:element name="latitude" type="xs:decimal"/>
+            <xs:element name="longitude" type="xs:decimal"/>
+        </xs:all>
+    </xs:complexType>
+    <xs:complexType name="image">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:choice>
+                        <xs:element name="imageBin" type="comm:imagebin" minOccurs="0"/>
+                        <xs:element name="imageLink" type="comm:imagelink" minOccurs="0"/>
+                    </xs:choice>
+                </xs:sequence>
+                <xs:attribute name="alt" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="messageCategories">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="messageCategory" type="comm:messageCategory" maxOccurs="unbounded" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="messageGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="message" type="comm:message" maxOccurs="unbounded" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="messageCategory">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="type" type="xs:string" use="required"/>
+                <xs:attribute name="preview" type="xs:string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="unreadCount" type="restrictions:unread-count-limit" default="0"/>
+                <xs:attribute name="lastMessageTimestamp" type="xs:long" use="required"/>
+                <xs:attribute name="canDelete" type="xs:boolean" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="message" abstract="true">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="timestamp" type="xs:long" use="required"/>
+                <xs:attribute name="category" type="xs:string" use="required"/>
+                <xs:attribute name="messageText" type="xs:string" use="required"/>
+                <xs:attribute name="type" type="xs:string" use="required"/>
+                <xs:attribute name="read" type="xs:boolean" use="required"/>
+                <xs:attribute name="event" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="simpleMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:message"/>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="chatMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:message">
+                <xs:attribute name="messageId" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="fileMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:chatMessage">
+                <xs:sequence>
+                    <xs:element name="icon" type="comm:imagebin" maxOccurs="1" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="fileName" type="xs:string" use="required"/>
+                <xs:attribute name="fileSize" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="fileUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target"/>
+                <xs:attribute name="fileType" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="messageButton">
+        <xs:complexContent>
+            <xs:extension base="comm:button">
+                <xs:attribute name="topicId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="multiButtonChatMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:chatMessage">
+                <xs:sequence>
+                    <xs:element name="buttons" type="comm:messageButton" maxOccurs="5" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="loadMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:message">
+                <xs:sequence>
+                    <xs:element name="hyperlink" type="comm:button" maxOccurs="1" minOccurs="1"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="complexMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:message">
+                <xs:attribute name="heading" type="xs:string" use="required"/>
+                <xs:attribute name="paragraph1" type="xs:string" use="required"/>
+                <xs:attribute name="paragraph2" type="xs:string" use="optional"/>
+                <xs:attribute name="paragraph3" type="xs:string" use="optional"/>
+                <xs:attribute name="linkURL" type="xs:anyURI" use="optional"/>
+                <xs:attribute name="linkTarget" type="xs:string" use="optional"/>
+                <xs:attribute name="linkLabel" type="xs:string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="transactionalMessage">
+        <xs:complexContent>
+            <xs:extension base="comm:message">
+                <xs:attribute name="amount" type="xs:integer" use="required"/>
+                <xs:attribute name="isDebit" type="xs:boolean" use="required"/>
+                <xs:attribute name="currencyIndicator" type="xs:string" use="required"/>
+                <xs:attribute name="sourceDescription" type="xs:string" use="required"/>
+                <xs:attribute name="sourceAccount" type="xs:string" use="optional"/>
+                <xs:attribute name="sourceImageId" type="xs:string" use="required"/>
+                <xs:attribute name="destinationDescription" type="xs:string" use="required"/>
+                <xs:attribute name="destinationAccount" type="xs:string" use="optional"/>
+                <xs:attribute name="destinationImageId" type="xs:string" use="required"/>
+                <xs:attribute name="panelLine1" type="xs:string" use="optional"/>
+                <xs:attribute name="panelLine2" type="xs:string" use="optional"/>
+                <xs:attribute name="transactionTimestamp" type="xs:long" use="optional"/>
+                <xs:attribute name="availableBalance" type="xs:long" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="gainLoss">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:gain-loss-limit"/>
+                </xs:sequence>
+                <xs:attribute name="gainorLoss" type="restrictions:gain-loss-types" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="horizontalBar">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="percent" type="restrictions:percent"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="colour" type="restrictions:bifrost-string" default="teal"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="donutChart">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="data" type="comm:donutChartDataPoint" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="valueMask" type="restrictions:mask-types" use="required"/>
+                <xs:attribute name="currencySymbol" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="currencyCode" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="total" type="xs:decimal" use="required"/>
+                <xs:attribute name="showLegend" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="lineChart">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="dataSeries" type="comm:chartDataSeriesType" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="showLegend" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="barChart">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="dataSeries" type="comm:chartDataSeriesType" minOccurs="1" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="showLegend" type="xs:boolean" default="false"/>
+                <xs:attribute name="stackedColumn" type="xs:boolean" default="true"/>
+                <xs:attribute name="negativeValues" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="stackedColumnChart">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="category" type="restrictions:bifrost-string" minOccurs="1" maxOccurs="unbounded"/>
+                    <xs:element name="labelItem" type="comm:stackedColumnChartLabel" minOccurs="0"
+                                maxOccurs="unbounded"/>
+                    <xs:element name="dataSeries" type="comm:chartDataSeriesType" minOccurs="1" maxOccurs="1"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="showLegend" type="xs:boolean" default="false"/>
+                <xs:attribute name="yAxisLabel" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="treeMapChart">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="data" type="comm:treeMapChartDataPoint" minOccurs="1" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="subHeading" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="valueMask" type="restrictions:mask-types" use="required"/>
+                <xs:attribute name="currencySymbol" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="currencyCode" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="showLegend" type="xs:boolean" default="false"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="donutChartDataPoint">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="title" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="value" type="xs:decimal" use="required"/>
+                <xs:attribute name="percent" type="restrictions:percent" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="panel"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="treeMapChartDataPoint">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="value" type="xs:double" use="required"/>
+                <xs:attribute name="colorValue" type="xs:positiveInteger" use="required"/>
+                <xs:attribute name="placeholder" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="arrow" type="restrictions:arrow-types" default="none"/>
+                <xs:attribute name="percentChange" type="xs:double" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="panel"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="carousel">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="slide" type="comm:lineChart" maxOccurs="3"/>
+                </xs:sequence>
+                <xs:attribute name="name" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="splitTable">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="table" type="comm:table" minOccurs="2" maxOccurs="2"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="setEvent">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="event" type="restrictions:event-type"/>
+                <xs:attribute name="show" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="hide" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="setEventAjax">
+        <xs:complexContent>
+            <xs:extension base="comm:setEvent">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="formName" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="ajaxEventType" type="restrictions:ajax-event-type" default="none"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="analytics">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="keyValuePair" type="comm:keyValuePair" minOccurs="0" maxOccurs="20"/>
+                </xs:sequence>
+                <xs:attribute name="eventName" type="restrictions:bifrost-string"/>
+                <xs:attribute name="country" type="restrictions:bifrost-string"/>
+                <xs:attribute name="skin" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="keyValuePair">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="key" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="maps">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="message" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="mapLat" type="xs:double"/>
+                <xs:attribute name="mapLong" type="xs:double"/>
+                <xs:attribute name="readonly" type="xs:boolean" default="false"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="targetDivContainerId" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="searchInput">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="name" type="restrictions:bifrost-string" default="action-arrowRight"/>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+                <xs:attribute name="autofocus" type="xs:boolean"/>
+                <xs:attribute name="placeholder" type="restrictions:bifrost-string"/>
+                <xs:attribute name="className" type="restrictions:bifrost-string"/>
+                <xs:attribute name="type" type="restrictions:search-type" default="table"/>
+                <xs:attribute name="message" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imageButton">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence maxOccurs="1" minOccurs="0">
+                    <xs:element name="imageButtonOptions" type="comm:hyperlinkList"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="tip" type="restrictions:bifrost-string"/>
+                <xs:attribute name="icon" type="restrictions:chevron-icon-type" default="addGrey"/>
+                <xs:attribute name="linkListId" type="restrictions:bifrost-string" default="linkListId"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="popupDirection" type="restrictions:tooltipPosition"/>
+                <xs:attribute name="divContainerId" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="formName" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="rowGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="totalsRow" type="comm:row" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="groupTableButton" type="comm:imageButton" maxOccurs="1" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="groupId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="groupHeaderLabel" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="headingColor" type="restrictions:text-colors" default="primary"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="fullTable">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="addButton" type="comm:imageButton" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="tableSearch" type="comm:tableSearch" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="advanceSearch" type="comm:advanceSearch" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="tableHeaderGroup" type="comm:tableHeaderGroup" minOccurs="0" maxOccurs="16"/>
+                    <xs:element name="tableColumn" type="comm:tableColumn" maxOccurs="16"/>
+                    <xs:element name="rowGroup" type="comm:rowGroup" maxOccurs="unbounded" minOccurs="1"/>
+                    <xs:element name="row" type="comm:fullTableRow" maxOccurs="unbounded" minOccurs="0"/>
+                    <xs:element name="groupTableButton" type="comm:button" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="totalsRow" type="comm:row" maxOccurs="1" minOccurs="0"/>
+                    <xs:element name="tableNavigator" type="comm:tableNavigator" maxOccurs="1" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="action" type="restrictions:bifrost-string"/>
+                <xs:attribute name="endpoint" type="restrictions:bifrost-string"/>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="headingSize" type="xs:int" default="4"/>
+                <xs:attribute name="headingColor" type="restrictions:text-colors" default="primary"/>
+                <xs:attribute name="showSearch" type="xs:boolean" default="false"/>
+                <xs:attribute name="downloadLink" type="restrictions:bifrost-string"/>
+                <xs:attribute name="showTotal" type="xs:boolean"/>
+                <xs:attribute name="showTotalPosition" type="restrictions:table-total-position"/>
+                <xs:attribute name="showSaveAndPrint" type="xs:boolean"/>
+                <xs:attribute name="pagingOff" type="xs:boolean"/>
+                <xs:attribute name="pageSize" type="restrictions:pageSize-limit"/>
+                <xs:attribute name="advancedSearchUrl" type="xs:anyURI"/>
+                <xs:attribute name="showPrintAndDownload" type="xs:boolean" default="false"/>
+                <xs:attribute name="defaultSortIndex" type="xs:int"/>
+                <xs:attribute name="defaultSortDirection" type="restrictions:sort-dir-type" default="ascending"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="statusIndicator">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="type" type="restrictions:statusType" default="approved"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="spacer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="optional"/>
+                <xs:attribute name="height" type="restrictions:spacer-height" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="cardCarousel">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="cards" type="comm:container-card" maxOccurs="20"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="height" type="restrictions:cardCarouselHeight" default="12"/>
+                <xs:attribute name="selectedCardOnCarousel" type="xs:int" default="0"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="container-card">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="cardDivider" type="comm:cardDivider" minOccurs="1" maxOccurs="2"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="align" type="restrictions:align" default="center"/>
+                <xs:attribute name="width" type="restrictions:cardWidth" default="3"/>
+                <xs:attribute name="backgroundImageSrc" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="cardDivider">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="symbol" type="comm:symbol" minOccurs="0" maxOccurs="10"/>
+                </xs:sequence>
+                <xs:attribute name="position" type="restrictions:position" default="top"/>
+                <xs:attribute name="paddingTop" type="xs:boolean" default="true"/>
+                <xs:attribute name="imageSource" type="xs:string" use="optional"/>
+                <xs:attribute name="imageHeight" type="xs:int" use="optional"/>
+                <xs:attribute name="imageWidth" type="restrictions:cardWidth" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="gainLossIndicator">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+                <xs:attribute name="gainLossType" type="restrictions:gain-loss-types"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="imageButtonGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="imageButtons" type="comm:imageButton" minOccurs="1" maxOccurs="5"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="printAndDownload">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="xs:string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="fullTableRowDivContainer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="cell" type="comm:cell" maxOccurs="16"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="tableRowSetEventAjax">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="event" type="restrictions:event-type" use="required"/>
+                <xs:attribute name="ajaxSymbolId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="formName" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="predictiveSearchInput">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="value" type="restrictions:bifrost-string" minOccurs="0" maxOccurs="1"/>
+                    <xs:element name="predictiveSearchResult" type="comm:predictiveSearchResult" minOccurs="0"
+                                maxOccurs="1"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="type" type="restrictions:predictive-search-input-types" default="text"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="message" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="predictiveSearchResult">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence minOccurs="0" maxOccurs="15">
+                    <xs:element name="predictiveSearchResultSymbol" type="comm:predictiveSearchResultSymbol"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="predictiveSearchResultSymbol">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="predictiveSearchResultButton">
+        <xs:complexContent>
+            <xs:extension base="comm:predictiveSearchResultSymbol">
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="value" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="metadata">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="keyValuePair" type="comm:keyValuePair" minOccurs="0" maxOccurs="20"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="navigationIconContainer">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="navigationIcon" type="comm:navigationIcon" minOccurs="1" maxOccurs="unbounded"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="navigationIcon">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="text" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="url" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="icon" type="restrictions:bifrost-string" use="optional"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="htmlDoc">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="jwt" type="restrictions:bifrost-string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="messageBox">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="notificationGroup" type="comm:notificationGroup" minOccurs="0" maxOccurs="1"/>
+                    <xs:element name="statusDropdown" type="comm:statusDropdown" minOccurs="1" maxOccurs="1"/>
+                    <xs:element name="infoCard" type="comm:infoCard" minOccurs="1" maxOccurs="1"/>
+                    <xs:element name="conversationGroup" type="comm:conversationGroup" minOccurs="1" maxOccurs="1"/>
+                    <xs:element name="messageGroup" type="comm:messageGroup" minOccurs="1" maxOccurs="1"/>
+                    <xs:element name="navigationIconContainer" type="comm:navigationIconContainer" minOccurs="0"
+                                maxOccurs="1"/>
+                </xs:sequence>
+                <xs:attribute name="sendMessageUrl" type="xs:anyURI" use="required"/>
+                <xs:attribute name="chatType" type="restrictions:chat-types" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="notificationGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="notification" type="comm:notification" minOccurs="1" maxOccurs="5"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="notification">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="notificationButton" type="comm:notificationButton" minOccurs="0" maxOccurs="2"/>
+                </xs:sequence>
+                <xs:attribute name="heading" type="restrictions:bifrost-string"/>
+                <xs:attribute name="text" type="restrictions:bifrost-string"/>
+                <xs:attribute name="url" type="xs:anyURI"/>
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="color" type="restrictions:notification-colors" default="primary"/>
+                <xs:attribute name="icon" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="notificationButton">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="target" type="restrictions:target" default="main"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="statusDropdown">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="statusDropdownItem" type="comm:statusDropdownItem" minOccurs="1"
+                                maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="restrictions:bifrost-string"/>
+                <xs:attribute name="selectedValue" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="statusDropdownItem">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="itemLabel" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="itemValue" type="restrictions:bifrost-string" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="infoCard">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="infoCardSymbol" type="comm:symbol" minOccurs="0" maxOccurs="15"/>
+                </xs:sequence>
+                <xs:attribute name="title" type="restrictions:bifrost-string"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="conversationGroup">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:sequence>
+                    <xs:element name="conversation" type="comm:conversation" minOccurs="1" maxOccurs="5"/>
+                </xs:sequence>
+                <xs:attribute name="activeConversationId" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="newConversationUrl" type="xs:anyURI" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="conversation">
+        <xs:complexContent>
+            <xs:extension base="comm:symbol">
+                <xs:attribute name="id" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="title" type="restrictions:bifrost-string" use="required"/>
+                <xs:attribute name="url" type="xs:anyURI" use="required"/>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+</xs:schema>

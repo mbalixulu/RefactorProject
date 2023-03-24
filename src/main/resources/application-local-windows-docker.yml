@@ -1,0 +1,6 @@
+spring:
+  config:
+    name: LOCAL-WINDOWS-DOCKER
+
+spring-boot-starter-ocep:
+  host: http://host.docker.internal:${server.port}

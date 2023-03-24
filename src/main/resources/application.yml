@@ -1,0 +1,12 @@
+server:
+  port: 9999
+
+spring:
+  thymeleaf:
+    suffix: .xml
+    templateMode: XML
+    servlet:
+      content-type: text/xml
+
+cache:
+  lifespan: 21600
