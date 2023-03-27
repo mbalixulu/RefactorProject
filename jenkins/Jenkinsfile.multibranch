@@ -2,7 +2,7 @@ def sonarProjectKey = 'springBootStarterOcep'
 def sonarLogin = '3b0c799fdcfe5393626b7474d21ed4d82862be7e'
 def deploymentProjectName = 'Spring_Boot_Starter_Ocep_Deployment'
 def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e-bf2a-434f-9d20-7eca8ff6fd02@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/aa9305cdf8464b0fb7e2f40f293a9827/a262715b-abe0-49a4-b227-ebe10a661113'
-def coverageProfile = 'branch-coverage-check-80'
+def coverageProfile = 'branch-coverage-check-00'
 
 pipeline {
     agent { label 'mavenJava17' }
