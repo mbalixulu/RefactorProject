@@ -34,7 +34,7 @@
           "spec": {
             "containers": [
               {
-                "image": "quay.io/sdase/openjdk-runtime:11-hotspot",
+                "image": "quay.io/sdase/openjdk-runtime:17-hotspot",
                 "name": "spring-boot-starter-ocep",
                 "ports": [
                   {
