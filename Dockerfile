@@ -1,5 +1,5 @@
 # Start with a base image containing Java runtime
-FROM quay.io/sdase/openjdk-runtime:11-hotspot
+FROM quay.io/sdase/openjdk-runtime:17-hotspot
 
 # Make port 8080 available to the world outside this container
 EXPOSE 8080

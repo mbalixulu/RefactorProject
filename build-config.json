@@ -37,7 +37,7 @@
       "dockerStrategy": {
         "from": {
           "kind": "ImageStreamTag",
-          "name": "openjdk-runtime:11-hotspot"
+          "name": "openjdk-runtime:17-hotspot"
         }
       },
       "type": "Docker"
