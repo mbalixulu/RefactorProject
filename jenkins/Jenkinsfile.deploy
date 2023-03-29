@@ -1,0 +1,190 @@
+def deploymentConfig = 'deployment-config.json'
+def dockerImage = 'quay.io/sdase/openjdk-runtime:17-hotspot'
+def templateName = 'spring-boot-starter-ocep'
+def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e-bf2a-434f-9d20-7eca8ff6fd02@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/aa9305cdf8464b0fb7e2f40f293a9827/a262715b-abe0-49a4-b227-ebe10a661113'
+
+def tag
+def scmVars
+def shortGitCommit
+def pom
+
+pipeline {
+  agent { label 'mavenJava17Deploy' }
+  options {
+    office365ConnectorWebhooks([[name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]])
+  }
+
+  stages {
+    stage('preamble') {
+      steps {
+        script {         
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              echo "Deploying to namespace: ${openshift.project()}"
+              echo "Spring Profiles: ${SPRING_PROFILE}"
+            }
+          }
+        }
+      }
+    }
+    stage('Maven Package') {
+      steps {
+        script {
+          scmVars = checkout(scm)
+          shortGitCommit = scmVars.GIT_COMMIT[0..6]
+          pom = readMavenPom file: 'pom.xml'
+          def branchForTag = env.BRANCH_NAME.replace("/", "-")
+          def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
+          tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
+        }
+        office365ConnectorSend webhookUrl: "${office365url}",
+          message: 'Deployment Starting on OpenShift',
+            status: 'Started',
+            factDefinitions: [
+              [name: "Deployment:", template: ""],
+              [name: "Jenkins build", template: "${currentBuild.number}"],
+              [name: "Source:", template: ""],
+              [name: "Branch", template: "${env.BRANCH_NAME}"],
+              [name: "Commit", template: "${shortGitCommit}"],
+              [name: "App Version", template: "${tag}"],
+              [name: "Deployment Configuration", template: ""],
+              [name: "Environment", template: "${NAMESPACE}"],
+              [name: "Image Tag", template: "${tag}"],
+              [name: "Spring Profile", template: "cloud,${SPRING_PROFILE}"]
+            ]
+        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+          sh "mvn -Drevision=${tag} clean package deploy -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
+        }
+      }
+    }
+    stage('New Image Builder') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return !openshift.selector("bc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              echo "Creating new Build Configuration with image tag: ${templateName}:${tag}"
+              openshift.create("-f", "./build-config.json")
+              openshift.create("-f", "./image-stream.json")
+            }
+          }
+        }
+      }
+    }
+    stage('Update Image Builder') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("bc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              def bc = openshift.selector("bc/${templateName}")
+
+              def buildConfig = bc.object()
+              def outputImage = buildConfig.spec.output.to.name
+              echo "Current tag: ${outputImage}"
+                  
+              if (outputImage != "${templateName}:${tag}") {
+                bc.patch("\'{ \"spec\": { \"output\": { \"to\": { \"name\": \"${templateName}:${tag}\" } } } }\'")
+              }
+              echo "New tag: ${templateName}:${tag}"
+            }
+          }
+        }
+      }
+    }
+    stage('Build Image') {
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              def bc = openshift.selector("bc", templateName)
+
+              def build = bc.startBuild("--from-dir=.")
+
+              def result = "Pending"
+
+              timeout(15) {
+                build.untilEach(1) {
+                  result = it.object().status.phase
+                  echo "Image is building result: ${result}"
+                  return result == "Complete" || result == "Failed"
+                }
+              }
+
+              if (result == "Failed"){
+                error("Build failed")
+              }
+            }
+          }
+        }
+      }
+    }
+    stage('Create Deployment Configuration') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return !openshift.selector("dc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              openshift.newApp("--file=${deploymentConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}").narrow('svc')
+            }
+          }
+        }
+      }
+    }
+    stage('Update Dev Deployment Configuration') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("dc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              echo "Selecting deploymentConfig ${templateName}"
+              def dc = openshift.selector('dc', templateName);
+              def depconfig = openshift.selector('dc', templateName).object();
+
+              echo "Setting image to ${NAMESPACE}/${templateName}:${tag}"
+              depconfig.spec.template.spec.containers[0].image = "${NAMESPACE}/${templateName}:${tag}"
+              depconfig.spec.triggers[0].imageChangeParams.from.name = "${templateName}:${tag}"
+
+              echo "Applying config which will trigger a new deployment"
+              openshift.apply(depconfig, ['--force=true']);
+
+              echo "Trusting that OpenShift deployment will happen for quicker deployments..."
+            }
+          }
+        }
+      }
+    }
+  }
+}

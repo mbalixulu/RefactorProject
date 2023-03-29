@@ -1,0 +1,755 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:vc="http://www.w3.org/2007/XMLSchema-versioning" xmlns:restrictions="http://ws.online.fnb.co.za/v1/restrictions/" targetNamespace="http://ws.online.fnb.co.za/v1/restrictions/" elementFormDefault="qualified" attributeFormDefault="qualified" vc:minVersion="1.1">
+    <xs:simpleType name="page-template-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="main"/>
+            <xs:enumeration value="service"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="symbol-styles">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="dark"/>
+            <xs:enumeration value="light"/>
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+            <xs:enumeration value="highlight"/>
+            <xs:enumeration value="action"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="heading-styles">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="dark"/>
+            <xs:enumeration value="light"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="top-margin-limit">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="flexi-width-limit">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="formLayout-templates">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="standard"/>
+            <xs:enumeration value="flexi"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="encoding-types">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="multipart/form-data"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="arrow-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="up"/>
+            <xs:enumeration value="down"/>
+            <xs:enumeration value="none"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="map-status-restriction">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="active"/>
+            <xs:enumeration value="main"/>
+            <xs:enumeration value="inactive"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="view-restriction">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="active"/>
+            <xs:enumeration value="inactive"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="pin-type-restriction">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="action"/>
+            <xs:enumeration value="ghost"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="star-rating-restriction">
+        <xs:restriction base="xs:int">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="5"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="image-height-pixel-restriction">
+        <xs:restriction base="xs:integer">
+            <xs:maxInclusive value="120"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="image-width-pixel-restriction">
+        <xs:restriction base="xs:integer">
+            <xs:maxInclusive value="85"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="polling-interval-restriction">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="30000"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="number-of-times-to-poll-restriction">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="10"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="polling-trigger-restriction">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="delay"/>
+            <xs:enumeration value="element"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="percent">
+        <xs:restriction base="xs:double">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="percent-integer">
+        <xs:restriction base="xs:int">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="mask-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="currency"/>
+            <xs:enumeration value="percent"/>
+            <xs:enumeration value="rate"/>
+            <xs:enumeration value="number"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="graph-size">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="normal"/>
+            <xs:enumeration value="small"/>
+            <xs:enumeration value="large"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="bifrost-string">
+        <xs:restriction base="xs:string">
+            <xs:whiteSpace value="collapse"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="colorPalette">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="color1"/>
+            <xs:enumeration value="color2"/>
+            <xs:enumeration value="color3"/>
+            <xs:enumeration value="color4"/>
+            <xs:enumeration value="color5"/>
+            <xs:enumeration value="color6"/>
+            <xs:enumeration value="color7"/>
+            <xs:enumeration value="color8"/>
+            <xs:enumeration value="color9"/>
+            <xs:enumeration value="color10"/>
+            <xs:enumeration value="color11"/>
+            <xs:enumeration value="color12"/>
+            <xs:enumeration value="color13"/>
+            <xs:enumeration value="color14"/>
+            <xs:enumeration value="color15"/>
+            <xs:enumeration value="color16"/>
+            <xs:enumeration value="color17"/>
+            <xs:enumeration value="color18"/>
+            <xs:enumeration value="color19"/>
+            <xs:enumeration value="color20"/>
+            <xs:enumeration value="color21"/>
+            <xs:enumeration value="color22"/>
+            <xs:enumeration value="color23"/>
+            <xs:enumeration value="color24"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="button-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="18"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="onOff">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="on"/>
+            <xs:enumeration value="off"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="input-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="text"/>
+            <xs:enumeration value="hidden"/>
+            <xs:enumeration value="currency"/>
+            <xs:enumeration value="number"/>
+            <xs:enumeration value="password"/>
+            <xs:enumeration value="pin"/>
+            <xs:enumeration value="switcher"/>
+            <xs:enumeration value="checkbox"/>
+            <xs:enumeration value="range"/>
+            <xs:enumeration value="address"/>
+            <xs:enumeration value="simpleCheckbox"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="range-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="single"/>
+            <xs:enumeration value="double"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="inputItem-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="radio"/>
+            <xs:enumeration value="checkbox"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="input-width-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="half"/>
+            <xs:enumeration value="quarter"/>
+            <xs:enumeration value="threeQuarters"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="button-symbol-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="add"/>
+            <xs:enumeration value="none"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="noteTypes">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="defaultNote"/>
+            <xs:enumeration value="termsAndConditions"/>
+            <xs:enumeration value="top"/>
+            <xs:enumeration value="bottom"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="imgSizeMetric">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="px"/>
+            <xs:enumeration value="%"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="imgAlign">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="left"/>
+            <xs:enumeration value="center"/>
+            <xs:enumeration value="right"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="badgeAlign">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="left"/>
+            <xs:enumeration value="right"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="imageTypes">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="bg"/>
+            <xs:enumeration value="avatar"/>
+            <xs:enumeration value="illustration"/>
+            <xs:enumeration value="card"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="radiobutton-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="4"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="pillboxswitcher-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="19"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="pageheading-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="45"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="groupheading-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="40"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="dropdownOnFooter-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="15"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="input-length">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="50"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="monthsToShow-limit">
+        <xs:restriction base="xs:integer">
+            <xs:enumeration value="1"/>
+            <xs:enumeration value="2"/>
+            <xs:enumeration value="3"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="img-restriction">
+        <xs:restriction base="xs:base64Binary"> </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="comment-limit">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="140"/>
+            <xs:maxInclusive value="2000"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="notecontent-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="rows-limit">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="align">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="left"/>
+            <xs:enumeration value="center"/>
+            <xs:enumeration value="right"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="buttonAlign">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="left"/>
+            <xs:enumeration value="center"/>
+            <xs:enumeration value="right"/>
+            <xs:enumeration value="top"/>
+            <xs:enumeration value="bottom"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="icon-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="success"/>
+            <xs:enumeration value="failed"/>
+            <xs:enumeration value="pending"/>
+            <xs:enumeration value="atmadvance"/>
+            <xs:enumeration value="cashcentres"/>
+            <xs:enumeration value="smartbox"/>
+            <xs:enumeration value="blank"/>
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="target">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="main"/>
+            <xs:enumeration value="panel"/>
+            <xs:enumeration value="panelhide"/>
+            <xs:enumeration value="newwindow"/>
+            <xs:enumeration value="download"/>
+            <xs:enumeration value="iframe"/>
+            <xs:enumeration value="divcontainer"/>
+            <xs:enumeration value="instantSales"/>
+            <xs:enumeration value="currentPage"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="button-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="paper"/>
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+            <xs:enumeration value="highlight"/>
+            <xs:enumeration value="action"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="text-colors">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="black"/>
+            <xs:enumeration value="white"/>
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+            <xs:enumeration value="highlight"/>
+            <xs:enumeration value="action"/>
+            <xs:enumeration value="ghostdark"/>
+            <xs:enumeration value="ghostmedium"/>
+            <xs:enumeration value="ghostlight"/>
+            <xs:enumeration value="paper"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="background-colors">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+            <xs:enumeration value="highlight"/>
+            <xs:enumeration value="action"/>
+            <xs:enumeration value="ghostdark"/>
+            <xs:enumeration value="ghostmedium"/>
+            <xs:enumeration value="ghostlight"/>
+            <xs:enumeration value="paper"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="progress-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="completed"/>
+            <xs:enumeration value="active"/>
+            <xs:enumeration value="future"/>
+            <xs:enumeration value="warning"/>
+            <xs:enumeration value="tick"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="icon-group-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="crosssell"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="tooltip-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="subTab-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="30"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="pageSize-limit">
+        <xs:restriction base="xs:integer">
+            <xs:pattern value="10|20|30|40|50|60|70|80|90|100|110|120|130|140|150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="table-total-position">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="top"/>
+            <xs:enumeration value="bottom"/>
+            <xs:enumeration value="both"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="textParagraph-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="sub"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="textList-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="ul"/>
+            <xs:enumeration value="ol"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="textList-styles">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="tick"/>
+            <xs:enumeration value="bullet"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="footerbutton-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="14"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="dateOnFooter-labellimit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="7"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="urlType">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="logoff"/>
+            <xs:enumeration value="keepalive"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="pageAction">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="logoffall"/>
+            <xs:enumeration value="logoffclient"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="techReference-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="formatType">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="pdf"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="limitAlphanumericAndUnderscore">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:pattern value="[A-Za-z0-9_]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="stepLocatorStep">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="timeLimitTimes">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="gain-loss-limit">
+        <xs:restriction base="xs:decimal">
+            <xs:minInclusive value="0"/>
+            <xs:fractionDigits value="2"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="gain-loss-types">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="gain"/>
+            <xs:enumeration value="none"/>
+            <xs:enumeration value="loss"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="unread-count-limit">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="999"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="position">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="top"/>
+            <xs:enumeration value="bottom"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="heading-sizes">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="5"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="small-ints">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="256"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="width-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="full"/>
+            <xs:enumeration value="half"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="event-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="mousedown"/>
+            <xs:enumeration value="click"/>
+            <xs:enumeration value="change"/>
+            <xs:enumeration value="focusIn"/>
+            <xs:enumeration value="focusOut"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="ajax-event-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="none"/>
+            <xs:enumeration value="submitFormToWorkspace"/>
+            <xs:enumeration value="submitFormToDiv"/>
+            <xs:enumeration value="submitFormToEziPanel"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="search-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="table"/>
+            <xs:enumeration value="form"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="chevron-icon-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="addGrey"/>
+            <xs:enumeration value="downloadGrey"/>
+            <xs:enumeration value="downloadBlack"/>
+            <xs:enumeration value="filterGrey"/>
+            <xs:enumeration value="printGrey"/>
+            <xs:enumeration value="printBlack"/>
+            <xs:enumeration value="searchGrey"/>
+            <xs:enumeration value="crumbArrowRight"/>
+            <xs:enumeration value="crumbArrowLeft"/>
+            <xs:enumeration value="primary-next"/>
+            <xs:enumeration value="primary-prev"/>
+            <xs:enumeration value="grey-search"/>
+            <xs:enumeration value="action-add"/>
+            <xs:enumeration value="action-arrowRight"/>
+            <xs:enumeration value="action-more"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="sort-dir-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="ascending"/>
+            <xs:enumeration value="descending"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="statusType">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="warning"/>
+            <xs:enumeration value="approved"/>
+            <xs:enumeration value="pending"/>
+            <xs:enumeration value="failed"/>
+            <xs:enumeration value="tick"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="crumb-type">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="crumbArrowRight"/>
+            <xs:enumeration value="crumbArrowLeft"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="spacer-height">
+        <xs:restriction base="xs:int">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="30"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="cardCarouselHeight">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="12"/>
+            <xs:maxInclusive value="21"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="cardWidth">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="3"/>
+            <xs:maxInclusive value="6"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="views-text-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="25"/>
+            <xs:pattern value="[A-Za-z ]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="subtab-label-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="25"/>
+            <xs:pattern value="[A-Za-z ]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="subTabGroupHeading-limit">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="45"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="tooltipPosition">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="bottomLeft"/>
+            <xs:enumeration value="bottomRight"/>
+            <xs:enumeration value="topLeft"/>
+            <xs:enumeration value="topRight"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="tooltipType">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="info"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="selectAllStatus">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="all"/>
+            <xs:enumeration value="partial"/>
+            <xs:enumeration value="none"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="advancedSearchHyperLinkTarget">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="main"/>
+            <xs:enumeration value="panel"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="systemErrorCodeRestriction">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="99999"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="boxSplitWidth">
+        <xs:restriction base="xs:integer">
+            <xs:pattern value="25|33|50|75|100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="dashboard-templates">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="templateA"/>
+            <xs:enumeration value="templateB"/>
+            <xs:enumeration value="templateC"/>
+            <xs:enumeration value="templateD"/>
+            <xs:enumeration value="templateE"/>
+            <xs:enumeration value="templateF"/>
+            <xs:enumeration value="templateG"/>
+            <xs:enumeration value="templateH"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactMessage">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="100"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactPushMessageHeading">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactSecondaryMessage">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactSuccessScreenText">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactDeclineScreenTitleText">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="smartIncontactDeclineScreenText">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:maxLength value="150"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="predictive-search-input-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="text"/>
+            <xs:enumeration value="currency"/>
+            <xs:enumeration value="number"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="chat-types">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="agent"/>
+            <xs:enumeration value="client"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="notification-colors">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="primary"/>
+            <xs:enumeration value="secondary"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="boxContainer-height">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="30"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="flexiDashboardSubSection-widths">
+        <xs:restriction base="restrictions:bifrost-string">
+            <xs:enumeration value="full"/>
+            <xs:enumeration value="twoThirds"/>
+            <xs:enumeration value="half"/>
+            <xs:enumeration value="oneThird"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="flexiDashboardSubSection-maxCardsInRow">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="flexiDashboardSubSection-height">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="30"/>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>

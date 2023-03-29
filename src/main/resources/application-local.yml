@@ -1,0 +1,6 @@
+spring:
+  config:
+    name: LOCAL
+
+spring-boot-starter-ocep:
+  host: http://localhost:${server.port}
