@@ -1,7 +1,9 @@
 package rmb.ocep.springbootstarterocep.configuration;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -22,5 +24,10 @@ public class ApplicationConfiguration {
   @Bean
   public RestTemplate defaultRestTemplate() {
     return new RestTemplate();
+  }
+
+  @Bean
+  public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+    return registry -> registry.config().commonTags("application", "put-application-name-here");
   }
 }
