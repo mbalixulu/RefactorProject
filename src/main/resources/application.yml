@@ -10,3 +10,14 @@ spring:
 
 cache:
   lifespan: 21600
+
+logging:
+  level:
+    root: DEBUG
+  config: classpath:config/logback-spring.xml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
