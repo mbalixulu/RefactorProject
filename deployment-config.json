@@ -142,6 +142,27 @@
         "sessionAffinity": "None",
         "type": "ClusterIP"
       }
-    }
-  ]
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Route",
+      "metadata": {
+        "labels": {
+          "app": "spring-boot-starter-ocep"
+        },
+        "name": "spring-boot-starter-ocep"
+      },
+      "spec": {
+        "port": {
+          "targetPort": "8080-tcp"
+        },
+        "to": {
+          "kind": "Service",
+          "name": "spring-boot-starter-ocep",
+          "weight": 100
+        }
+      },
+      "status": {}
+
+      ]
 }

@@ -123,6 +123,10 @@ pipeline {
                 build.untilEach(1) {
                   result = it.object().status.phase
                   echo "Image is building result: ${result}"
+                  if (result == "Complete") {
+                    echo "Tagging image ${NAMESPACE}/${templateName}:${tag} to ${NAMESPACE}/${templateName}:latest"
+                    openshift.tag("${NAMESPACE}/${templateName}:${tag}","${NAMESPACE}/${templateName}:latest")
+                  }
                   return result == "Complete" || result == "Failed"
                 }
               }
@@ -173,9 +177,9 @@ pipeline {
               def dc = openshift.selector('dc', templateName);
               def depconfig = openshift.selector('dc', templateName).object();
 
-              echo "Setting image to ${NAMESPACE}/${templateName}:${tag}"
-              depconfig.spec.template.spec.containers[0].image = "${NAMESPACE}/${templateName}:${tag}"
-              depconfig.spec.triggers[0].imageChangeParams.from.name = "${templateName}:${tag}"
+              echo "Setting image to ${NAMESPACE}/${templateName}:latest"
+              depconfig.spec.template.spec.containers[0].image = "${NAMESPACE}/${templateName}:latest"
+              depconfig.spec.triggers[0].imageChangeParams.from.name = "${templateName}:latest"
 
               echo "Applying config which will trigger a new deployment"
               openshift.apply(depconfig, ['--force=true']);
