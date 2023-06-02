@@ -76,7 +76,6 @@ pipeline {
             openshift.withProject("${NAMESPACE}") {
               echo "Creating new Build Configuration with image tag: ${templateName}:${tag}"
               openshift.create("-f", "./build-config.json")
-              
               openshift.create("-f", "./image-stream.json")
             }
           }
@@ -157,7 +156,8 @@ pipeline {
         script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
-              openshift.create("--file=${deploymentConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
+              openshift.set("--env", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
+              openshift.create("--file=${deploymentConfig}")
             }
           }
         }
@@ -208,7 +208,7 @@ pipeline {
           script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
-              openshift.create("--file=${serviceConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
+              openshift.create("--file=${serviceConfig}")
             }
           }
         }
@@ -228,7 +228,7 @@ pipeline {
           script {
             openshift.withCluster () {
               openshift.withProject ("${NAMESPACE}") {
-                openshift.create("--file=${routeConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
+                openshift.create("--file=${routeConfig}")
               }
             }
           }
