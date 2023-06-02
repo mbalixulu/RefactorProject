@@ -1,168 +1,112 @@
-{
-  "kind": "Template",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "spring-boot-starter-ocep"
-  },
-  "objects": [
-    {
-      "apiVersion": "v1",
-      "kind": "DeploymentConfig",
-      "metadata": {
-        "labels": {
-          "app": "spring-boot-starter-ocep"
-        },
-        "name": "spring-boot-starter-ocep"
+  {
+    "apiVersion": "apps.openshift.io/v1",
+    "kind": "DeploymentConfig",
+    "metadata": {
+      "labels": {
+        "app": "spring-boot-starter-ocep"
       },
-      "spec": {
-        "replicas": 1,
-        "revisionHistoryLimit": 2,
-        "selector": {
-          "app": "spring-boot-starter-ocep",
-          "deploymentconfig": "spring-boot-starter-ocep"
+      "name": "spring-boot-starter-ocep"
+    },
+    "spec": {
+      "replicas": 1,
+      "revisionHistoryLimit": 2,
+      "selector": {
+        "app": "spring-boot-starter-ocep",
+        "deploymentconfig": "spring-boot-starter-ocep"
+      },
+      "strategy": {
+        "type": "Rolling"
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app": "spring-boot-starter-ocep",
+            "deploymentconfig": "spring-boot-starter-ocep"
+          }
         },
-        "strategy": {
-          "type": "Rolling"
-        },
-        "template": {
-          "metadata": {
-            "labels": {
-              "app": "spring-boot-starter-ocep",
-              "deploymentconfig": "spring-boot-starter-ocep"
-            }
-          },
-          "spec": {
-            "containers": [
-              {
-                "image": "quay.io/sdase/openjdk-runtime:17-hotspot",
-                "name": "spring-boot-starter-ocep",
-                "ports": [
-                  {
-                    "containerPort": 8080,
-                    "protocol": "TCP"
-                  }
-                ],
-                "resources": {
-                  "limits": {
-                    "cpu": "150m",
-                    "memory": "256Mi"
-                  },
-                  "requests": {
-                    "cpu": "100m",
-                    "memory": "192Mi"
-                  }
-                },
-                "volumeMounts": [
-                ],
-                "livenessProbe": {
-                  "failureThreshold": 3,
-                  "httpGet": {
-                    "path": "/actuator/health",
-                    "port": 8080,
-                    "scheme": "HTTP"
-                  },
-                  "initialDelaySeconds": 30,
-                  "periodSeconds": 30,
-                  "successThreshold": 1,
-                  "timeoutSeconds": 5
-                },
-                "readinessProbe": {
-                  "failureThreshold": 3,
-                  "httpGet": {
-                    "path": "/actuator/health",
-                    "port": 8080,
-                    "scheme": "HTTP"
-                  },
-                  "initialDelaySeconds": 180,
-                  "periodSeconds": 30,
-                  "successThreshold": 1,
-                  "timeoutSeconds": 5
-                },
-                "startupProbe": {
-                  "failureThreshold": 10,
-                  "httpGet": {
-                    "path": "/actuator/health",
-                    "port": 8080,
-                    "scheme": "HTTP"
-                  },
-                  "initialDelaySeconds": 120,
-                  "periodSeconds": 15,
-                  "successThreshold": 1,
-                  "timeoutSeconds": 5
+        "spec": {
+          "containers": [
+            {
+              "image": "quay.io/sdase/openjdk-runtime:17-hotspot",
+              "name": "spring-boot-starter-ocep",
+              "ports": [
+                {
+                  "containerPort": 8080,
+                  "protocol": "TCP"
                 }
-              }
-            ],
-            "restartPolicy": "Always",
-            "volumes": [
-            ]
-          }
-        },
-        "triggers": [
-          {
-            "imageChangeParams": {
-              "automatic": true,
-              "containerNames": [
-                "spring-boot-starter-ocep"
               ],
-              "from": {
-                "kind": "ImageStreamTag",
-                "name": "spring-boot-starter-ocep:latest"
+              "resources": {
+                "limits": {
+                  "cpu": "150m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "192Mi"
+                }
+              },
+              "volumeMounts": [
+              ],
+              "livenessProbe": {
+                "failureThreshold": 3,
+                "httpGet": {
+                  "path": "/actuator/health",
+                  "port": 8080,
+                  "scheme": "HTTP"
+                },
+                "initialDelaySeconds": 30,
+                "periodSeconds": 30,
+                "successThreshold": 1,
+                "timeoutSeconds": 5
+              },
+              "readinessProbe": {
+                "failureThreshold": 3,
+                "httpGet": {
+                  "path": "/actuator/health",
+                  "port": 8080,
+                  "scheme": "HTTP"
+                },
+                "initialDelaySeconds": 180,
+                "periodSeconds": 30,
+                "successThreshold": 1,
+                "timeoutSeconds": 5
+              },
+              "startupProbe": {
+                "failureThreshold": 10,
+                "httpGet": {
+                  "path": "/actuator/health",
+                  "port": 8080,
+                  "scheme": "HTTP"
+                },
+                "initialDelaySeconds": 120,
+                "periodSeconds": 15,
+                "successThreshold": 1,
+                "timeoutSeconds": 5
               }
-            },
-            "type": "ImageChange"
-          },
-          {
-            "type": "ConfigChange"
-          }
-        ]
-      }
-    },
-    {
-      "apiVersion": "v1",
-      "kind": "Service",
-      "metadata": {
-        "labels": {
-          "app": "spring-boot-starter-ocep"
-        },
-        "name": "spring-boot-starter-ocep"
-      },
-      "spec": {
-        "ports": [
-          {
-            "name": "8080-tcp",
-            "port": 8080,
-            "protocol": "TCP",
-            "targetPort": 8080
-          }
-        ],
-        "selector": {
-          "app": "spring-boot-starter-ocep",
-          "deploymentconfig": "spring-boot-starter-ocep"
-        },
-        "sessionAffinity": "None",
-        "type": "ClusterIP"
-      }
-    },
-    {
-      "apiVersion": "v1",
-      "kind": "Route",
-      "metadata": {
-        "labels": {
-          "app": "spring-boot-starter-ocep"
-        },
-        "name": "spring-boot-starter-ocep"
-      },
-      "spec": {
-        "port": {
-          "targetPort": "8080-tcp"
-        },
-        "to": {
-          "kind": "Service",
-          "name": "spring-boot-starter-ocep",
-          "weight": 100
+            }
+          ],
+          "restartPolicy": "Always",
+          "volumes": [
+          ]
         }
       },
-      "status": {}
+      "triggers": [
+        {
+          "imageChangeParams": {
+            "automatic": true,
+            "containerNames": [
+              "spring-boot-starter-ocep"
+            ],
+            "from": {
+              "kind": "ImageStreamTag",
+              "name": "spring-boot-starter-ocep:latest"
+            }
+          },
+          "type": "ImageChange"
+        },
+        {
+          "type": "ConfigChange"
+        }
+      ]
     }
-  ]
-}
+  }
