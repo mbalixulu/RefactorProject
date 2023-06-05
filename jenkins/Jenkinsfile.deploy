@@ -157,9 +157,7 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
               openshift.create("--file=${deploymentConfig}")
-              def depconfig = openshift.selector("dc",templateName).object();
-
-              echo("Deployment Config", "${depconfig}");
+              
             }
           }
         }
