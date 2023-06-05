@@ -111,6 +111,7 @@ pipeline {
         }
       }
     }
+
     stage('Build Image') {
       steps {
         script {
@@ -156,10 +157,9 @@ pipeline {
         script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
-              openshift.create("--file=${deploymentConfig}")
-              def depconfig = openshift.selector("dc",templateName).object();
-
-              echo("Deployment Config", "${depconfig}");
+              echo "Creating deployment config file"
+              openshift.create("-f","./${deploymentConfig}")
+              
             }
           }
         }
