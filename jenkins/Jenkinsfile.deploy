@@ -157,6 +157,7 @@ pipeline {
         script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
+              echo "Creating Deployment Config"
               openshift.create("-f","./${deploymentConfig}")
               
             }
@@ -209,6 +210,7 @@ pipeline {
           script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
+              echo "Creating Serviice Config"
               openshift.create("--f","./${serviceConfig}")
             }
           }
@@ -229,6 +231,7 @@ pipeline {
           script {
             openshift.withCluster () {
               openshift.withProject ("${NAMESPACE}") {
+                echo "Creating Route Config"
                 openshift.create("--f","./${routeConfig}")
               }
             }
