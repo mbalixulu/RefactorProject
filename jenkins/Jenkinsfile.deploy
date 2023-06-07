@@ -180,7 +180,7 @@ pipeline {
             openshift.withProject("${NAMESPACE}") {
               echo "Setting Environment Variable"
               def environement = "SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
-              sh "oc set env dc/${templateName} ${environement}"
+             
               echo "oc set env dc/${templateName} ${environement}"
             }
           }
@@ -239,6 +239,29 @@ pipeline {
         }
       }
     }
+    stage('Update Service Config') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.verifyService(templateName);
+            }
+          }
+        }
+      }
+      steps {
+          script {
+            openshift.withCluster () {
+              openshift.withProject ("${NAMESPACE}") {
+                echo "Patching Service Config"
+                def serviceConf = openshift.selector("svc",template).object();
+                serviceConf.delete();
+                openshift.apply(serviceConfig);
+              }
+            }
+          }
+      }
+    }
     stage('Create Route Config'){
       when {
         expression {
@@ -255,6 +278,29 @@ pipeline {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Creating Route Config"
                 openshift.create("-f","./${routeConfig}")
+              }
+            }
+          }
+      }
+    }
+    stage('Update Route Config') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("route", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+          script {
+            openshift.withCluster () {
+              openshift.withProject ("${NAMESPACE}") {
+                echo "Patching Route Config"
+                def routeConf = openshift.selector("route",template).object();
+                routeConf.delete();
+                openshift.apply(routeConfig);
               }
             }
           }
