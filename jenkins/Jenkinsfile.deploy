@@ -158,7 +158,17 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
               echo "Creating Deployment Config"
-              openshift.create("-f","./${deploymentConfig}","-n","SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
+              openshift.create("-f","./${deploymentConfig}")
+            }
+          }
+        }
+      }
+      steps {
+        script{
+          echo "Set enviroment variable"
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              sh "oc set env dc/${deploymentConfig} SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
             }
           }
         }
