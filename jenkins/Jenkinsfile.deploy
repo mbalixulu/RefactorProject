@@ -160,7 +160,7 @@ pipeline {
               echo "Creating Deployment Config"
               openshift.create("-f","./${deploymentConfig}")
               echo "Set enviroment variable"
-              sh "oc set env dc/${deploymentConfig} SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
+              
             }
           }
         }
