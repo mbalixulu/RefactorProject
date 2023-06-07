@@ -180,8 +180,6 @@ pipeline {
             openshift.withProject("${NAMESPACE}") {
               echo "Setting Environment Variable"
               def environement = "SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
-             
-              echo "oc set env dc/${templateName} ${environement}"
             }
           }
         }
@@ -254,8 +252,7 @@ pipeline {
             openshift.withCluster () {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Service Config"
-                def serviceConf = openshift.selector("svc",template).object();
-                openshift.apply(serviceConfig);
+                openshift.apply(serviceConfig, ['--force=true']);
               }
             }
           }
@@ -297,8 +294,7 @@ pipeline {
             openshift.withCluster () {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Route Config"
-                def routeConf = openshift.selector("route",template).object();
-                openshift.patch(routeConfig);
+                openshift.patch(routeConfig, ['--force=true']);
               }
             }
           }
