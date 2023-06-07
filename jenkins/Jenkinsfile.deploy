@@ -301,7 +301,7 @@ pipeline {
                 echo "Patching Route Config"
                 def routeConf = openshift.selector("route",template).object();
                 routeConf.delete();
-                openshift.replace(routeConfig);
+                openshift.patch(routeConfig);
               }
             }
           }
