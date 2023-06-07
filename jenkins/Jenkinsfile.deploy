@@ -252,7 +252,7 @@ pipeline {
             openshift.withCluster () {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Service Config"
-                openshift.apply(serviceConfig, ['--force=true']);
+                openshift.patch(serviceConfig, ['--force=true']);
               }
             }
           }
