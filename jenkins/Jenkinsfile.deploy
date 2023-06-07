@@ -244,7 +244,7 @@ pipeline {
         expression {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
-              return openshift.verifyService(templateName);
+              return openshift.selector("svc",templateName).exists();
             }
           }
         }
@@ -255,6 +255,7 @@ pipeline {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Service Config"
                 def serviceConf = openshift.selector("svc",template).object();
+                echo "Service Config \n\n ${serviceConf}"
                 serviceConf.delete();
                 openshift.apply(serviceConfig);
               }
