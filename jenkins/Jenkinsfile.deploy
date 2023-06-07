@@ -179,7 +179,9 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
               echo "Setting Environment Variable"
-              sh "oc set env dc/${templateName} SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
+              def environement = "SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
+              sh "oc set env dc/${templateName} ${environement}"
+              echo "oc set env dc/${templateName} ${environement}"
             }
           }
         }
