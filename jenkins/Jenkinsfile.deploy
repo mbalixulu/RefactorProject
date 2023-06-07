@@ -255,9 +255,7 @@ pipeline {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Service Config"
                 def serviceConf = openshift.selector("svc",template).object();
-                echo "Service Config \n\n ${serviceConf}"
-                serviceConf.delete();
-                openshift.patch(serviceConfig);
+                openshift.apply(serviceConfig);
               }
             }
           }
@@ -300,8 +298,7 @@ pipeline {
               openshift.withProject ("${NAMESPACE}") {
                 echo "Patching Route Config"
                 def routeConf = openshift.selector("route",template).object();
-                routeConf.delete();
-                openshift.replace(routeConfig);
+                openshift.patch(routeConfig);
               }
             }
           }
