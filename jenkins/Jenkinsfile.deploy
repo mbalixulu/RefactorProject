@@ -165,6 +165,33 @@ pipeline {
         }
       }
     }
+    stage('Setting Environment Variable') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("dc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              echo "Setting Environment Variable"
+              def depconfig = openshift.selector('dc', templateName).object();
+              echo "deployment Config \n ${depconfig}"
+
+              depconfig.spec.containers.env.name = "SPRING_PROFILES_ACTIVE"
+              depconfig.spec.containers.env.value = "cloud,${SPRING_PROFILE}"
+
+              openshift.apply(depconfig)
+            }
+          }
+        }
+      }
+    }    
     stage('Update Dev Deployment Configuration') {
       when {
         expression {
