@@ -248,14 +248,14 @@ pipeline {
         }
       }
       steps {
-          script {
-            openshift.withCluster () {
-              openshift.withProject ("${NAMESPACE}") {
-                echo "Patching Service Config"
-                openshift.patch(serviceConfig, ['--force=true']);
-              }
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Patching Service Config"
+              openshift.replace(serviceConfig, ['--force=true']);
             }
           }
+        }
       }
     }
     stage('Create Route Config'){
@@ -290,14 +290,14 @@ pipeline {
         }
       }
       steps {
-          script {
-            openshift.withCluster () {
-              openshift.withProject ("${NAMESPACE}") {
-                echo "Patching Route Config"
-                openshift.patch(routeConfig, ['--force=true']);
-              }
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Patching Route Config"
+              openshift.replace(routeConfig, ['--force=true']);
             }
           }
+        }
       }
     }
   }
