@@ -164,27 +164,6 @@ pipeline {
         }
       }
     }
-    stage('Setting Environment Variable') {
-      when {
-        expression {
-          openshift.withCluster() {
-            openshift.withProject("${NAMESPACE}") {
-              return openshift.selector("dc", templateName).exists();
-            }
-          }
-        }
-      }
-      steps {
-        script {
-          openshift.withCluster() {
-            openshift.withProject("${NAMESPACE}") {
-              echo "Setting Environment Variable"
-              def environement = "SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}"
-            }
-          }
-        }
-      }
-    }
     stage('Update Dev Deployment Configuration') {
       when {
         expression {
@@ -252,7 +231,7 @@ pipeline {
           openshift.withCluster () {
             openshift.withProject ("${NAMESPACE}") {
               echo "Patching Service Config"
-              openshift.replace(serviceConfig, ['--force=true']);
+              openshift.replace("-f",serviceConfig);
             }
           }
         }
@@ -269,14 +248,14 @@ pipeline {
         }
       }
       steps {
-          script {
-            openshift.withCluster () {
-              openshift.withProject ("${NAMESPACE}") {
-                echo "Creating Route Config"
-                openshift.create("-f","./${routeConfig}")
-              }
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Creating Route Config"
+              openshift.create("-f","./${routeConfig}")
             }
           }
+        }
       }
     }
     stage('Update Route Config') {
@@ -294,7 +273,7 @@ pipeline {
           openshift.withCluster () {
             openshift.withProject ("${NAMESPACE}") {
               echo "Patching Route Config"
-              openshift.replace(routeConfig, ['--force=true']);
+              openshift.replace("-f",routeConfig);
             }
           }
         }
