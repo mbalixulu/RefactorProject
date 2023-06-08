@@ -179,13 +179,7 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
               echo "Setting Environment Variable"
-              def depconfig = openshift.selector('dc', templateName).object();
-              echo "deployment Config \n ${depconfig}"
-
-              depconfig.spec.containers.env.name = "SPRING_PROFILES_ACTIVE"
-              depconfig.spec.containers.env.value = "cloud,${SPRING_PROFILE}"
-
-              openshift.apply(depconfig)
+               openshift.setenv("SPRING_PROFILES_ACTIVE","cloud,${SPRING_PROFILE}")
             }
           }
         }
