@@ -158,7 +158,8 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
               echo "Creating Deployment Config"
-              openshift.create("-f","./${deploymentConfig}")
+              openshift.newApp("--file=${deploymentConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}").narrow('dc')
+              
             }
           }
         }
