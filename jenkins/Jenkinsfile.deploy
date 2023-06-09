@@ -3,6 +3,9 @@ def dockerImage = 'quay.io/sdase/openjdk-runtime:17-hotspot'
 def templateName = 'spring-boot-starter-ocep'
 def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e-bf2a-434f-9d20-7eca8ff6fd02@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/aa9305cdf8464b0fb7e2f40f293a9827/a262715b-abe0-49a4-b227-ebe10a661113'
 
+def routeConfig ='route-config.json'
+def serviceConfig = 'service-config.json'
+
 def tag
 def scmVars
 def shortGitCommit
@@ -108,6 +111,7 @@ pipeline {
         }
       }
     }
+
     stage('Build Image') {
       steps {
         script {
@@ -153,12 +157,15 @@ pipeline {
         script {
           openshift.withCluster() {
             openshift.withProject("${NAMESPACE}") {
-              openshift.newApp("--file=${deploymentConfig}", "--env=SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}").narrow('svc')
+              echo "Creating Deployment Config"
+              openshift.create("-f","./${deploymentConfig}")
+              echo "Setting Enviroment"
+              openshift.set("env dc/${templateName} SPRING_PROFILES_ACTIVE=cloud,${SPRING_PROFILE}")
             }
           }
         }
       }
-    }
+    }   
     stage('Update Dev Deployment Configuration') {
       when {
         expression {
@@ -185,6 +192,90 @@ pipeline {
               openshift.apply(depconfig, ['--force=true']);
 
               echo "Trusting that OpenShift deployment will happen for quicker deployments..."
+            }
+          }
+        }
+      }
+    }
+    stage('Create Service Config'){
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return !openshift.selector("svc", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+          script {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              echo "Creating Service Config"
+              openshift.create("-f","./${serviceConfig}")
+            }
+          }
+        }
+      }
+    }
+    stage('Update Service Config') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("svc",templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Patching Service Config"
+              openshift.replace("-f",serviceConfig);
+            }
+          }
+        }
+      }
+    }
+    stage('Create Route Config'){
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return !openshift.selector("route", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Creating Route Config"
+              openshift.create("-f","./${routeConfig}")
+            }
+          }
+        }
+      }
+    }
+    stage('Update Route Config') {
+      when {
+        expression {
+          openshift.withCluster() {
+            openshift.withProject("${NAMESPACE}") {
+              return openshift.selector("route", templateName).exists();
+            }
+          }
+        }
+      }
+      steps {
+        script {
+          openshift.withCluster () {
+            openshift.withProject ("${NAMESPACE}") {
+              echo "Patching Route Config"
+              openshift.replace("-f",routeConfig);
             }
           }
         }

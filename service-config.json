@@ -1,0 +1,26 @@
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "labels": {
+      "app": "spring-boot-starter-ocep"
+    },
+    "name": "spring-boot-starter-ocep"
+  },
+  "spec": {
+    "ports": [
+      {
+        "name": "8080-tcp",
+        "port": 8080,
+        "protocol": "TCP",
+        "targetPort": 8080
+      }
+    ],
+    "selector": {
+      "app": "spring-boot-starter-ocep",
+      "deploymentconfig": "spring-boot-starter-ocep"
+    },
+    "sessionAffinity": "None",
+    "type": "ClusterIP"
+  }
+}
