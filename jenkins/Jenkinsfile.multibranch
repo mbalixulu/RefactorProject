@@ -5,94 +5,85 @@ def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e
 def coverageProfile = 'branch-coverage-check-00'
 
 pipeline {
-  agent {
-    label 'mavenJava17'
-  }
-  options {
-    office365ConnectorWebhooks([
-      [name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]
-    ])
-  }
-  stages {
-    stage('Show Details') {
-      steps {
-        echo 'Pulling: ' + env.BRANCH_NAME
-      }
+    agent { label 'mavenJava17' }
+    options {
+      office365ConnectorWebhooks([[name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]])
     }
-    stage('Checkstyle & Build') {
-      parallel {
+    stages {
+        stage('Show Details'){
+            steps {
+                echo 'Pulling: ' + env.BRANCH_NAME
+            }
+        }
         stage('Checkstyle') {
-          steps {
-            configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-              sh "mvn checkstyle:check --settings ${env.mvn_settings}"
+            steps {
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn checkstyle:check --settings ${env.mvn_settings}"
+                }
+                office365ConnectorSend webhookUrl: "${office365url}",
+                    message: 'Checkstyle has been Passed',
+                    status: 'Success'
             }
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Checkstyle has been Passed',
-              status: 'Success'
-          }
         }
-
         stage('Build') {
-          steps {
-            configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-              sh "mvn clean package -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
+            steps {
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn clean package -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
+                }
+                office365ConnectorSend webhookUrl: "${office365url}",
+                    message: 'Build has been Passed',
+                    status: 'Success'
             }
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Build has been Passed',
-              status: 'Success'
-          }
         }
-      }
-    }
-    stage('Test') {
-      parallel {
-        stage("Branch build - Local Jacoco coverage") {
-          when {
-            not {
-              anyOf {
-                branch 'master';
+        stage('Test') {
+            parallel {
+                stage("Branch build - Local Jacoco coverage") {
+                    when{
+                        not {
+                            anyOf {
+                                branch 'master';
+                                branch 'develop'
+                            }
+                        }
+                    }
+                    steps {
+                        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                            sh "mvn verify -P ${coverageProfile} -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true --settings ${env.mvn_settings}"
+                        }
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                                message: 'Tests have been Passed',
+                                status: 'Success'
+                    }
+                }
+                stage("Master/Develop build - Use SonarQube") {
+                    when{
+                        anyOf {
+                            branch 'master';
+                            branch 'develop'
+                        }
+                    }
+                    steps {
+                        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                            sh "mvn test -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true --settings ${env.mvn_settings}"
+                        }
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                                message: 'Tests have been Passed',
+                                status: 'Success'
+                    }
+                }
+            }
+        }
+        stage('SonarQube Analysis - Jacoco Coverage') {
+            when{
                 branch 'develop'
-              }
             }
-          }
-          steps {
-            configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-              sh "mvn verify -P ${coverageProfile} -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true --settings ${env.mvn_settings}"
-            }
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Tests have been Passed',
-              status: 'Success'
-          }
-        }
-        stage("Master/Develop build - Use SonarQube") {
-          when {
-            anyOf {
-              branch 'master';
-              branch 'develop'
-            }
-          }
-          steps {
-            configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-              sh "mvn test -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true --settings ${env.mvn_settings}"
-            }
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Tests have been Passed',
-              status: 'Success'
-          }
-        }
-      }
-    }
-    stage('SonarQube Analysis - Jacoco Coverage') {
-      when {
-        branch 'develop'
-      }
-      steps {
-        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-          sh "mvn jacoco:report --settings ${env.mvn_settings}"
-          script {
-            def scannerHome = tool 'SonarQube - Scanner';
-            withSonarQubeEnv() {
-              sh "${scannerHome}/bin/sonar-scanner \
+            steps {
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn jacoco:report --settings ${env.mvn_settings}"
+                    script {
+                        def scannerHome = tool 'SonarQube - Scanner';
+                        withSonarQubeEnv() {
+                            sh "${scannerHome}/bin/sonar-scanner \
                                -Dsonar.projectKey=${sonarProjectKey} \
                                -Dsonar.host.url=http://sonar-qube:9000 \
                                -Dsonar.login=${sonarLogin} \
@@ -103,73 +94,71 @@ pipeline {
                                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                                -Dsonar.java.binaries=target/classes \
                                -Dsonar.java.coveragePlugin=jacoco"
+                        }
+                    }
+                }
+           }
+        }
+        stage("Quality Gate") {
+            when{
+                branch 'develop'
             }
-          }
-        }
-      }
-    }
-    stage("Quality Gate") {
-      when {
-        branch 'develop'
-      }
-      steps {
-        script {
-          sh "sleep 20"
-          def qg = waitForQualityGate()
-          if (qg.status != 'OK') {
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Quality gates failed',
-              status: 'Fail',
-              factDefinitions: [
-                [name: "Quality Gate", template: "${qg.status}"]
-              ]
+            steps {
+                script {
+                    sh "sleep 20"
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                            message: 'Quality gates failed',
+                            status: 'Fail',
+                            factDefinitions: [[name: "Quality Gate", template: "${qg.status}"]]
 
-            error "Pipeline aborted due to quality gate failure: ${qg.status}"
-          }
+                        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    }
+                }
+            }
         }
-      }
+        stage('Push to Nexus') {
+            steps {
+                sh 'echo "should be mvn deploy..."'
+            }
+        }
+        stage('Deploy to OpenShift') {
+            parallel {
+                stage('Develop') {
+                    when{
+                        branch 'develop'
+                    }
+                    steps {
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                            message: 'Develop branch build. Deploying to DEV',
+                            status: 'Success'
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-dev'), string(name: 'SPRING_PROFILE', value:'dev'), string(name: 'BRANCH_NAME', value:'develop')], wait: false
+                    }
+                }
+                stage('Master') {
+                    when{
+                        branch 'master'
+                    }
+                    steps {
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                            message: 'Master branch build. Deploying to INT',
+                            status: 'Success'
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-int'), string(name: 'SPRING_PROFILE', value:'int'), string(name: 'BRANCH_NAME', value:'master')], wait: false
+                    }
+                }
+                stage('Release'){
+                    when{
+                        branch 'release/*'
+                    }
+                    steps {
+                        office365ConnectorSend webhookUrl: "${office365url}",
+                            message: 'Release branch build. Deploying to QA',
+                            status: 'Success'
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-qa'), string(name: 'SPRING_PROFILE', value:'qa'), string(name: 'BRANCH_NAME', value:env.BRANCH_NAME)], wait: false
+                    }
+                }
+            }
+        }
     }
-    stage('Push to Nexus') {
-      steps {
-        sh 'echo "should be mvn deploy..."'
-      }
-    }
-    stage('Deploy to OpenShift') {
-      parallel {
-        stage('Develop') {
-          when {
-            branch 'develop'
-          }
-          steps {
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Develop branch build. Deploying to DEV',
-              status: 'Success'
-            build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value: 'rmb-ocep-core-dev'), string(name: 'SPRING_PROFILE', value: 'dev'), string(name: 'BRANCH_NAME', value: 'develop')], wait: false
-          }
-        }
-        stage('Master') {
-          when {
-            branch 'master'
-          }
-          steps {
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Master branch build. Deploying to INT',
-              status: 'Success'
-            build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value: 'rmb-ocep-core-int'), string(name: 'SPRING_PROFILE', value: 'int'), string(name: 'BRANCH_NAME', value: 'master')], wait: false
-          }
-        }
-        stage('Release') {
-          when {
-            branch 'release/*'
-          }
-          steps {
-            office365ConnectorSend webhookUrl: "${office365url}",
-              message: 'Release branch build. Deploying to QA',
-              status: 'Success'
-            build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value: 'rmb-ocep-core-qa'), string(name: 'SPRING_PROFILE', value: 'qa'), string(name: 'BRANCH_NAME', value: env.BRANCH_NAME)], wait: false
-          }
-        }
-      }
-    }
-  }
 }
