@@ -15,48 +15,24 @@ pipeline {
                 echo 'Pulling: ' + env.BRANCH_NAME
             }
         }
-        stage('Checkstyle & Build') {
-            parallel {
-                stage('Checkstyle') {
-                    steps {
-                        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-                            sh "mvn checkstyle:check --settings ${env.mvn_settings}"
-                        }
-                        office365ConnectorSend webhookUrl: "${office365url}",
-                            message: 'Checkstyle has been Passed',
-                            status: 'Success'
-                    }
+        stage('Checkstyle') {
+            steps {
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn checkstyle:check --settings ${env.mvn_settings}"
                 }
-                stage('Build') {
-                    when{
-                        not {
-                            anyOf {
-                                branch 'master';
-                            }
-                        }
-                    }
-                    steps {
-                        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-                            sh "mvn clean package -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
-                        }
-                        office365ConnectorSend webhookUrl: "${office365url}",
-                            message: 'Build has been Passed',
-                            status: 'Success'
-                    }
+                office365ConnectorSend webhookUrl: "${office365url}",
+                    message: 'Checkstyle has been Passed',
+                    status: 'Success'
+            }
+        }
+        stage('Build') {
+            steps {
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn clean package -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
                 }
-                stage('Build - Master') {
-                   when{
-                       branch 'master'
-                   }
-                  steps {
-                      configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-                          sh "mvn clean dependency:purge-local-repository package -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
-                      }
-                      office365ConnectorSend webhookUrl: "${office365url}",
-                          message: 'Build has been Passed',
-                          status: 'Success'
-                  }
-                }
+                office365ConnectorSend webhookUrl: "${office365url}",
+                    message: 'Build has been Passed',
+                    status: 'Success'
             }
         }
         stage('Test') {
