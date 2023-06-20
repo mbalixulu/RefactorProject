@@ -148,22 +148,21 @@ pipeline {
             }
         }
         stage('Push to Nexus') {
-          when{
+          when {
             anyOf {
                      branch 'master';
                      branch 'develop';
-                     branch 'feature/RO-1955-Improving-Build-Jenkins'
+                     branch 'feature/RO-1955-Improving-Build-Jenkins';
                   }
           }
-
           steps {
             script {
-              scmVars = checkout(scm)
-              shortGitCommit = scmVars.GIT_COMMIT[0..6]
-              pom = readMavenPom file: 'pom.xml'
-              def branchForTag = env.BRANCH_NAME.replace("/", "-")
-              def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
-              tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
+               scmVars = checkout(scm)
+               shortGitCommit = scmVars.GIT_COMMIT[0..6]
+               pom = readMavenPom file: 'pom.xml'
+               def branchForTag = env.BRANCH_NAME.replace("/", "-")
+               def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
+               tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
             }
             office365ConnectorSend webhookUrl: "${office365url}",
               message: 'Deployment Starting on OpenShift',
