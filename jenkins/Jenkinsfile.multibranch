@@ -22,6 +22,15 @@ pipeline {
         }
         stage('Checkstyle & Build') {
             parallel {
+                stage('Checkout'){
+                  steps{
+                     script {
+                         scmVars = checkout(scm);
+                         shortGitCommit = scmVars.GIT_COMMIT[0..6];
+                         pom = readMavenPom file: 'pom.xml';
+                      }
+                  }
+                }
                 stage('Checkstyle') {
                     steps {
                         configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
@@ -157,13 +166,10 @@ pipeline {
           }
           steps {
             script {
-               scmVars = checkout(scm)
-               shortGitCommit = scmVars.GIT_COMMIT[0..6]
-               pom = readMavenPom file: 'pom.xml'
-               def branchForTag = env.BRANCH_NAME.replace("/", "-")
-               def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
-               tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
-            }
+                  def branchForTag = env.BRANCH_NAME.replace("/", "-")
+                  def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
+                  tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
+             }
             office365ConnectorSend webhookUrl: "${office365url}",
               message: 'Deployment Starting on OpenShift',
                 status: 'Started',
