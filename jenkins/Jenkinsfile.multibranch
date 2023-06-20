@@ -175,9 +175,7 @@ pipeline {
                   [name: "Commit", template: "${shortGitCommit}"],
                   [name: "App Version", template: "${tag}"],
                   [name: "Deployment Configuration", template: ""],
-                  [name: "Environment", template: "${NAMESPACE}"],
                   [name: "Image Tag", template: "${tag}"],
-                  [name: "Spring Profile", template: "cloud,${SPRING_PROFILE}"]
                 ]
             configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
               sh "mvn -Drevision=${tag} deploy -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
