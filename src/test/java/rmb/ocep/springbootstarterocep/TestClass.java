@@ -1,7 +1,7 @@
 package rmb.ocep.springbootstarterocep;
 
-import org.junit.Assert;
-import org.junit.Ignore;
+
+
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,10 +16,7 @@ public class TestClass {
     }
 
     // Junit 4 test
-    @Test
-    public void aTestMethodAssertingTrue(){
-        Assert.assertTrue(true);
-    }
+
 
     // Junit 5 test
 
