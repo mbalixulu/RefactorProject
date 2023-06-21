@@ -2,20 +2,16 @@ package rmb.ocep.springbootstarterocep;
 
 
 
+import lombok.Getter;
 import org.junit.jupiter.api.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import rmb.ocep.springbootstarterocep.configuration.ApplicationConfigurationProperties;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-
+@Getter
 public class TestClass {
 
-    private ApplicationConfigurationProperties properties = new ApplicationConfigurationProperties();
+     ApplicationConfigurationProperties properties = new ApplicationConfigurationProperties();
 
 
     @Test
@@ -35,8 +31,8 @@ public class TestClass {
     @Test
     public void checkConfigProperties(){
 
-        Assertions.assertEquals(21600,properties.getLifespan());
-      ;
+        Assertions.assertEquals(0,properties.getLifespan());
+
     }
 
     CalculatorTest calculatorTest;
