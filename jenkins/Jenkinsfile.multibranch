@@ -10,9 +10,11 @@ pipeline {
       office365ConnectorWebhooks([[name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]])
     }
     stages {
-        stage('Show Details'){
+		stage('Show Details'){
             steps {
+              cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/',excludes: '**/settings.xml',compressionMethod: 'TARGZ_BEST_SPEED')], defaultBranch: 'master', maxCacheSize: 1024) {
                 echo 'Pulling: ' + env.BRANCH_NAME
+              }
             }
         }
         stage('Checkstyle') {
