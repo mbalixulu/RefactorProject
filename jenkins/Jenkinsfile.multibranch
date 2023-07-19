@@ -10,10 +10,13 @@ pipeline {
       office365ConnectorWebhooks([[name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]])
     }
     stages {
-		stage('Show Details'){
+		    stage('Cache Init'){
             steps {
-              cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/',excludes: '**/settings.xml',compressionMethod: 'TARGZ_BEST_SPEED')], defaultBranch: 'master', maxCacheSize: 1024) {
+              cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/repository',compressionMethod: 'TAR')], defaultBranch: 'master') {
                 echo 'Pulling: ' + env.BRANCH_NAME
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn dependency:resolve --settings ${env.mvn_settings}"
+                }
               }
             }
         }
@@ -114,7 +117,7 @@ pipeline {
                             message: 'Quality gates failed',
                             status: 'Fail',
                             factDefinitions: [[name: "Quality Gate", template: "${qg.status}"]]
-                        
+
                         error "Pipeline aborted due to quality gate failure: ${qg.status}"
                     }
                 }
