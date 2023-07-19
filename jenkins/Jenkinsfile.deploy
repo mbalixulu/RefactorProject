@@ -6,11 +6,6 @@ def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e
 def routeConfig ='route-config.json'
 def serviceConfig = 'service-config.json'
 
-def tag
-def scmVars
-def shortGitCommit
-def pom
-
 pipeline {
   agent { label 'mavenJava17Deploy' }
   options {
@@ -30,36 +25,21 @@ pipeline {
         }
       }
     }
-    stage('Maven Package') {
-      steps {
+
+    stage('Pull from Nexus Test') {
+      steps{
         script {
-          scmVars = checkout(scm)
-          shortGitCommit = scmVars.GIT_COMMIT[0..6]
-          pom = readMavenPom file: 'pom.xml'
-          def branchForTag = env.BRANCH_NAME.replace("/", "-")
-          def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
-          tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
+          def groupId = 'za.co.rmb.ocep'
+          cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/repository',compressionMethod: 'TAR')], defaultBranch: 'master') {
+            echo 'Pulling: ' + env.BRANCH_NAME
+              configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+              sh "mvn --settings ${env.mvn_settings} dependency:copy -Dartifact=${groupId}:${templateName}:${TAG} -DoutputDirectory=/tmp/workspace/${env.JOB_NAME}/target"
+              }
+          }
         }
-        office365ConnectorSend webhookUrl: "${office365url}",
-          message: 'Deployment Starting on OpenShift',
-            status: 'Started',
-            factDefinitions: [
-              [name: "Deployment:", template: ""],
-              [name: "Jenkins build", template: "${currentBuild.number}"],
-              [name: "Source:", template: ""],
-              [name: "Branch", template: "${env.BRANCH_NAME}"],
-              [name: "Commit", template: "${shortGitCommit}"],
-              [name: "App Version", template: "${tag}"],
-              [name: "Deployment Configuration", template: ""],
-              [name: "Environment", template: "${NAMESPACE}"],
-              [name: "Image Tag", template: "${tag}"],
-              [name: "Spring Profile", template: "cloud,${SPRING_PROFILE}"]
-            ]
-        configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
-          sh "mvn -Drevision=${tag} clean package deploy -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
-        }
-      }
-    }
+       }
+     }
+
     stage('New Image Builder') {
       when {
         expression {
