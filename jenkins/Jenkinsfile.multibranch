@@ -158,8 +158,7 @@ pipeline {
             configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
               sh "mvn -Drevision=${tag} deploy -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
             }
-        }
-
+          }
         }
         stage('Deploy to OpenShift') {
             parallel {
