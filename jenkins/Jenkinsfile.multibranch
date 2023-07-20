@@ -4,16 +4,23 @@ def deploymentProjectName = 'Spring_Boot_Starter_Ocep_Deployment'
 def office365url = 'https://firstrandgroup.webhook.office.com/webhookb2/335e4f1e-bf2a-434f-9d20-7eca8ff6fd02@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/aa9305cdf8464b0fb7e2f40f293a9827/a262715b-abe0-49a4-b227-ebe10a661113'
 def coverageProfile = 'branch-coverage-check-00'
 
+def tag
+def scmVars
+def shortGitCommit
+
 pipeline {
     agent { label 'mavenJava17' }
     options {
       office365ConnectorWebhooks([[name: 'Office 365', notifyAborted: true, notifyBackToNormal: true, notifyFailure: true, notifyNotBuilt: true, notifyRepeatedFailure: true, notifySuccess: true, notifyUnstable: true, startNotification: true, url: "${office365url}"]])
     }
     stages {
-		stage('Show Details'){
+		    stage('Cache Init'){
             steps {
-              cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/',excludes: '**/settings.xml',compressionMethod: 'TARGZ_BEST_SPEED')], defaultBranch: 'master', maxCacheSize: 1024) {
+              cache(caches: [arbitraryFileCache(cacheName: "m2", path: '/home/jenkins/.m2/repository',compressionMethod: 'TAR')], defaultBranch: 'master') {
                 echo 'Pulling: ' + env.BRANCH_NAME
+                configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+                    sh "mvn dependency:resolve --settings ${env.mvn_settings}"
+                }
               }
             }
         }
@@ -114,16 +121,44 @@ pipeline {
                             message: 'Quality gates failed',
                             status: 'Fail',
                             factDefinitions: [[name: "Quality Gate", template: "${qg.status}"]]
-                        
+
                         error "Pipeline aborted due to quality gate failure: ${qg.status}"
                     }
                 }
             }
         }
         stage('Push to Nexus') {
+          when {
+            anyOf {
+                     branch 'master';
+                     branch 'develop';
+                  }
+          }
             steps {
-                sh 'echo "should be mvn deploy..."'
+            script {
+                  scmVars = checkout(scm);
+                  shortGitCommit = scmVars.GIT_COMMIT[0..6];
+                  def branchForTag = env.BRANCH_NAME.replace("/", "-")
+                  def isRelease = env.BRANCH_NAME.substring(0, env.BRANCH_NAME.indexOf('/') == -1 ? 0 : env.BRANCH_NAME.indexOf('/')) == "release" ? true : false
+                  tag = "${shortGitCommit}-${branchForTag}-" + (isRelease ? "RELEASE" : "SNAPSHOT")
+             }
+            office365ConnectorSend webhookUrl: "${office365url}",
+              message: 'Deployment Starting on OpenShift',
+                status: 'Started',
+                factDefinitions: [
+                  [name: "Deployment:", template: ""],
+                  [name: "Jenkins build", template: "${currentBuild.number}"],
+                  [name: "Source:", template: ""],
+                  [name: "Branch", template: "${env.BRANCH_NAME}"],
+                  [name: "Commit", template: "${shortGitCommit}"],
+                  [name: "App Version", template: "${tag}"],
+                  [name: "Deployment Configuration", template: ""],
+                  [name: "Image Tag", template: "${tag}"],
+                ]
+            configFileProvider([configFile(fileId: 'global-maven-settings', variable: 'mvn_settings')]) {
+              sh "mvn -Drevision=${tag} deploy -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -DskipTests --settings ${env.mvn_settings}"
             }
+          }
         }
         stage('Deploy to OpenShift') {
             parallel {
@@ -135,7 +170,7 @@ pipeline {
                         office365ConnectorSend webhookUrl: "${office365url}",
                             message: 'Develop branch build. Deploying to DEV',
                             status: 'Success'
-                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-dev'), string(name: 'SPRING_PROFILE', value:'dev'), string(name: 'BRANCH_NAME', value:'develop')], wait: false
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-dev'), string(name: 'SPRING_PROFILE', value:'dev'), string(name: 'BRANCH_NAME', value:'develop'), string(name: 'TAG', value:"${tag}")], wait: false
                     }
                 }
                 stage('Master') {
@@ -146,7 +181,7 @@ pipeline {
                         office365ConnectorSend webhookUrl: "${office365url}",
                             message: 'Master branch build. Deploying to INT',
                             status: 'Success'
-                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-int'), string(name: 'SPRING_PROFILE', value:'int'), string(name: 'BRANCH_NAME', value:'master')], wait: false
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-int'), string(name: 'SPRING_PROFILE', value:'int'), string(name: 'BRANCH_NAME', value:'master'), string(name: 'TAG', value:"${tag}")], wait: false
                     }
                 }
                 stage('Release'){
@@ -157,7 +192,7 @@ pipeline {
                         office365ConnectorSend webhookUrl: "${office365url}",
                             message: 'Release branch build. Deploying to QA',
                             status: 'Success'
-                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-qa'), string(name: 'SPRING_PROFILE', value:'qa'), string(name: 'BRANCH_NAME', value:env.BRANCH_NAME)], wait: false
+                        build job: "${deploymentProjectName}", parameters: [string(name: 'NAMESPACE', value:'rmb-ocep-core-qa'), string(name: 'SPRING_PROFILE', value:'qa'), string(name: 'BRANCH_NAME', value:env.BRANCH_NAME), string(name: 'TAG', value:"${tag}")], wait: false
                     }
                 }
             }
