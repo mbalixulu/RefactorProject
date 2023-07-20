@@ -26,7 +26,7 @@ pipeline {
       }
     }
 
-    stage('Pull from Nexus Test') {
+    stage('Pull from Nexus') {
       steps{
         script {
           def groupId = 'za.co.rmb.ocep'
