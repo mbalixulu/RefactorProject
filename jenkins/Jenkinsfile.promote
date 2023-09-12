@@ -1,4 +1,4 @@
 //Jenkinsfile
 @Library('jenkins-deploy-lib')_
 
-jenkinsPromote(${DEPLOYMENT_ENVIRONMENT}", "${TAG}")
+jenkinsPromote(${DEPLOYMENT_ENVIRONMENT}", "${TAG}", "${TEMPLATE_NAME}")
