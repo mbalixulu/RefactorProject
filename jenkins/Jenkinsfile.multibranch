@@ -1,4 +1,4 @@
 //Jenkinsfile
 @Library('jenkins-deploy-lib')_
 
-jenkinsMultibranch("${SONAR_PROJECT_KEY}", "${DEPLOYMENT_PROJECT_NAME}", "${AGENT_LABEL}")
+jenkinsMultibranch()

@@ -1,4 +1,4 @@
 //Jenkinsfile
 @Library('jenkins-deploy-lib')_
 
-jenkinsDeploy("${NAMESPACE}", "${SPRING_PROFILE}", "${TAG}", "${TEMPLATE_NAME}", "${AGENT_LABEL}")
+jenkinsDeploy()
