@@ -1,4 +1,8 @@
 //Jenkinsfile
 @Library('jenkins-deploy-lib')_
 
-jenkinsMultibranch()
+def SONAR_PROJECT_KEY = "springBootStarterOcep"
+def DEPLOYMENT_PROJECT_NAME = "Spring_Boot_Starter_Ocep_Deployment"
+def AGENT_LABEL = "mavenJava17"
+
+jenkinsMultibranch(SONAR_PROJECT_KEY, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL)
