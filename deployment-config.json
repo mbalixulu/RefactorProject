@@ -97,7 +97,7 @@
           ],
           "from": {
             "kind": "ImageStreamTag",
-            "name": "spring-boot-starter-ocep"
+            "name": "spring-boot-starter-ocep:latest"
           }
         },
         "type": "ImageChange"
