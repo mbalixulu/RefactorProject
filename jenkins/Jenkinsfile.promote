@@ -1,4 +1,4 @@
 //Jenkinsfile
-@Library('jenkins-deploy-lib')_
+@Library('jenkins-shared-libraries')_
 
 jenkinsPromote()

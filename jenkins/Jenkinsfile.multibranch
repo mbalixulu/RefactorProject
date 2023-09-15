@@ -1,5 +1,5 @@
 //Jenkinsfile
-@Library('jenkins-deploy-lib')_
+@Library('jenkins-shared-libraries')_
 
 def SONAR_PROJECT_KEY = "springBootStarterOcep"
 def DEPLOYMENT_PROJECT_NAME = "Spring_Boot_Starter_Ocep_Deployment"
