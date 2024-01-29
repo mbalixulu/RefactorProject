@@ -7,4 +7,4 @@ def AGENT_LABEL = "mavenJava17"
 //The line below contains a default value. Please change the value and remove this comment
 def NAMESPACE = "ocep-core"
 
-jenkinsMultibranch(SONAR_PROJECT_KEY, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL, OPEN_SHIFT_NAMESPACE)
+jenkinsMultibranch(SONAR_PROJECT_KEY, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL, NAMESPACE)
