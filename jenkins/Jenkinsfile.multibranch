@@ -5,6 +5,6 @@ def SONAR_PROJECT_KEY = "springBootStarterOcep"
 def DEPLOYMENT_PROJECT_NAME = "Spring_Boot_Starter_Ocep_Deployment"
 def AGENT_LABEL = "mavenJava17"
 //The line below contains a default value. Please change the value and remove this comment
-def OPEN_SHIFT_NAMESPACE = "ocep-core"
+def NAMESPACE = "ocep-core"
 
 jenkinsMultibranch(SONAR_PROJECT_KEY, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL, OPEN_SHIFT_NAMESPACE)
