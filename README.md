@@ -40,13 +40,13 @@ When you're ready to create a new OCEP project, simply fork/clone this repositor
 **How To Clone The Repository**
 
 1. Authenticate with GitLab by following the instructions in their SSH documentation.
-2. Go to your project’s landing page and select Clone. Copy the URL for Clone with SSH.
+2. Go to your project’s landing page and select Clone. Copy the URL for Clone with SSH (For help setting up SSH, visit https://wiki.rmb.co.za:8443/display/ROC/Cloning+from+BitBucket%3A+A+quick+guide+to+the+galaxy+of+our+projects.
 3. Open a terminal and go to the directory where you want to clone the files. Git automatically creates a folder with the repository name and downloads the files there.
 4. Run this command, then cd spring-boot-starter-ocep:
 
-```
-git clone git@git.fnb.co.za:rmb-ocep-team/ocep-apps/spring-boot-starter-ocep.git
-```
+    ```
+    git clone ssh://git@rmb-rbvprtool01:7999/rocep/spring-boot-starter-ocep.git
+    ```
 
 ## How to use this project
 Once you decided how you want to get the project(fork or clone), please rename **"spring-boot-starter-ocep"** to your new OCEP project name. Then make sure all files containing the name **"spring-boot-starter-ocep"** are all renamed to your project name.
