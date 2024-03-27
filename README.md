@@ -6,7 +6,7 @@ This is an OCEP base project which contains the essential dependencies and confi
 
 ***
 
-##Folder Structure Conventions
+## Folder Structure Conventions
 
 A typical top-level directory OCEP layout:
 
