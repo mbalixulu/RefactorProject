@@ -11,7 +11,7 @@
 
 	<groupId>za.co.rmb.ocep</groupId>
 	<artifactId>spring-boot-starter-ocep</artifactId>
-	<version>${revision}</version>
+	<version>x-SNAPSHOT</version>
 	<description>Contains essential dependencies and configurations for creating other ocep projects</description>
 	<name>SpringBoot Starter Ocep</name>
 	<packaging>jar</packaging>
