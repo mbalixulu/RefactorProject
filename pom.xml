@@ -172,8 +172,8 @@
 	</dependencies>
   
   	<scm>
-        <connection>scm:git:https://rmb-rbvprtool01:7990/projects/ROCEP/repos/spring-boot-starter-ocep.git</connection>
-        <developerConnection>scm:git:https://rmb-rbvprtool01:7990/projects/ROCEP/repos/spring-boot-starter-ocep.git</developerConnection>
+        <connection>scm:git:https://rmb-rbvprtool01:7990/scm/rocep/spring-boot-starter-ocep.git</connection>
+        <developerConnection>scm:git:https://rmb-rbvprtool01:7990/scm/rocep/spring-boot-starter-ocep.git</developerConnection>
       <tag>HEAD</tag>
   </scm>
 
