@@ -1,6 +1,4 @@
 //Jenkinsfile
 @Library('jenkins-shared-libraries')_
 
-def TEMPLATE_NAME = "spring-boot-starter-ocep"
-
-jenkinsPromote(TEMPLATE_NAME)
+jenkinsPromote()
