@@ -9,7 +9,7 @@
 
 	<groupId>za.co.rmb.ocep</groupId>
 	<artifactId>spring-boot-starter-ocep</artifactId>
-	<version>1.0.1</version>
+	<version>1.0.1-SNAPSHOT</version>
 	<description>Contains essential dependencies and configurations for creating other ocep projects</description>
 	<name>SpringBoot Starter Ocep</name>
 	<packaging>jar</packaging>
@@ -170,6 +170,12 @@
 			<version>${springdoc-openapi-ui.version}</version>
 		</dependency>
 	</dependencies>
+  
+  	<scm>
+      <connection>scm:git:${gitUrl}</connection>
+      <developerConnection>scm:git::${gitUrl}</developerConnection>
+      <tag>HEAD</tag>
+    </scm>
 
 	<build>
 		<plugins>
