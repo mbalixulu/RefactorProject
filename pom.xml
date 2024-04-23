@@ -170,6 +170,12 @@
 			<version>${springdoc-openapi-ui.version}</version>
 		</dependency>
 	</dependencies>
+  
+  	<scm>
+      <connection>scm:git:${gitUrl}</connection>
+      <developerConnection>scm:git::${gitUrl}</developerConnection>
+      <tag>HEAD</tag>
+    </scm>
 
 	<build>
 		<plugins>
