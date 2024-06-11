@@ -1,0 +1,10 @@
+# Comments in a CODEOWNERS file are prepended with the '#' character.
+# Empty lines are also ignored.
+ 
+# One code owners rule is used for each changed file in a pull request.
+# Rules at the bottom take precedence over rules at the top, so this rule will
+# only be applied if no other rules match a given change in the pull request.
+# The following rule matches all changes in the repository, so unless a rule
+# lower in the file matches, globalowner will always be suggested as a code
+# owner.
+** @TNY
