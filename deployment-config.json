@@ -9,7 +9,7 @@
   },
   "spec": {
     "replicas": 1,
-    "revisionHistoryLimit": 2,
+    "revisionHistoryLimit": 5,
     "selector": {
       "app": "spring-boot-starter-ocep",
       "deploymentconfig": "spring-boot-starter-ocep"
@@ -45,7 +45,13 @@
                 "memory": "192Mi"
               }
             },
-            "volumeMounts": [],
+            "volumeMounts": [
+              {
+                "mountPath": "/keystore",
+                "name": "keystore",
+                "readOnly": true
+              }
+            ],
             "livenessProbe": {
               "failureThreshold": 3,
               "httpGet": {
@@ -85,7 +91,15 @@
           }
         ],
         "restartPolicy": "Always",
-        "volumes": []
+        "volumes": [
+          {
+            "name": "keystore",
+            "secret": {
+              "defaultMode": 420,
+              "secretName": "keystore"
+            }
+          }
+        ]
       }
     },
     "triggers": [

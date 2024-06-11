@@ -6,7 +6,7 @@ This is an OCEP base project which contains the essential dependencies and confi
 
 ***
 
-##Folder Structure Conventions
+## Folder Structure Conventions
 
 A typical top-level directory OCEP layout:
 
@@ -40,22 +40,23 @@ When you're ready to create a new OCEP project, simply fork/clone this repositor
 **How To Clone The Repository**
 
 1. Authenticate with GitLab by following the instructions in their SSH documentation.
-2. Go to your project’s landing page and select Clone. Copy the URL for Clone with SSH.
+2. Go to your project’s landing page and select Clone. Copy the URL for Clone with SSH (For help setting up SSH, visit https://wiki.rmb.co.za:8443/display/ROC/Cloning+from+BitBucket%3A+A+quick+guide+to+the+galaxy+of+our+projects.
 3. Open a terminal and go to the directory where you want to clone the files. Git automatically creates a folder with the repository name and downloads the files there.
 4. Run this command, then cd spring-boot-starter-ocep:
 
-```
-git clone git@git.fnb.co.za:rmb-ocep-team/ocep-apps/spring-boot-starter-ocep.git
-```
+    ```
+    git clone ssh://git@rmb-rbvprtool01:7999/rocep/spring-boot-starter-ocep.git
+    ```
 
 ## How to use this project
 Once you decided how you want to get the project(fork or clone), please rename **"spring-boot-starter-ocep"** to your new OCEP project name. Then make sure all files containing the name **"spring-boot-starter-ocep"** are all renamed to your project name.
 
 ##Files to rename
+
 |               File Name               |                                           File Location                                            |                             Line Number to Rename                              |                                                                                               Content to Rename                                                                                               |
 |:-------------------------------------:|:--------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 |          Jenkinsfile.deploy           |                                     jenkins/Jenkinsfile.deploy                                     |                                    Line #3                                     |                                                                                 def templateName = 'spring-boot-starter-ocep'                                                                                 |
-|        Jenkinsfile.multibranch        |                                  jenkins/Jenkinsfile.multibranch                                   |                              Line #1<br/>Line #3                               |                                             def sonarProjectKey = 'springBootStarterOcep' <br/>def deploymentProjectName = 'Spring_Boot_Starter_Ocep_Deployment'                                              |
+|        Jenkinsfile.multibranch        |                                  jenkins/Jenkinsfile.multibranch                                   |                       Line #1<br/>Line #3<br/>Line #7&8                        |    def sonarProjectKey = 'springBootStarterOcep' <br/>def deploymentProjectName = 'Spring_Boot_Starter_Ocep_Deployment' <br/>  def OPEN_SHIFT_NAMESPACE = 'rmb-ocep-core-dev' and remove comment in line 7    |
 |          Jenkinsfile.promote          |                                    jenkins/Jenkinsfile.promote                                     |                                    Line #1                                     |                                                                                 def templateName = 'spring-boot-starter-ocep'                                                                                 |
 |  ApplicationConfigurationProperties   | src/main/java/rmb/ocep/springbootstarterocep/configuration/ApplicationConfigurationProperties.java |                             Line #19<br/>Line #23                              |                                                             private String springBootStarterOcepHost; <br/> + "spring-boot-starter-ocep: [{}]\n",                                                             |
 |         application-local.yml         |                              src/main/resources/application-local.yml                              |                                    Line #5                                     |                                                                                           spring-boot-starter-ocep:                                                                                           |
