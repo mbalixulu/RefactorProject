@@ -7,4 +7,5 @@
 # The following rule matches all changes in the repository, so unless a rule
 # lower in the file matches, globalowner will always be suggested as a code
 # owner.
+** @QOU
 Check(@@CoreLeads >= 1)
