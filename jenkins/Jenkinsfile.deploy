@@ -1,6 +1,4 @@
 //Jenkinsfile
 @Library('jenkins-shared-libraries')_
 
-TEMPLATE_NAME = "spring-boot-starter-ocep"
-
 jenkinsDeploy()
