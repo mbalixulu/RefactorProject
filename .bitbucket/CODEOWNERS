@@ -7,4 +7,4 @@
 # The following rule matches all changes in the repository, so unless a rule
 # lower in the file matches, globalowner will always be suggested as a code
 # owner.
-** @TNY
+Check(@@CoreLeads >= 1)
