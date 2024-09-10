@@ -1,6 +1,6 @@
 {
-  "apiVersion": "apps.openshift.io/v1",
-  "kind": "DeploymentConfig",
+  "kind": "Deployment",
+  "apiVersion": "apps/v1",
   "metadata": {
     "labels": {
       "app": "spring-boot-starter-tts"
@@ -11,17 +11,15 @@
     "replicas": 1,
     "revisionHistoryLimit": 5,
     "selector": {
-      "app": "spring-boot-starter-tts",
-      "deploymentconfig": "spring-boot-starter-tts"
-    },
-    "strategy": {
-      "type": "Rolling"
+      "matchLabels": {
+        "app": "spring-boot-starter-tts"
+      }
     },
     "template": {
       "metadata": {
         "labels": {
           "app": "spring-boot-starter-tts",
-          "deploymentconfig": "spring-boot-starter-tts"
+          "deployment": "spring-boot-starter-tts"
         }
       },
       "spec": {
@@ -101,24 +99,6 @@
           }
         ]
       }
-    },
-    "triggers": [
-      {
-        "imageChangeParams": {
-          "automatic": true,
-          "containerNames": [
-            "spring-boot-starter-tts"
-          ],
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "spring-boot-starter-tts:latest"
-          }
-        },
-        "type": "ImageChange"
-      },
-      {
-        "type": "ConfigChange"
-      }
-    ]
+    }
   }
 }
