@@ -3,9 +3,9 @@
   "kind": "Service",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-ocep"
+      "app": "spring-boot-starter-tts"
     },
-    "name": "spring-boot-starter-ocep"
+    "name": "spring-boot-starter-tts"
   },
   "spec": {
     "ports": [
@@ -17,8 +17,8 @@
       }
     ],
     "selector": {
-      "app": "spring-boot-starter-ocep",
-      "deploymentconfig": "spring-boot-starter-ocep"
+      "app": "spring-boot-starter-tts",
+      "deployment": "spring-boot-starter-tts"
     },
     "sessionAffinity": "None",
     "type": "ClusterIP"

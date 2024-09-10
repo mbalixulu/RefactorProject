@@ -3,10 +3,10 @@
   "kind": "ImageStream",
   "metadata": {
     "labels": {
-      "build": "spring-boot-starter-ocep",
-      "app": "spring-boot-starter-ocep"
+      "build": "spring-boot-starter-tts",
+      "app": "spring-boot-starter-tts"
     },
-    "name": "spring-boot-starter-ocep"
+    "name": "spring-boot-starter-tts"
   },
   "spec": {
     "lookupPolicy": {

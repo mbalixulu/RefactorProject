@@ -3,16 +3,16 @@
   "kind": "DeploymentConfig",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-ocep"
+      "app": "spring-boot-starter-tts"
     },
-    "name": "spring-boot-starter-ocep"
+    "name": "spring-boot-starter-tts"
   },
   "spec": {
     "replicas": 1,
     "revisionHistoryLimit": 5,
     "selector": {
-      "app": "spring-boot-starter-ocep",
-      "deploymentconfig": "spring-boot-starter-ocep"
+      "app": "spring-boot-starter-tts",
+      "deploymentconfig": "spring-boot-starter-tts"
     },
     "strategy": {
       "type": "Rolling"
@@ -20,15 +20,15 @@
     "template": {
       "metadata": {
         "labels": {
-          "app": "spring-boot-starter-ocep",
-          "deploymentconfig": "spring-boot-starter-ocep"
+          "app": "spring-boot-starter-tts",
+          "deploymentconfig": "spring-boot-starter-tts"
         }
       },
       "spec": {
         "containers": [
           {
             "image": "quay.io/sdase/openjdk-runtime:17-hotspot",
-            "name": "spring-boot-starter-ocep",
+            "name": "spring-boot-starter-tts",
             "ports": [
               {
                 "containerPort": 8080,
@@ -107,11 +107,11 @@
         "imageChangeParams": {
           "automatic": true,
           "containerNames": [
-            "spring-boot-starter-ocep"
+            "spring-boot-starter-tts"
           ],
           "from": {
             "kind": "ImageStreamTag",
-            "name": "spring-boot-starter-ocep:latest"
+            "name": "spring-boot-starter-tts:latest"
           }
         },
         "type": "ImageChange"
