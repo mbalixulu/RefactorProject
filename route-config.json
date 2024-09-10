@@ -16,5 +16,10 @@
       "name": "spring-boot-starter-tts",
       "weight": 100
     }
-  }
+  },
+  "tls": {
+    "termination": "edge",
+    "insecureEdgeTerminationPolicy": "Redirect"
+  },
+  "wildcardPolicy": "None"
 }
