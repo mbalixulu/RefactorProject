@@ -1,4 +1,4 @@
-package rmb.ocep.springbootstarterocep.configuration;
+package rmb.tts.springbootstartertts.configuration;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,13 +15,13 @@ public class ApplicationConfigurationProperties {
   @Value("${cache.lifespan}")
   private long lifespan;
 
-  @Value("${spring-boot-starter-ocep.host}")
-  private String springBootStarterOcepHost;
+  @Value("${spring-boot-starter-tts.host}")
+  private String springBootStarterTTSHost;
 
   public void printSystemInfo() {
     log.info("\n===========CONFIG=========\n"
-            + "spring-boot-starter-ocep: [{}]\n",
-          this.lifespan);
+            + "spring-boot-starter-tts: [{}]\n",
+        this.lifespan);
   }
 
   @Bean

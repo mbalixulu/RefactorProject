@@ -1,10 +1,10 @@
 server:
-  port: 9999
+  port: 8080
 
 spring:
   thymeleaf:
     suffix: .xml
-    templateMode: XML
+    mode: XML
     servlet:
       content-type: text/xml
 

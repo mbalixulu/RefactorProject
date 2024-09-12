@@ -4,7 +4,7 @@ server:
 spring:
   thymeleaf:
     suffix: .xml
-    templateMode: XML
+    mode: XML
     servlet:
       content-type: text/xml
 
@@ -20,4 +20,3 @@ management:
     web:
       exposure:
         include: '*'
-

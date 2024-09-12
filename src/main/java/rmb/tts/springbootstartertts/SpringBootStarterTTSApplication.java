@@ -1,11 +1,11 @@
-package rmb.ocep.springbootstarterocep;
+package rmb.tts.springbootstartertts;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SpringBootStarterOcepApplication {
+public class SpringBootStarterTTSApplication {
   public static void main(final String[] args) {
-    SpringApplication.run(SpringBootStarterOcepApplication.class, args);
+    SpringApplication.run(SpringBootStarterTTSApplication.class, args);
   }
 }
