@@ -25,7 +25,7 @@
       "spec": {
         "containers": [
           {
-            "image": "quay.io/sdase/openjdk-runtime:17-hotspot",
+            "image": "image-registry.openshift-image-registry.svc:5000/IMAGE_TAG_PLACEHOLDER",
             "name": "spring-boot-starter-tts",
             "ports": [
               {
