@@ -3,7 +3,7 @@
 
 def SONAR_PROJECT_KEY = "springBootStarterOcep"
 def DEPLOYMENT_PROJECT_NAME = "Spring_Boot_Starter_Ocep_Deployment"
-def AGENT_LABEL = "mavenJava17"
+def AGENT_LABEL = "mavenJava21"
 //The line below contains a default value. Please change the value and remove this comment
 def NAMESPACE = "ocep-core"
 
