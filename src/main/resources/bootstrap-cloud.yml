@@ -1,6 +1,6 @@
 spring:
   cloud:
     config:
-      uri: http://config-server.rmb-ocep-core-devops.svc.cluster.local:8888
+      uri: # To be specified once the config server is set up
       fail-fast: true
       enabled: true

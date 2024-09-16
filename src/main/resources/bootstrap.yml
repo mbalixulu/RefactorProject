@@ -1,6 +1,6 @@
 spring:
   application:
-    name: spring-boot-starter-ocep
+    name: spring-boot-starter-tts
   cloud:
     config:
       enabled: false

@@ -1,17 +1,17 @@
-package rmb.ocep.springbootstarterocep;
+package rmb.tts.springbootstartertts;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import rmb.ocep.springbootstarterocep.configuration.ApplicationConfigurationProperties;
+import rmb.tts.springbootstartertts.configuration.ApplicationConfigurationProperties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("local")
-public class SpringBootStarterOcepApplicationTests {
+class SpringBootStarterTTSApplicationTests {
 
   @Autowired
   private ApplicationConfigurationProperties properties;
@@ -26,7 +26,7 @@ public class SpringBootStarterOcepApplicationTests {
   }
 
   @Test
-  public void checkConfigProperties() {
+  void checkConfigProperties() {
     assertEquals(21600, properties.getLifespan());
   }
 
