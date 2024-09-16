@@ -3,36 +3,44 @@ package rmb.tts.springbootstartertts.configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ApplicationConfigurationPropertiesTest {
+@SpringBootTest
+@ActiveProfiles("local")
+class ApplicationConfigurationPropertiesTest {
+
+  @Autowired
+  private ApplicationConfigurationProperties applicationProperties;
 
   private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
   private final PrintStream originalOut = System.out;
-  private ApplicationConfigurationProperties applicationProperties;
 
   @BeforeEach
   void setUp() {
-    applicationProperties = new ApplicationConfigurationProperties();
     System.setOut(new PrintStream(outContent));
   }
 
   @Test
-  void testLoggedOutCode() {
+  void printSystemInfo() {
     applicationProperties.printSystemInfo();
 
     String string = outContent.toString();
-    boolean contains = string.contains("===========CONFIG=========\n"
-        + "spring-boot-starter-tts:");
+    boolean contains = string.contains("""
+        ===========CONFIG=========
+        spring-boot-starter-tts: [21600]
+        """);
     assertTrue(contains);
   }
 
   @AfterEach
-  public void restoreStreams() {
+  void restoreStreams() {
     System.setOut(originalOut);
   }
 }

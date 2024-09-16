@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("local")
-public class SpringBootStarterTTSApplicationTests {
+class SpringBootStarterTTSApplicationTests {
 
   @Autowired
   private ApplicationConfigurationProperties properties;
@@ -26,7 +26,7 @@ public class SpringBootStarterTTSApplicationTests {
   }
 
   @Test
-  public void checkConfigProperties() {
+  void checkConfigProperties() {
     assertEquals(21600, properties.getLifespan());
   }
 
