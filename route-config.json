@@ -3,9 +3,9 @@
   "kind": "Route",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-ocep"
+      "app": "spring-boot-starter-tts"
     },
-    "name": "spring-boot-starter-ocep"
+    "name": "spring-boot-starter-tts"
   },
   "spec": {
     "port": {
@@ -13,8 +13,13 @@
     },
     "to": {
       "kind": "Service",
-      "name": "spring-boot-starter-ocep",
+      "name": "spring-boot-starter-tts",
       "weight": 100
-    }
+    },
+    "tls": {
+      "termination": "edge",
+      "insecureEdgeTerminationPolicy": "Redirect"
+    },
+    "wildcardPolicy": "None"
   }
 }
