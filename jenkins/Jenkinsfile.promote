@@ -1,4 +1,8 @@
 //Jenkinsfile
 @Library('jenkins-shared-libraries')_
 
-jenkinsPromote()
+def NAMESPACE = "tts"
+def DEV_ENVIRONMENT = "default-route-openshift-image-registry.apps.dev-02-rb.ocp.fnb.co.za"
+def PROD_ENVIRONMENT = "default-route-openshift-image-registry.apps.prod-02-rb.ocp.fnb.co.za"
+
+jenkinsPromote(NAMESPACE, DEV_ENVIRONMENT, PROD_ENVIRONMENT)

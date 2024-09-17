@@ -1,4 +1,6 @@
 //Jenkinsfile
 @Library('jenkins-shared-libraries')_
 
-jenkinsDeploy()
+def NEXUS_GROUP_ID = "za.co.rmb.tts"
+
+jenkinsDeploy(NEXUS_GROUP_ID)
