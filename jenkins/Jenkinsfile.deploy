@@ -2,5 +2,6 @@
 @Library('jenkins-shared-libraries')_
 
 def NEXUS_GROUP_ID = "za.co.rmb.tts"
+def OFFICE_365_URL = "https://firstrandgroup.webhook.office.com/webhookb2/2c89a256-3fee-4c83-9af8-383dc49d26fe@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/ba13e575f1dc4d9d86a8740cc4c71226/a027cb6d-6960-4543-a8ba-9d3910b3da65"
 
-jenkinsDeploy(NEXUS_GROUP_ID)
+jenkinsDeploy(NEXUS_GROUP_ID, OFFICE_365_URL)
