@@ -1,4 +1,9 @@
 //Jenkinsfile
 @Library('jenkins-shared-libraries')_
 
-jenkinsPromote()
+def NAMESPACE = "tts"
+def NON_PROD_IMAGE_REGISTRY = "default-route-openshift-image-registry.apps.dev-02-rb.ocp.fnb.co.za"
+def PROD_IMAGE_REGISTRY = "default-route-openshift-image-registry.apps.prod-02-rb.ocp.fnb.co.za"
+def OFFICE_365_URL = "https://firstrandgroup.webhook.office.com/webhookb2/2c89a256-3fee-4c83-9af8-383dc49d26fe@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/ba13e575f1dc4d9d86a8740cc4c71226/a027cb6d-6960-4543-a8ba-9d3910b3da65"
+
+jenkinsPromote(NAMESPACE, NON_PROD_IMAGE_REGISTRY, PROD_IMAGE_REGISTRY, OFFICE_365_URL)
