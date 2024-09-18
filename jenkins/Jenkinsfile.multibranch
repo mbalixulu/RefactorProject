@@ -2,9 +2,8 @@
 @Library('jenkins-shared-libraries')_
 
 def SONAR_PROJECT_KEY = "ttsSpringBootStarter"
-def SONAR_LOGIN = "a61f66505a481370302b62ec05cbd799df41212e"
 def DEPLOYMENT_PROJECT_NAME = "TTS_Spring_Boot_Starter_Deployment"
 def AGENT_LABEL = "mavenJava21"
 def NAMESPACE = "tts"
 
-jenkinsMultibranch(SONAR_PROJECT_KEY, SONAR_LOGIN, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL, NAMESPACE)
+jenkinsMultibranch(SONAR_PROJECT_KEY, DEPLOYMENT_PROJECT_NAME, AGENT_LABEL, NAMESPACE)
