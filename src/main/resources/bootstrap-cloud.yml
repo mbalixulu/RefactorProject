@@ -1,6 +1,6 @@
 spring:
   cloud:
     config:
-      uri: # To be specified once the config server is set up
+      uri: http://config-server.rmb-tts-devops.svc.cluster.local:8888
       fail-fast: true
       enabled: true
