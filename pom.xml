@@ -9,7 +9,7 @@
 
     <groupId>za.co.rmb.tts</groupId>
     <artifactId>spring-boot-starter-tts</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.3-SNAPSHOT</version>
     <description>Contains essential dependencies and configurations for creating other TTS projects</description>
     <name>SpringBoot Starter TTS</name>
     <packaging>jar</packaging>
@@ -17,7 +17,8 @@
 	<properties>
 		<java.version>21</java.version>
 		<spring-cloud.version>2023.0.3</spring-cloud.version>
-		<checkstyle-maven-plugin.version>3.1.0</checkstyle-maven-plugin.version>
+		<checkstyle-maven-plugin.version>3.5.0</checkstyle-maven-plugin.version>
+        <puppycrawl-tools.version>10.18.2</puppycrawl-tools.version>
 		<jacoco-maven-plugin.minimum-coverage>0.00</jacoco-maven-plugin.minimum-coverage>
 		<jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
         <prometheus.version>1.11.0</prometheus.version>
@@ -27,7 +28,7 @@
 		<ocep-pep3-client-java-17.version>RELEASE</ocep-pep3-client-java-17.version>
         <springdoc-openapi-ui.version>1.8.0</springdoc-openapi-ui.version>
 		<lombok.version>1.18.34</lombok.version>
-		<ocep-shared-utilities.version>RELEASE</ocep-shared-utilities.version>
+        <java-shared-utilities.version>RELEASE</java-shared-utilities.version>
 		<org.maven.help.version>3.5.0</org.maven.help.version>
 		<jaxb.version>2.3.1</jaxb.version>
 	</properties>
@@ -210,9 +211,14 @@
                 <version>${checkstyle-maven-plugin.version}</version>
                 <dependencies>
                     <dependency>
-                        <groupId>za.co.rmb.ocep</groupId>
-                        <artifactId>ocep-shared-utilities</artifactId>
-                        <version>${ocep-shared-utilities.version}</version>
+                        <groupId>za.co.rmb.tts</groupId>
+                        <artifactId>java-shared-utilities</artifactId>
+                        <version>${java-shared-utilities.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${puppycrawl-tools.version}</version>
                     </dependency>
                 </dependencies>
                 <configuration>
