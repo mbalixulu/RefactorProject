@@ -9,7 +9,7 @@
 
     <groupId>za.co.rmb.tts</groupId>
     <artifactId>spring-boot-starter-tts</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <description>Contains essential dependencies and configurations for creating other TTS projects</description>
     <name>SpringBoot Starter TTS</name>
     <packaging>jar</packaging>
