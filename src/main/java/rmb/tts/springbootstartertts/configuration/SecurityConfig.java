@@ -16,10 +16,9 @@ public class SecurityConfig {
   // TODO Remove this comment when the security strategy for this application has been determined
   @Bean
   protected SecurityFilterChain securityWebConfig(final HttpSecurity http) throws Exception {
-    http
-        .csrf(AbstractHttpConfigurer::disable)
-        .cors(cors -> cors.configurationSource(request ->
-            new CorsConfiguration().applyPermitDefaultValues()))
+    http.csrf(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(
+            request -> new CorsConfiguration().applyPermitDefaultValues()))
         .httpBasic(AbstractHttpConfigurer::disable);
 
     return http.build();

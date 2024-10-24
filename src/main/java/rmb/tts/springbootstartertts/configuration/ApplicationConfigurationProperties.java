@@ -1,8 +1,10 @@
 package rmb.tts.springbootstartertts.configuration;
 
 import jakarta.annotation.PostConstruct;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,9 +23,7 @@ public class ApplicationConfigurationProperties {
 
   @PostConstruct
   public void printSystemInfo() {
-    log.info("\n===========CONFIG=========\n"
-            + "spring-boot-starter-tts: [{}]\n",
-        this.lifespan);
+    log.info("\n===========CONFIG=========\n" + "spring-boot-starter-tts: [{}]\n", this.lifespan);
   }
 
   @Bean
