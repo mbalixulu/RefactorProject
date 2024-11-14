@@ -9,7 +9,7 @@
 
     <groupId>za.co.rmb.tts</groupId>
     <artifactId>spring-boot-starter-tts</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.3-SNAPSHOT</version>
     <description>Contains essential dependencies and configurations for creating other TTS projects</description>
     <name>SpringBoot Starter TTS</name>
     <packaging>jar</packaging>
@@ -338,7 +338,7 @@
         </repository>
         <repository>
             <id>nexus-releases</id>
-            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/OCEP-RELEASE/</url>
+            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/TTS-RELEASE/</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>
@@ -349,7 +349,7 @@
         </repository>
         <repository>
             <id>nexus-snapshots</id>
-            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/OCEP-SNAPSHOT/</url>
+            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/TTS-SNAPSHOT/</url>
             <layout>default</layout>
             <releases>
                 <enabled>false</enabled>
@@ -364,14 +364,14 @@
         <repository>
             <uniqueVersion>true</uniqueVersion>
             <id>nexus-releases</id>
-            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/OCEP-RELEASE/</url>
+            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/TTS-RELEASE/</url>
             <layout>default</layout>
             <name>Nexus Releases</name>
         </repository>
         <snapshotRepository>
             <uniqueVersion>true</uniqueVersion>
             <id>nexus-snapshots</id>
-            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/OCEP-SNAPSHOT/</url>
+            <url>http://rmb-rbvprnxs01.fnb.co.za:8081/repository/TTS-SNAPSHOT/</url>
             <layout>default</layout>
             <name>Nexus Snapshots</name>
         </snapshotRepository>
