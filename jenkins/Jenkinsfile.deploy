@@ -2,6 +2,6 @@
 @Library('jenkins-shared-libraries')_
 
 def NEXUS_GROUP_ID = "za.co.rmb.tts"
-def OFFICE_365_URL = "https://firstrandgroup.webhook.office.com/webhookb2/2c89a256-3fee-4c83-9af8-383dc49d26fe@4032514a-830a-4f20-9539-81bbc35b3cd9/JenkinsCI/ba13e575f1dc4d9d86a8740cc4c71226/a027cb6d-6960-4543-a8ba-9d3910b3da65"
+def OFFICE_365_URL = "https://prod-95.westeurope.logic.azure.com:443/workflows/e9e17417ea274f54aee9aacbb6e771e1/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=tetTX9AzMhyOfBORXMfPAq9Iuq3qA7h8WUL6zO5LO5A"
 
 jenkinsDeploy(NEXUS_GROUP_ID, OFFICE_365_URL)
