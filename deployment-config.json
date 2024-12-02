@@ -3,7 +3,8 @@
   "apiVersion": "apps/v1",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-tts"
+      "app": "spring-boot-starter-tts",
+      "app.openshift.io/runtime": "spring-boot"
     },
     "name": "spring-boot-starter-tts"
   },
