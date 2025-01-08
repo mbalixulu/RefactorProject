@@ -2,6 +2,9 @@ server:
   port: 8080
 
 spring:
+  profiles:
+    default: local # Default to local profile for simpler development environment set-up
+    # Temporary configuration changes for your local machine go in application-local.yml
   thymeleaf:
     suffix: .xml
     mode: XML
