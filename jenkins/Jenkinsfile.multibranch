@@ -4,7 +4,7 @@
 def SONAR_PROJECT_KEY = "ttsSpringBootStarter"
 def DEPLOYMENT_PROJECT_NAME = "TTS_Deployments/Spring_Boot_Starter_Deployment"
 def AGENT_LABEL = "mavenJava21"
-def NAMESPACE = "tts"
-def OFFICE_365_URL = GlobalVars.tts_office_365_url()
 
-jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY, AGENT_LABEL, OFFICE_365_URL, DEPLOYMENT_PROJECT_NAME, NAMESPACE)
+def CONSTANTS = libraryResource('constants.properties')
+
+jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY, AGENT_LABEL, DEPLOYMENT_PROJECT_NAME, CONSTANTS)

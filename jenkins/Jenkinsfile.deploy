@@ -1,7 +1,6 @@
 //Jenkinsfile
 @Library(['jenkins-shared-libraries', 'java-shared-utilities'])_
 
-def NEXUS_GROUP_ID = "za.co.rmb.tts"
-def OFFICE_365_URL = GlobalVars.tts_office_365_url()
+def CONSTANTS = libraryResource('constants.properties')
 
-jenkinsDeploy(NEXUS_GROUP_ID, OFFICE_365_URL)
+jenkinsDeploy(CONSTANTS)

@@ -1,9 +1,6 @@
 //Jenkinsfile
 @Library(['jenkins-shared-libraries', 'java-shared-utilities'])_
 
-def NAMESPACE = "tts"
-def NON_PROD_IMAGE_REGISTRY = "default-route-openshift-image-registry.apps.dev-02-rb.ocp.fnb.co.za"
-def PROD_IMAGE_REGISTRY = "default-route-openshift-image-registry.apps.prod-01-rb.ocp.fnb.co.za"
-def OFFICE_365_URL = GlobalVars.tts_office_365_url()
+def CONSTANTS = libraryResource('constants.properties')
 
-jenkinsPromote(NAMESPACE, NON_PROD_IMAGE_REGISTRY, PROD_IMAGE_REGISTRY, OFFICE_365_URL)
+jenkinsPromote(CONSTANTS)
