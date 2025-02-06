@@ -105,6 +105,11 @@
 			<artifactId>ocep-pep3-client-java-17</artifactId>
 			<version>${ocep-pep3-client-java-17.version}</version>
 		</dependency>
+        <dependency>
+            <groupId>za.co.rmb.tts</groupId>
+            <artifactId>java-shared-utilities</artifactId>
+            <version>${java-shared-utilities.version}</version>
+        </dependency>
 		<!--External Dependencies-->
 		<dependency>
 			<groupId>io.micrometer</groupId>
