@@ -1,7 +1,7 @@
 //Jenkinsfile
 @Library(['jenkins-shared-libraries', 'java-shared-utilities'])_
 
-def SONAR_PROJECT_KEY = "ttsSpringBootStarter"
+def SONAR_PROJECT_KEY = "tts-smtwrx-spring-boot-starter"
 def DEPLOYMENT_PROJECT_NAME = "TTS_Deployments/Spring_Boot_Starter_Deployment"
 def AGENT_LABEL = "mavenJava21"
 
