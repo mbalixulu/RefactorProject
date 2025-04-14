@@ -25,7 +25,7 @@
         <json-schema.version>2.2.14</json-schema.version>
         <json.version>20240303</json.version>
         <modelmapper.version>3.2.1</modelmapper.version>
-		<ocep-pep3-client-java-17.version>RELEASE</ocep-pep3-client-java-17.version>
+        <tts-pep3-client.version>RELEASE</tts-pep3-client.version>
         <springdoc-openapi-ui.version>1.8.0</springdoc-openapi-ui.version>
 		<lombok.version>1.18.34</lombok.version>
         <java-shared-utilities.version>RELEASE</java-shared-utilities.version>
@@ -100,11 +100,11 @@
 			<artifactId>json-path</artifactId>
 		</dependency>
 		<!--Internal Dependencies-->
-		<dependency>
-			<groupId>za.co.rmb.ocep</groupId>
-			<artifactId>ocep-pep3-client-java-17</artifactId>
-			<version>${ocep-pep3-client-java-17.version}</version>
-		</dependency>
+        <dependency>
+            <groupId>za.co.rmb.tts</groupId>
+            <artifactId>tts-pep3-client</artifactId>
+            <version>${tts-pep3-client.version}</version>
+        </dependency>
         <dependency>
             <groupId>za.co.rmb.tts</groupId>
             <artifactId>java-shared-utilities</artifactId>

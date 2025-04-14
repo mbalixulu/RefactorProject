@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.web.client.RestTemplate;
-import za.co.rmb.ocep.oceppep3client.configuration.Pep3ClientConfiguration;
+import za.co.rmb.tts.ttspep3client.configuration.Pep3ClientConfiguration;
 
 @Slf4j
 @Configuration
