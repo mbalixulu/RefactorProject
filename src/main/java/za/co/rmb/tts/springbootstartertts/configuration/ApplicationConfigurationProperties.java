@@ -1,4 +1,4 @@
-package rmb.tts.springbootstartertts.configuration;
+package za.co.rmb.tts.springbootstartertts.configuration;
 
 import jakarta.annotation.PostConstruct;
 
