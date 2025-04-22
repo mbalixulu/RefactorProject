@@ -1,4 +1,4 @@
-package rmb.tts.springbootstartertts.configuration;
+package za.co.rmb.tts.springbootstartertts.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
