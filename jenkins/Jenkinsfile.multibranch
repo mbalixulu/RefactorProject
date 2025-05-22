@@ -1,12 +1,7 @@
 //Jenkinsfile
 @Library(['jenkins-shared-libraries', 'java-shared-utilities'])_
 
-def sonar_project_key = "tts-smtwrx-spring-boot-starter"
-def deployment_project_name = "TTS_Deployments/Spring_Boot_Starter_Deployment"
-def agent_label = "mavenJava21"
-def constants_file = libraryResource('constants.properties')
-
-jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY: sonar_project_key,
-                                 AGENT_LABEL: agent_label,
-                                 CONSTANTS_FILE: constants_file,
-                                 DEPLOYMENT_PROJECT_NAME: deployment_project_name)
+jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY: "tts-smtwrx-spring-boot-starter",
+                                 AGENT_LABEL: "mavenJava21",
+                                 CONSTANTS_FILE: libraryResource('constants.properties'),
+                                 DEPLOYMENT_PROJECT_NAME: "TTS_Deployments/Spring_Boot_Starter_Deployment")
