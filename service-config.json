@@ -3,9 +3,9 @@
   "kind": "Service",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-tts"
+      "app": "mandates-resolutions-ui"
     },
-    "name": "spring-boot-starter-tts"
+    "name": "mandates-resolutions-ui"
   },
   "spec": {
     "ports": [
@@ -17,8 +17,8 @@
       }
     ],
     "selector": {
-      "app": "spring-boot-starter-tts",
-      "deployment": "spring-boot-starter-tts"
+      "app": "mandates-resolutions-ui",
+      "deployment": "mandates-resolutions-ui"
     },
     "sessionAffinity": "None",
     "type": "ClusterIP"

@@ -1,4 +1,4 @@
-package za.co.rmb.tts.springbootstartertts.configuration;
+package za.co.rmb.tts.mandates.resolutions.ui.configuration;
 
 import jakarta.annotation.PostConstruct;
 
@@ -18,12 +18,12 @@ public class ApplicationConfigurationProperties {
   @Value("${cache.lifespan}")
   private long lifespan;
 
-  @Value("${spring-boot-starter-tts.host}")
+  @Value("${mandates-resolutions-ui.host}")
   private String springBootStarterTTSHost;
 
   @PostConstruct
   public void printSystemInfo() {
-    log.info("\n===========CONFIG=========\n" + "spring-boot-starter-tts: [{}]\n", this.lifespan);
+    log.info("\n===========CONFIG=========\n" + "mandates-resolutions-ui: [{}]\n", this.lifespan);
   }
 
   @Bean

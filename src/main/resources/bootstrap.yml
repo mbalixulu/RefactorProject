@@ -1,6 +1,6 @@
 spring:
   application:
-    name: spring-boot-starter-tts
+    name: mandates-resolutions-ui
   cloud:
     config:
       enabled: false

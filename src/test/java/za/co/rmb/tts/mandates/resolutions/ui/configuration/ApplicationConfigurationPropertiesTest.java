@@ -1,4 +1,4 @@
-package za.co.rmb.tts.springbootstartertts.configuration;
+package za.co.rmb.tts.mandates.resolutions.ui.configuration;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -34,7 +34,7 @@ class ApplicationConfigurationPropertiesTest {
     String string = outContent.toString();
     boolean contains = string.contains("""
         ===========CONFIG=========
-        spring-boot-starter-tts: [21600]
+        mandates-resolutions-ui: [21600]
         """);
     assertTrue(contains);
   }

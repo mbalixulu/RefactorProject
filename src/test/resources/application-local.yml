@@ -2,5 +2,12 @@ spring:
   config:
     name: LOCAL
 
-spring-boot-starter-tts:
+mandates-resolutions-ui:
   host: http://localhost:${server.port}
+
+app:
+  domain: ${mandates-resolutions-ui.host}
+
+#Configuration flag (integration.mode) to use the mock or live integration
+integration:
+  mode: MOCK

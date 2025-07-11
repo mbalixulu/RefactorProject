@@ -3,10 +3,10 @@
   "kind": "BuildConfig",
   "metadata": {
     "labels": {
-      "build": "spring-boot-starter-tts",
-      "app": "spring-boot-starter-tts"
+      "build": "mandates-resolutions-ui",
+      "app": "mandates-resolutions-ui"
     },
-    "name": "spring-boot-starter-tts"
+    "name": "mandates-resolutions-ui"
   },
   "spec": {
     "failedBuildsHistoryLimit": 5,
@@ -14,7 +14,7 @@
     "output": {
       "to": {
         "kind": "ImageStreamTag",
-        "name": "spring-boot-starter-tts:latest"
+        "name": "mandates-resolutions-ui:latest"
       }
     },
     "postCommit": {},

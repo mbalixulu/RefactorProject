@@ -2,5 +2,5 @@ spring:
   config:
     name: LOCAL-WINDOWS-DOCKER
 
-spring-boot-starter-tts:
+mandates-resolutions-ui:
   host: http://host.docker.internal:${server.port}
