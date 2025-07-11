@@ -8,10 +8,10 @@
 	</parent>
 
     <groupId>za.co.rmb.tts</groupId>
-    <artifactId>spring-boot-starter-tts</artifactId>
+    <artifactId>mandates-resolutions-ui</artifactId>
     <version>1.0.3-SNAPSHOT</version>
-    <description>Contains essential dependencies and configurations for creating other TTS projects</description>
-    <name>SpringBoot Starter TTS</name>
+    <description>Mandates Resolutions UI</description>
+    <name>Mandates Resolutions UI</name>
     <packaging>jar</packaging>
 
 	<properties>
@@ -30,7 +30,8 @@
 		<lombok.version>1.18.34</lombok.version>
         <java-shared-utilities.version>RELEASE</java-shared-utilities.version>
 		<org.maven.help.version>3.5.0</org.maven.help.version>
-		<jaxb.version>2.3.1</jaxb.version>
+        <jaxb.version>4.0.2</jaxb.version>
+        <jaxbapi.version>2.3.1</jaxbapi.version>
 	</properties>
 
     <dependencyManagement>
@@ -167,7 +168,7 @@
 		<dependency>
 			<groupId>javax.xml.bind</groupId>
 			<artifactId>jaxb-api</artifactId>
-			<version>${jaxb.version}</version>
+			<version>${jaxbapi.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jaxb</groupId>
@@ -193,7 +194,9 @@
     </dependencies>
 
     <scm>
+        <!--suppress UnresolvedMavenProperty -->
         <connection>scm:git:${gitUrl}</connection>
+        <!--suppress UnresolvedMavenProperty -->
         <developerConnection>scm:git::${gitUrl}</developerConnection>
         <tag>HEAD</tag>
     </scm>

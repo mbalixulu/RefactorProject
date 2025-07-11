@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   profiles:
@@ -14,6 +14,9 @@ spring:
 cache:
   lifespan: 21600
 
+app:
+  domain: ${mandates-resolutions-ui.host}
+
 logging:
   level:
     root: DEBUG
@@ -24,3 +27,7 @@ management:
       exposure:
         include: '*'
 
+page:
+  path:
+    xsl: /templates/xsl/
+    xml: /templates/xml/

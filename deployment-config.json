@@ -3,31 +3,31 @@
   "apiVersion": "apps/v1",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-tts",
+      "app": "mandates-resolutions-ui",
       "app.openshift.io/runtime": "spring-boot"
     },
-    "name": "spring-boot-starter-tts"
+    "name": "mandates-resolutions-ui"
   },
   "spec": {
     "replicas": 1,
     "revisionHistoryLimit": 5,
     "selector": {
       "matchLabels": {
-        "app": "spring-boot-starter-tts"
+        "app": "mandates-resolutions-ui"
       }
     },
     "template": {
       "metadata": {
         "labels": {
-          "app": "spring-boot-starter-tts",
-          "deployment": "spring-boot-starter-tts"
+          "app": "mandates-resolutions-ui",
+          "deployment": "mandates-resolutions-ui"
         }
       },
       "spec": {
         "containers": [
           {
             "image": "image-registry.openshift-image-registry.svc:5000/IMAGE_TAG_PLACEHOLDER",
-            "name": "spring-boot-starter-tts",
+            "name": "mandates-resolutions-ui",
             "ports": [
               {
                 "containerPort": 8080,

@@ -2,5 +2,5 @@ spring:
   config:
     name: LOCAL-LINUX-DOCKER
 
-spring-boot-starter-tts:
+mandates-resolutions-ui:
   host: http://192.167.0.1:${server.port}

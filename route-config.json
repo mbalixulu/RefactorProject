@@ -3,9 +3,9 @@
   "kind": "Route",
   "metadata": {
     "labels": {
-      "app": "spring-boot-starter-tts"
+      "app": "mandates-resolutions-ui"
     },
-    "name": "spring-boot-starter-tts"
+    "name": "mandates-resolutions-ui"
   },
   "spec": {
     "port": {
@@ -13,7 +13,7 @@
     },
     "to": {
       "kind": "Service",
-      "name": "spring-boot-starter-tts",
+      "name": "mandates-resolutions-ui",
       "weight": 100
     },
     "tls": {

@@ -1,4 +1,4 @@
-package za.co.rmb.tts.springbootstartertts.configuration;
+package za.co.rmb.tts.mandates.resolutions.ui.configuration;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

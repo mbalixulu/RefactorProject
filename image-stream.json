@@ -3,10 +3,10 @@
   "kind": "ImageStream",
   "metadata": {
     "labels": {
-      "build": "spring-boot-starter-tts",
-      "app": "spring-boot-starter-tts"
+      "build": "mandates-resolutions-ui",
+      "app": "mandates-resolutions-ui"
     },
-    "name": "spring-boot-starter-tts"
+    "name": "mandates-resolutions-ui"
   },
   "spec": {
     "lookupPolicy": {

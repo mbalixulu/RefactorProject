@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<page xmlns:comm="http://ws.online.fnb.co.za/v1/common/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="onboardingForm" title="" template="main" layout="" version="1">
+    <symbol xsi:type="comm:formLayout">
+        <comm:form comm:action="app-domain/ui/requestTable" comm:name="loginPage">
+            <comm:sections comm:width="half">
+                <comm:symbol xsi:type="comm:textHeading">
+                    <comm:value>Login Page</comm:value>
+                </comm:symbol>
+            </comm:sections>
+            <comm:sections comm:width="half">
+                <comm:symbol xsi:type="comm:boxContainer" comm:id="boxDiv">
+                    <comm:box xsi:type="comm:box">
+                        <comm:boxSymbol xsi:type="comm:input" comm:name="userName"
+                                        comm:label="Username" comm:inputType="text"
+                                        comm:unCheckedValue="No" comm:selected="true"
+                                        comm:message="" comm:maxlength="50"
+                                        comm:tooltipPosition="bottomLeft">
+                            <comm:value/>
+                        </comm:boxSymbol>
+                        <comm:boxSymbol xsi:type="comm:input" comm:name="passKey"
+                                        comm:label="Password" comm:inputType="password"
+                                        comm:message="" comm:unCheckedValue="No"
+                                        comm:selected="true">
+                            <comm:value/>
+                        </comm:boxSymbol>
+                        <comm:boxSymbol xsi:type="comm:button" comm:id="enter" comm:target="main"
+                                        comm:url="app-domain/ui/requestTable" comm:label="Login"
+                                        comm:width="2" comm:formSubmit="true"/>
+                    </comm:box>
+                </comm:symbol>
+            </comm:sections>
+        </comm:form>
+    </symbol>
+</page>
