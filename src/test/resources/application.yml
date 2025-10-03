@@ -1,9 +1,6 @@
 server:
   port: 9999
 
-app:
-  domain: ${mandates-resolutions-ui.host}
-
 spring:
   thymeleaf:
     suffix: .xml
@@ -23,8 +20,3 @@ management:
     web:
       exposure:
         include: '*'
-
-page:
-  path:
-    xsl: /templates/xsl/
-    xml: /templates/xml/

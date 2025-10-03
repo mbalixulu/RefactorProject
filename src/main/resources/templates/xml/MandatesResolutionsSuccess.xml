@@ -15,7 +15,7 @@
                     <ns1:value>Thank you</ns1:value>
                 </ns1:symbol>
                 <ns1:symbol xsi:type="ns1:textParagraph" ns1:type="sub" ns1:subHeading="" ns1:bold="true" ns1:boldTableCell="false" ns1:color="black" ns1:tooltip="" ns1:symbol-type="">
-                    <ns1:value>This mandate has been successfully submitted.</ns1:value>
+                    <ns1:value>This mandates and resolutions has been successfully submitted.</ns1:value>
                 </ns1:symbol>
             </ns1:sections>
         </ns1:form>

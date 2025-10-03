@@ -6,8 +6,15 @@ mandates-resolutions-ui:
   host: http://localhost:${server.port}
 
 app:
-  domain: http://192.168.10.90:8081
+  domain: http://host.docker.internal:${server.port}
 
-#Configuration flag (integration.mode) to use the mock or live integration
-integration:
-  mode: MOCK
+# ---DAO base URL---
+dao:
+  company:
+    # If UI runs on your host and DAO on your host:
+    base-url: http://localhost:8083
+
+predictive:
+  companyReg:
+    maxResults: 3        # how many suggestions to return
+    cacheSeconds: 300     # cache /api/company/all results for 5 minutes

@@ -19,7 +19,7 @@ public class ApplicationConfigurationProperties {
   private long lifespan;
 
   @Value("${mandates-resolutions-ui.host}")
-  private String springBootStarterTTSHost;
+  private String mandatesResolutionsUIHost;
 
   @PostConstruct
   public void printSystemInfo() {

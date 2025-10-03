@@ -3,36 +3,42 @@
                 xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
                 xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
     <xsl:output method="xml" indent="yes"/>
 
     <xsl:template match="/requestWrapper">
+        <xsl:variable name="directorCount" select="count(/requestWrapper/request/directors/director)"/>
+        <xsl:variable name="directorCountStr" select="string($directorCount)"/>
+        <xsl:variable name="directorCountPlusOneStr" select="string($directorCount + 1)"/>
+
         <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
-              id="resolutionAutoFillForm"
-              title="Resolution Auto Fill Form"
+              id="mandatesResolutionAutoFillForm"
+              title="Mandates and Resolutions Directors Details"
               template="main"
               version="1">
 
-            <!-- Header -->
             <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Resolutions"/>
 
-            <!-- Form -->
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui/resolutionsFill" ns1:name="salesForm">
+                <ns1:form ns1:action="app-domain/ui" ns1:name="salesForm">
 
-                    <!-- Carry-through: ids, page, top-level, waiver tools -->
+                    <ns1:sections ns1:align="left" ns1:width="full">
+                        <ns1:symbol xsi:type="ns1:textHeading" ns1:size="5">
+                            <ns1:value>Directors Details</ns1:value>
+                        </ns1:symbol>
+                    </ns1:sections>
+
+                    <!-- Hidden context (IDs + page code + top-level + waiver tools) -->
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:input" ns1:name="pdfSessionId" ns1:inputType="hidden">
                             <ns1:value><xsl:value-of select="/requestWrapper/request/pdfSessionId"/></ns1:value>
                         </ns1:symbol>
-                        <!-- always carry these -->
                         <ns1:symbol xsi:type="ns1:input" ns1:name="stagingId" ns1:inputType="hidden">
                             <ns1:value><xsl:value-of select="/requestWrapper/request/stagingId"/></ns1:value>
                         </ns1:symbol>
-                        <!-- identify the page we are saving from -->
                         <ns1:symbol xsi:type="ns1:input" ns1:name="pageCode" ns1:inputType="hidden">
-                            <ns1:value>RESOLUTION_AUTOFILL</ns1:value>
+                            <ns1:value>DIRECTORS_DETAILS</ns1:value>
                         </ns1:symbol>
+
                         <ns1:symbol xsi:type="ns1:input" ns1:name="mandateResolution" ns1:inputType="hidden">
                             <ns1:value><xsl:value-of select="/requestWrapper/request/mandateResolution"/></ns1:value>
                         </ns1:symbol>
@@ -46,35 +52,14 @@
                             <ns1:value><xsl:value-of select="/requestWrapper/request/registrationNumber"/></ns1:value>
                         </ns1:symbol>
 
-                        <!-- Waiver tools (List<String> as repeated <documentumTool/>) -->
-                        <xsl:for-each select="/requestWrapper/request/documentumTool">
+                        <!-- Waiver tools -->
+                        <xsl:for-each select="/requestWrapper/request/documentumTools/* | /requestWrapper/request/documentumTool">
                             <ns1:symbol xsi:type="ns1:input"
                                         ns1:name="{concat('documentumTools[', position()-1, ']')}"
                                         ns1:inputType="hidden">
                                 <ns1:value><xsl:value-of select="."/></ns1:value>
                             </ns1:symbol>
                         </xsl:for-each>
-
-                        <!-- directors (array shape the parser expects) -->
-                        <xsl:for-each select="/requestWrapper/request/directors/director">
-                            <xsl:variable name="i" select="position()-1"/>
-                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].name')}" ns1:inputType="hidden">
-                                <ns1:value><xsl:value-of select="normalize-space(name)"/></ns1:value>
-                            </ns1:symbol>
-                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].surname')}" ns1:inputType="hidden">
-                                <ns1:value><xsl:value-of select="normalize-space(surname)"/></ns1:value>
-                            </ns1:symbol>
-                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].designation')}" ns1:inputType="hidden">
-                                <ns1:value><xsl:value-of select="normalize-space(designation)"/></ns1:value>
-                            </ns1:symbol>
-                        </xsl:for-each>
-                    </ns1:sections>
-
-                    <!-- Heading -->
-                    <ns1:sections ns1:align="left" ns1:width="full">
-                        <ns1:symbol xsi:type="ns1:textHeading">
-                            <ns1:value>Directors Details</ns1:value>
-                        </ns1:symbol>
                     </ns1:sections>
 
                     <!-- Directors table -->
@@ -93,29 +78,18 @@
                             <ns1:tableColumn ns1:align="left" ns1:fieldName="remove"      ns1:heading="Remove"      ns1:disableSorting="true"/>
 
                             <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="directors" ns1:groupHeaderLabel="">
-                                <ns1:totalsRow ns1:category=" ">
-                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="name">
-                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
-                                </ns1:totalsRow>
-
-                                <!-- Add director -->
                                 <ns1:groupTableButton xsi:type="ns1:imageButton"
                                                       ns1:id="addDirectorBtn"
                                                       ns1:label="Add a director"
                                                       ns1:tip="Add a director"
                                                       ns1:url="{concat(
-                                        'app-domain/ui/resolutionsFill?directorCount=',
-                                        count(/requestWrapper/request/directors/director) + 1,
+                                        'app-domain/ui/mandatesResolutionsDirectorsDetails?directorCount=',
+                                        $directorCountPlusOneStr,
                                         '&amp;pdfSessionId=',
-                                        /requestWrapper/request/pdfSessionId,
-                                        '#DirectorsTable'
+                                        /requestWrapper/request/pdfSessionId
                                       )}"/>
                             </ns1:rowGroup>
 
-                            <!-- Existing directors (1-based indices to match your parser) -->
                             <xsl:for-each select="/requestWrapper/request/directors/director">
                                 <xsl:variable name="pos" select="position()"/>
                                 <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="directors">
@@ -212,42 +186,34 @@
                                                       ns1:target="main"
                                                       ns1:width="2"
                                                       ns1:url="{concat(
-                                  'app-domain/ui/resolutionsFill?',
-                                  'removeDirectorAt=', $pos,
-                                  '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId,
-                                  '#DirectorsTable'
+                                  'app-domain/ui/mandatesResolutionsDirectorsDetails?directorCount=',
+                                  $directorCountStr,
+                                  '&amp;removeDirectorAt=', $pos,
+                                  '&amp;pdfSessionId=',
+                                  /requestWrapper/request/pdfSessionId
                                 )}"/>
                                         </ns1:cellItem>
                                     </ns1:cell>
-
                                 </ns1:row>
                             </xsl:for-each>
-
                         </ns1:symbol>
                     </ns1:sections>
-
                 </ns1:form>
             </symbol>
 
             <!-- Footer -->
             <symbol xsi:type="ns1:footer" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="backBtn"
-                                ns1:url="{concat('app-domain/ui/nextStep?back=1&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
-                                ns1:label="Back"
-                                ns1:formSubmit="true"
-                                ns1:target="main"/>
+                                ns1:url="{concat('app-domain/ui/mandatesResolutionsSignatureCard?pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
+                                ns1:label="Back" ns1:formSubmit="true" ns1:target="main"/>
                 <ns1:baseButton ns1:id="save"
                                 ns1:url="app-domain/ui/draft/save"
                                 ns1:label="Save"
-                                ns1:formSubmit="true"
-                                ns1:target="main"/>
+                                ns1:formSubmit="true" ns1:target="main"/>
                 <ns1:baseButton ns1:id="submitBtn"
-                                ns1:url="app-domain/ui/resolutionSubmit"
-                                ns1:label="Submit"
-                                ns1:formSubmit="true"
-                                ns1:target="main"/>
+                                ns1:url="app-domain/ui/mandatesResolutionsSubmit"
+                                ns1:label="Submit" ns1:formSubmit="true" ns1:target="main"/>
             </symbol>
-
         </page>
     </xsl:template>
 </xsl:stylesheet>

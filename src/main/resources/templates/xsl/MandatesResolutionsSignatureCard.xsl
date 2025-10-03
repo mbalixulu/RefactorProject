@@ -12,15 +12,16 @@
     <xsl:template match="/requestWrapper">
         <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="mandatesSignatureForm"
-              title="Mandates Signature Form"
+              id="mandatesResolutionsSignatureForm"
+              title="Mandates and Resolutions Signature Form"
               template="main"
               version="1">
 
-            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates"/>
+            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and Resolutions"/>
 
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui/mandatesSubmit" ns1:name="salesForm">
+                <!-- IMPORTANT: post to the Directors step -->
+                <ns1:form ns1:action="app-domain/ui/mandatesResolutionsDirectorsDetails" ns1:name="salesForm">
 
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:textHeading">
@@ -28,7 +29,7 @@
                         </ns1:symbol>
                     </ns1:sections>
 
-                    <!-- Carry-through: IDs and page code -->
+                    <!-- Hidden context (IDs + page code + top-level + waiver tools + directors) -->
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:input" ns1:name="pdfSessionId" ns1:inputType="hidden">
                             <ns1:value><xsl:value-of select="/requestWrapper/request/pdfSessionId"/></ns1:value>
@@ -37,10 +38,9 @@
                             <ns1:value><xsl:value-of select="/requestWrapper/request/stagingId"/></ns1:value>
                         </ns1:symbol>
                         <ns1:symbol xsi:type="ns1:input" ns1:name="pageCode" ns1:inputType="hidden">
-                            <ns1:value>MANDATES_SIGNATURE_CARD</ns1:value>
+                            <ns1:value>MANDATES_RESOLUTIONS_SIGNATURE_CARD</ns1:value>
                         </ns1:symbol>
 
-                        <!-- Carry-through: top-level -->
                         <ns1:symbol xsi:type="ns1:input" ns1:name="mandateResolution" ns1:inputType="hidden">
                             <ns1:value><xsl:value-of select="/requestWrapper/request/mandateResolution"/></ns1:value>
                         </ns1:symbol>
@@ -54,12 +54,35 @@
                             <ns1:value><xsl:value-of select="/requestWrapper/request/registrationNumber"/></ns1:value>
                         </ns1:symbol>
 
-                        <!-- Waiver tools (supports both shapes) -->
-                        <xsl:for-each select="/requestWrapper/request/documentumTools/* | /requestWrapper/request/documentumTool">
+                        <!-- Waiver tools: list shape -->
+                        <xsl:for-each select="/requestWrapper/request/documentumTools/*">
                             <ns1:symbol xsi:type="ns1:input"
                                         ns1:name="{concat('documentumTools[', position()-1, ']')}"
                                         ns1:inputType="hidden">
                                 <ns1:value><xsl:value-of select="."/></ns1:value>
+                            </ns1:symbol>
+                        </xsl:for-each>
+
+                        <!-- Waiver tools: singleton shape -->
+                        <xsl:for-each select="/requestWrapper/request/documentumTool">
+                            <ns1:symbol xsi:type="ns1:input"
+                                        ns1:name="{concat('documentumTools[', position()-1, ']')}"
+                                        ns1:inputType="hidden">
+                                <ns1:value><xsl:value-of select="."/></ns1:value>
+                            </ns1:symbol>
+                        </xsl:for-each>
+
+                        <!-- Directors carry-through (hidden) -->
+                        <xsl:for-each select="/requestWrapper/request/directors/director">
+                            <xsl:variable name="i" select="position()-1"/>
+                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].name')}" ns1:inputType="hidden">
+                                <ns1:value><xsl:value-of select="normalize-space(name)"/></ns1:value>
+                            </ns1:symbol>
+                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].surname')}" ns1:inputType="hidden">
+                                <ns1:value><xsl:value-of select="normalize-space(surname)"/></ns1:value>
+                            </ns1:symbol>
+                            <ns1:symbol xsi:type="ns1:input" ns1:name="{concat('directors[', $i, '].designation')}" ns1:inputType="hidden">
+                                <ns1:value><xsl:value-of select="normalize-space(designation)"/></ns1:value>
                             </ns1:symbol>
                         </xsl:for-each>
                     </ns1:sections>
@@ -72,7 +95,7 @@
                             <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="{concat('sig_box_', $pos)}">
                                 <ns1:box xsi:type="ns1:box">
 
-                                    <!-- Header -->
+                                    <!-- Heading -->
                                     <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="3">
                                         <ns1:value>
                                             <xsl:text>Account </xsl:text>
@@ -85,7 +108,7 @@
                                         </ns1:value>
                                     </ns1:boxSymbol>
 
-                                    <!-- Editable account fields -->
+                                    <!-- Account fields (no required / no errorMessage) -->
                                     <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
                                         <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                             ns1:name="{concat('accountName_', $pos)}"
@@ -94,7 +117,6 @@
                                             <ns1:value><xsl:value-of select="normalize-space(accountName)"/></ns1:value>
                                         </ns1:boxSplitSymbol>
                                     </ns1:boxSymbol>
-
                                     <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
                                         <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                             ns1:name="{concat('accountNo_', $pos)}"
@@ -104,22 +126,14 @@
                                         </ns1:boxSplitSymbol>
                                     </ns1:boxSymbol>
 
-                                    <!-- ===== Signatories (split Added / Removed) ===== -->
+                                    <!-- ===== Added Signatories (visible) ===== -->
                                     <xsl:variable name="addedCount"
                                                   select="count(signatories/signatory[translate(normalize-space(instruction), $LOWER, $UPPER)='ADD'])"/>
-                                    <xsl:variable name="removedCount"
-                                                  select="count(signatories/signatory[translate(normalize-space(instruction), $LOWER, $UPPER)='REMOVE'])"/>
-
-                                    <!-- ===== Added Signatories (visible) ===== -->
                                     <xsl:if test="$addedCount &gt; 0">
-                                        <ns1:boxSymbol xsi:type="ns1:textHeading">
-                                            <ns1:value>Added Signatories</ns1:value>
-                                        </ns1:boxSymbol>
-
+                                        <ns1:boxSymbol xsi:type="ns1:textHeading"><ns1:value>Added Signatories</ns1:value></ns1:boxSymbol>
                                         <xsl:for-each select="signatories/signatory[translate(normalize-space(instruction), $LOWER, $UPPER)='ADD']">
                                             <xsl:variable name="spos" select="count(preceding-sibling::signatory) + 1"/>
 
-                                            <!-- LEFT column: Full name + ID no. -->
                                             <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
                                                 <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                                     ns1:name="{concat('fullName_', $pos, '_', $spos)}"
@@ -127,24 +141,21 @@
                                                                     ns1:inputType="text" ns1:maxlength="50">
                                                     <ns1:value><xsl:value-of select="normalize-space(fullName)"/></ns1:value>
                                                 </ns1:boxSplitSymbol>
-
-                                                <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                    ns1:name="{concat('idNumber_', $pos, '_', $spos)}"
-                                                                    ns1:label="ID no."
-                                                                    ns1:inputType="text" ns1:maxlength="13">
-                                                    <ns1:value><xsl:value-of select="normalize-space(idNumber)"/></ns1:value>
-                                                </ns1:boxSplitSymbol>
-                                            </ns1:boxSymbol>
-
-                                            <!-- RIGHT column: Capacity + Group -->
-                                            <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
                                                 <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                                     ns1:name="{concat('capacity_', $pos, '_', $spos)}"
                                                                     ns1:label="Capacity (e.g. Director, Manager)"
                                                                     ns1:inputType="text" ns1:maxlength="50">
                                                     <ns1:value><xsl:value-of select="normalize-space(capacity)"/></ns1:value>
                                                 </ns1:boxSplitSymbol>
+                                            </ns1:boxSymbol>
 
+                                            <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
+                                                <ns1:boxSplitSymbol xsi:type="ns1:input"
+                                                                    ns1:name="{concat('idNumber_', $pos, '_', $spos)}"
+                                                                    ns1:label="ID no."
+                                                                    ns1:inputType="text" ns1:maxlength="13">
+                                                    <ns1:value><xsl:value-of select="normalize-space(idNumber)"/></ns1:value>
+                                                </ns1:boxSplitSymbol>
                                                 <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                                     ns1:name="{concat('group_', $pos, '_', $spos)}"
                                                                     ns1:label="Group (If any, e.g. A/B/C)"
@@ -153,11 +164,10 @@
                                                 </ns1:boxSplitSymbol>
                                             </ns1:boxSymbol>
 
-                                            <!-- Hidden instruction -->
-                                            <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
+                                            <!-- Hidden instruction (default Add) -->
+                                            <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="100">
                                                 <ns1:boxSplitSymbol xsi:type="ns1:input"
                                                                     ns1:name="{concat('instruction_', $pos, '_', $spos)}"
-                                                                    ns1:label="Instruction (Add/Remove)"
                                                                     ns1:inputType="hidden">
                                                     <ns1:value>
                                                         <xsl:choose>
@@ -172,35 +182,23 @@
                                         </xsl:for-each>
                                     </xsl:if>
 
-                                    <!-- Removed Signatories UI intentionally hidden -->
-
-                                    <!-- Hidden carry-through for removed signatories -->
+                                    <!-- ===== Removed Signatories: HIDDEN carry-through only ===== -->
                                     <xsl:for-each select="signatories/signatory[translate(normalize-space(instruction), $LOWER, $UPPER)='REMOVE']">
                                         <xsl:variable name="spos" select="count(preceding-sibling::signatory) + 1"/>
                                         <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="100">
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('fullName_', $pos, '_', $spos)}"
-                                                                ns1:inputType="hidden">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('fullName_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value><xsl:value-of select="normalize-space(fullName)"/></ns1:value>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('idNumber_', $pos, '_', $spos)}"
-                                                                ns1:inputType="hidden">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('idNumber_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value><xsl:value-of select="normalize-space(idNumber)"/></ns1:value>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('capacity_', $pos, '_', $spos)}"
-                                                                ns1:inputType="hidden">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('capacity_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value><xsl:value-of select="normalize-space(capacity)"/></ns1:value>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('group_', $pos, '_', $spos)}"
-                                                                ns1:inputType="hidden">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('group_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value><xsl:value-of select="normalize-space(group)"/></ns1:value>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('instruction_', $pos, '_', $spos)}"
-                                                                ns1:inputType="hidden">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('instruction_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value>
                                                     <xsl:choose>
                                                         <xsl:when test="normalize-space(instruction) != ''">
@@ -213,48 +211,31 @@
                                         </ns1:boxSymbol>
                                     </xsl:for-each>
 
-                                    <!-- If no signatories, render one empty set -->
+                                    <!-- If no signatories, render one empty set (so user can type) -->
                                     <xsl:if test="count(signatories/signatory)=0">
                                         <xsl:variable name="spos" select="1"/>
-
-                                        <!-- LEFT column: Full name + ID no. -->
                                         <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('fullName_', $pos, '_', $spos)}"
-                                                                ns1:label="Full name (As per identity document)"
-                                                                ns1:inputType="text" ns1:maxlength="50">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('fullName_', $pos, '_', $spos)}"
+                                                                ns1:label="Full name (As per identity document)" ns1:inputType="text" ns1:maxlength="50">
                                                 <ns1:value/>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('idNumber_', $pos, '_', $spos)}"
-                                                                ns1:label="ID no."
-                                                                ns1:inputType="text" ns1:maxlength="13">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('capacity_', $pos, '_', $spos)}"
+                                                                ns1:label="Capacity (e.g. Director, Manager)" ns1:inputType="text" ns1:maxlength="50">
                                                 <ns1:value/>
                                             </ns1:boxSplitSymbol>
                                         </ns1:boxSymbol>
-
-                                        <!-- RIGHT column: Capacity + Group -->
                                         <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('capacity_', $pos, '_', $spos)}"
-                                                                ns1:label="Capacity (e.g. Director, Manager)"
-                                                                ns1:inputType="text" ns1:maxlength="50">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('idNumber_', $pos, '_', $spos)}"
+                                                                ns1:label="ID no." ns1:inputType="text" ns1:maxlength="13">
                                                 <ns1:value/>
                                             </ns1:boxSplitSymbol>
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('group_', $pos, '_', $spos)}"
-                                                                ns1:label="Group (If any, e.g. A/B/C)"
-                                                                ns1:inputType="text" ns1:maxlength="13">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('group_', $pos, '_', $spos)}"
+                                                                ns1:label="Group (If any, e.g. A/B/C)" ns1:inputType="text" ns1:maxlength="13">
                                                 <ns1:value/>
                                             </ns1:boxSplitSymbol>
                                         </ns1:boxSymbol>
-
-                                        <!-- Hidden instruction -->
-                                        <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                            <ns1:boxSplitSymbol xsi:type="ns1:input"
-                                                                ns1:name="{concat('instruction_', $pos, '_', $spos)}"
-                                                                ns1:label="Instruction (Add/Remove)"
-                                                                ns1:inputType="hidden">
+                                        <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="100">
+                                            <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="{concat('instruction_', $pos, '_', $spos)}" ns1:inputType="hidden">
                                                 <ns1:value>Add</ns1:value>
                                             </ns1:boxSplitSymbol>
                                         </ns1:boxSymbol>
@@ -270,20 +251,17 @@
             <!-- Footer -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="backBtn"
-                                ns1:url="{concat('app-domain/ui/mandatesFill?pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
-                                ns1:target="main"
-                                ns1:formSubmit="false"
-                                ns1:label="Back"/>
+                                ns1:url="{concat('app-domain/ui/mandatesResolutionsAccDetails?pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
+                                ns1:target="main" ns1:formSubmit="true" ns1:label="Back"/>
                 <ns1:baseButton ns1:id="save"
                                 ns1:url="app-domain/ui/draft/save"
                                 ns1:label="Save"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
-                <ns1:baseButton ns1:id="submitBtn"
-                                ns1:url="app-domain/ui/mandatesSubmit"
-                                ns1:target="main"
-                                ns1:formSubmit="true"
-                                ns1:label="Submit"/>
+                <!-- Rely on the FORM action for proceed -->
+                <ns1:baseButton ns1:id="nextBtn"
+                                ns1:url="app-domain/ui/mandatesResolutionsDirectorsDetails"
+                                ns1:target="main" ns1:formSubmit="true" ns1:label="Proceed"/>
             </symbol>
         </page>
     </xsl:template>

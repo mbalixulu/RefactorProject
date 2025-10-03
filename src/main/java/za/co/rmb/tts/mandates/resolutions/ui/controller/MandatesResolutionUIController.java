@@ -1,27 +1,62 @@
 package za.co.rmb.tts.mandates.resolutions.ui.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import za.co.rmb.tts.mandates.resolutions.ui.model.RequestDTO;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.LoginDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SignatoryDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SubmissionPayload;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesAutoFillErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesSignatureCardErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.ResolutionsAutoFillErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
 
 @RestController
@@ -30,156 +65,1687 @@ public class MandatesResolutionUIController {
 
   private final XSLTProcessorService xsltProcessor;
 
+  private final Map<String, RequestDTO> pdfExtractionDataCache = new HashMap<>();
+
   private static final String XML_PAGE_PATH = "/templates/xml/";
   private static final String XSL_PAGE_PATH = "/templates/xsl/";
-  private static final String NODE_BACKEND_URL = "http://localhost:3000";
+  private static final Logger logger =
+      LoggerFactory.getLogger(MandatesResolutionUIController.class);
 
-  @Value("${integration.mode}")
-  private String integrationMode;
+  private final RestTemplate restTemplate = new RestTemplate();
 
-  @Autowired
+  @Value("${mandates-resolutions-dao:http://localhost:8083}")
+  private String mandatesResolutionsDaoURL;
+
   public MandatesResolutionUIController(XSLTProcessorService xsltProcessor) {
     this.xsltProcessor = xsltProcessor;
   }
 
+  //Takes you the Login Page after starting the project (First Page you will see)
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayHomePage() {
     String page = xsltProcessor.returnPage(xmlPagePath("LoginPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
+  // ============= REQUEST TABLES =============
+
+  //Pending Requests page after logging in
   @PostMapping(value = "/requestTable", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayRequestTable() {
-    String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), new RequestWrapper());
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = "http://localhost:8083/api/request/all";
+
+      ResponseEntity<RequestTableDTO[]> response = restTemplate.getForEntity(
+          backendUrl,
+          RequestTableDTO[].class
+      );
+
+      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Failed to fetch requests from backend.");
+      }
+
+      List<RequestTableDTO> inProgress = Arrays.stream(response.getBody())
+          .filter(request -> "In Progress".equalsIgnoreCase(request.getStatus()))
+          .peek(request -> {
+            // Company Name enrichment (unchanged)
+            try {
+              String companyUrl = "http://localhost:8083/api/company/" + request.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+
+              if (companyResponse.getStatusCode().is2xxSuccessful()
+                  && companyResponse.getBody() != null) {
+                request.setCompanyName(companyResponse.getBody().getName());
+              } else {
+                request.setCompanyName("Unknown");
+              }
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}",
+                  request.getCompanyId(), ex.getMessage());
+              request.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(inProgress);
+
+      String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching in-progress requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load pending requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  //On Hold Tickets Page
+  @PostMapping(value = "/requestTableOnHold", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayRequestTableOnHold() {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = "http://localhost:8083/api/request/all";
+
+      ResponseEntity<RequestTableDTO[]> response =
+          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+
+      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Failed to fetch requests from backend.");
+      }
+
+      List<RequestTableDTO> onHoldRequests = Arrays.stream(response.getBody())
+          .filter(request -> "On Hold".equalsIgnoreCase(request.getStatus()))
+          .peek(request -> {
+            // Ensure display id is always present
+            if (request.getRequestIdForDisplay() == null || request.getRequestIdForDisplay()
+                .isBlank()) {
+              request.setRequestIdForDisplay(
+                  request.getRequestId() == null ? "" : String.valueOf(request.getRequestId())
+              );
+            }
+            // Company Name enrichment
+            try {
+              String companyUrl = "http://localhost:8083/api/company/" + request.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+
+              if (companyResponse.getStatusCode().is2xxSuccessful()
+                  && companyResponse.getBody() != null) {
+                request.setCompanyName(companyResponse.getBody().getName());
+              } else {
+                request.setCompanyName("Unknown");
+              }
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}",
+                  request.getCompanyId(), ex.getMessage());
+              request.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(onHoldRequests);
+
+      logger.info("Fetched {} on-hold requests", onHoldRequests.size());
+
+      String page = xsltProcessor.generatePage(xslPagePath("OnHold"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching on-hold requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load on-hold requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  // Completed Tickets Page
+  @PostMapping(value = "/requestTableCompleted", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayRequestTableCompleted() {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = "http://localhost:8083/api/request/all";
+
+      ResponseEntity<RequestTableDTO[]> response =
+          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+
+      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Failed to fetch requests from backend.");
+      }
+
+      List<RequestTableDTO> completedRequests = Arrays.stream(response.getBody())
+          .filter(request -> "completed".equalsIgnoreCase(request.getStatus()))
+          .peek(request -> {
+            // Ensure display id is always present
+            if (request.getRequestIdForDisplay() == null || request.getRequestIdForDisplay()
+                .isBlank()) {
+              request.setRequestIdForDisplay(
+                  request.getRequestId() == null ? "" : String.valueOf(request.getRequestId())
+              );
+            }
+            // Company Name enrichment
+            try {
+              String companyUrl = "http://localhost:8083/api/company/" + request.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+
+              if (companyResponse.getStatusCode().is2xxSuccessful()
+                  && companyResponse.getBody() != null) {
+                request.setCompanyName(companyResponse.getBody().getName());
+              } else {
+                request.setCompanyName("Unknown");
+              }
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}",
+                  request.getCompanyId(), ex.getMessage());
+              request.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(completedRequests);
+
+      logger.info("Fetched {} completed requests", completedRequests.size());
+
+      String page = xsltProcessor.generatePage(xslPagePath("Completed"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching completed requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load completed requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  @RequestMapping(
+      value = "/requestTableDraft",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> displayRequestTableDraft() {
+    final String base = "http://localhost:8083";
+    final RestTemplate rt = new RestTemplate();
+
+    RequestStagingDTO[] raws =
+        rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
+    List<RequestStagingDTO> list =
+        (raws == null) ? java.util.List.of() : java.util.Arrays.asList(raws);
+
+    final java.time.format.DateTimeFormatter FMT =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    final com.fasterxml.jackson.databind.ObjectMapper OM =
+        new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new java.util.ArrayList<>();
+
+    for (RequestStagingDTO d : list) {
+      RequestStagingDTO src = d;
+
+      // 1) Try default binding first
+      String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
+
+      // 2) If still blank, fetch raw JSON and search for a created-like field
+      if (createdStr.isBlank()) {
+        try {
+          ResponseEntity<String> resp =
+              rt.getForEntity(base + "/api/request-staging/{id}", String.class, d.getStagingId());
+          String body = resp.getBody();
+          if (body != null && !body.isBlank()) {
+            // DEBUG (uncomment once to verify what DAO returns)
+            // logger.info("Draft {} raw JSON: {}", d.getStagingId(), body);
+
+            // a) Try re-bind with our ObjectMapper (handles java-time)
+            try {
+              RequestStagingDTO rebound = OM.readValue(body, RequestStagingDTO.class);
+              if (rebound != null) {
+                src = rebound;
+              }
+            } catch (Exception ignore) {
+              // intentionally empty
+            }
+
+            // b) Tree-scan for any case/shape of "created"
+            try {
+              com.fasterxml.jackson.databind.JsonNode root = OM.readTree(body);
+              String raw = findCreatedAnyCase(root);
+
+              if (raw != null && !raw.isBlank()) {
+                if (isAllDigits(raw)) {
+                  createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
+                } else {
+                  createdStr = tryFormatIso(raw, FMT); // returns raw text if parse fails
+                }
+              }
+            } catch (Exception ignore) {
+              // intentionally empty
+            }
+          }
+        } catch (Exception ignore) {
+          // intentionally empty
+        }
+      }
+
+      if (createdStr.isBlank() && src.getCreated() != null) {
+        createdStr = src.getCreated().format(FMT);
+      }
+
+      //Build the table row
+      RequestTableDTO r = new RequestTableDTO();
+      r.setRequestId(src.getStagingId());
+      r.setCompanyName(src.getCompanyName());
+      r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+      r.setStatus(src.getRequestStatus());
+      r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+      r.setType(src.getRequestType());
+      r.setCreated(createdStr);  //<created> for the XSL column
+      r.setUpdated(null);
+
+      rows.add(r);
+    }
+
+    wrapper.setRequest(rows);
+    String page = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+  }
+
+  @PostMapping(value = "/requestTableProfile", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayRequestTableProfile(HttpSession session) {
+    //Pull user from session
+    LoginDTO user = (LoginDTO) session.getAttribute("currentUser");
+
+    RequestDTO dto = new RequestDTO();
+    if (user != null) {
+      //Prefer userId; fallback to "First Last"
+      String displayName = (user.getUserId() != null && !user.getUserId().isBlank())
+          ? user.getUserId()
+          : ((user.getFirstName() == null ? "" : user.getFirstName())
+          + " " + (user.getLastName() == null ? "" : user.getLastName())).trim();
+
+      dto.setLoggedInUsername(displayName);
+      dto.setLoggedInEmail(user.getEmail());
+    }
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+
+    String page = xsltProcessor.generatePage(xslPagePath("Profile"), wrapper);
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
-  @PostMapping(value = "/createRequest", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayCreateRequest() {
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
+  // ============= CREATION PAGES =============
+
+  //Create a request page
+  @PostMapping(
+      value = "/createRequest",
+      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+  )
+  public ResponseEntity<String> displayCreateRequest(HttpSession session) {
+    //Drop previous working state (but not the whole security session)
+    String old = (String) session.getAttribute("pdfSessionId");
+    if (old != null) {
+      pdfExtractionDataCache.remove(old);
+    }
+    session.removeAttribute("requestData");
+
+    String freshId = java.util.UUID.randomUUID().toString();
+    session.setAttribute("pdfSessionId", freshId);
+
+    //(Optional) if you want the new id visible to the page immediately:
+    RequestDTO dto = new RequestDTO();
+    dto.setPdfSessionId(freshId);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/searchResults", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displaySearchResults(@RequestBody RequestWrapper wrapper) {
-    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
-    return new ResponseEntity<>(page, HttpStatus.OK);
-  }
+  @GetMapping(value = "/predictive/companyRegNumbers", produces = MediaType.TEXT_PLAIN_VALUE)
+  public ResponseEntity<String> predictiveCompanyRegNumbers(
+      @RequestParam Map<String, String> params
+  ) {
+    //Accept a variety of param names used by different widgets
+    String q = null;
+    for (String key : new String[] {"q", "term", "value", "text", "query", "input", "s",
+        "companyRegNumber"}) {
+      if (params.containsKey(key) && params.get(key) != null && !params.get(key).trim().isEmpty()) {
+        q = params.get(key).trim();
+        break;
+      }
+    }
+    final String needle = (q == null) ? "" : q.toLowerCase();
 
-  @PostMapping(value = "/nextStep", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> handleNextStep(
-      @ModelAttribute RequestWrapper wrapper,
-      @RequestParam(value = "mandateResolution", required = false) String requestType,
-      HttpServletRequest request) {
+    //Call DAO to get all companies once, then filter client-side
+    String daoUrl = "http://localhost:8083/api/company/all";
+    org.springframework.web.client.RestTemplate rt =
+        new org.springframework.web.client.RestTemplate();
+    List<Map<String, Object>> companies;
+    try {
+      companies = rt.exchange(
+          daoUrl,
+          HttpMethod.GET,
+          null,
+          new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {
+          }
+      ).getBody();
+    } catch (Exception e) {
+      //Fail quietly: predictive should never block typing
+      return ResponseEntity.ok("");
+    }
+    if (companies == null) {
+      companies = java.util.Collections.emptyList();
+    }
 
-    System.out.println("Received requestType: " + requestType);
-
-    String confirmationCheck = null;
-
-    if (requestType != null) {
-      switch (requestType) {
-        case "1":
-          confirmationCheck = request.getParameter("confirmationCheckMandate");
-          break;
-        case "2":
-          confirmationCheck = request.getParameter("confirmationCheckResolution");
-          break;
-        case "3":
-          confirmationCheck = request.getParameter("confirmationCheckMandateResolution");
-          break;
-        default:
-          break;
+    //Extract, normalize and filter by prefix/contains
+    List<String> regs = new java.util.ArrayList<>();
+    for (Map<String, Object> row : companies) {
+      Object rn = row.get("registrationNumber");
+      if (rn != null) {
+        String reg = rn.toString().trim();
+        if (needle.isEmpty()
+            || reg.toLowerCase().startsWith(needle)
+            || reg.toLowerCase().contains(needle)) {
+          regs.add(reg);
+        }
       }
     }
 
-    System.out.println("Received confirmationCheck: " + confirmationCheck);
+    //Dedup + limit
+    regs = regs.stream()
+        .filter(s -> s != null && !s.isBlank())
+        .distinct()
+        .limit(15)
+        .toList();
 
-    String validationErrorXml = null;
+    String body = String.join("|", regs);
+    return ResponseEntity.ok(body);
+  }
 
-    if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
-      validationErrorXml = "<page xmlns:comm=\"http://ws.online.fnb.co.za/common/\""
-          + " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
-          + " id=\"\" heading=\" \" template=\"error\" version=\"1\">"
-          + "<error xsi:type=\"validationError\">"
-          + "<name>mandateResolution</name>"
-          + "<code>0</code>"
-          + "<message>Please select a valid request type.</message>"
-          + "</error>"
-          + "</page>";
-    } else if (confirmationCheck == null || !"1".equals(confirmationCheck)) {
-      validationErrorXml = "<page xmlns:comm=\"http://ws.online.fnb.co.za/common/\""
-          + " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
-          + " id=\"\" heading=\" \" template=\"error\" version=\"1\">"
-          + "<error xsi:type=\"validationError\">"
-          + "<name>confirmationCheck</name>"
-          + "<code>0</code>"
-          + "<message>Please check the confirmation box to proceed.</message>"
-          + "</error>"
-          + "</page>";
+  //Search Results page (accept both GET and POST; produce both XML variants)
+  @RequestMapping(
+      value = "/searchResults",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+  )
+  public ResponseEntity<String> displaySearchResults(
+      @RequestParam(value = "registrationNumber", required = false) String reg,
+      @RequestParam(value = "pdfSessionId", required = false) String pdfSessionId,
+      HttpSession session
+  ) {
+    //pick up existing session id or make a new one
+    String sid = nz(pdfSessionId).isEmpty()
+        ? (String) session.getAttribute("pdfSessionId")
+        : pdfSessionId;
+
+    RequestDTO dto = (sid != null) ? pdfExtractionDataCache.get(sid) : null;
+    if (dto == null) {
+      dto = new RequestDTO();
+      dto.setRegistrationNumber(nz(reg)); //so Create Request path still pre-populates reg
     }
 
-    if (validationErrorXml != null) {
-      return ResponseEntity.ok(validationErrorXml);
+    ensureAtLeastOneDirector(dto); // <- guarantees one empty row so inputs render
+
+    if (sid == null || sid.isBlank()) {
+      sid = java.util.UUID.randomUUID().toString();
+      session.setAttribute("pdfSessionId", sid);
+    }
+    dto.setPdfSessionId(sid);
+    dto.setEditable(true);
+
+    // persist back to cache + session
+    pdfExtractionDataCache.put(sid, dto);
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  //Creates the whole searchResults.xsl page
+  @PostMapping(value = "/searchCompanyDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> fetchMergedDetails(
+      @ModelAttribute RequestDTO requestDto,
+      @RequestParam(value = "companyRegNumber", required = false) String registrationNumber,
+      @RequestParam(value = "removeDirectorAt", required = false) Integer removeDirectorAt,
+      @RequestParam(value = "directorCount", required = false) Integer directorCount,
+      @RequestParam(value = "resolutionDocCount", required = false) Integer resolutionDocCount,
+      @RequestParam(value = "toolCount", required = false) Integer toolCount,
+      @RequestParam(value = "action", required = false) String action,
+      HttpSession session,
+      HttpServletRequest request
+  ) {
+    //Helpers
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> dedupeComma = s -> {
+      String t = nz.apply(s);
+      if (t.isEmpty()) {
+        return t;
+      }
+      String[] parts = t.split("\\s*,\\s*");
+      if (parts.length <= 1) {
+        return t;
+      }
+      java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+      for (String p : parts) {
+        if (!p.isBlank()) {
+          set.add(p);
+        }
+      }
+      return String.join(", ", set);
+    };
+
+    // Work out the incoming registration number (from model or param)
+    String incomingReg = nz.apply(requestDto != null ? requestDto.getRegistrationNumber() : null);
+    if (incomingReg.isBlank()) {
+      incomingReg = nz.apply(registrationNumber);
     }
 
-    //Route based on requestType
-    switch (requestType) {
-      case "1":
-        //Call the MandatesAutoFill.xsl page
-        return generateMandatesFillPage(
-            1,   //Default accountCount
-            null, //signatoryCounts
-            null, //removeSignatoryAt
-            null, // ddSignatoryAt
-            null  //removeAccountAt
-        );
-      case "2":
-        String resolutionPage = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"),
-            new RequestWrapper());
-        return ResponseEntity.ok(resolutionPage);
-      case "3":
-        String mandateResolutionPage =
-            xsltProcessor.generatePage(xslPagePath("MandateResolutionAutoFill"),
-                new RequestWrapper());
-        return ResponseEntity.ok(mandateResolutionPage);
-      default:
-        String fallbackXml = "<page xmlns:comm=\"http://ws.online.fnb.co.za/common/\""
-            + " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
-            + " id=\"\" heading=\" \" template=\"error\" version=\"1\">"
-            + "<error xsi:type=\"validationError\">"
-            + "<name>mandateResolution</name>"
-            + "<code>0</code>"
-            + "<message>Invalid request type.</message>"
-            + "</error>"
-            + "</page>";
-        return ResponseEntity.ok(fallbackXml);
+    boolean fromCreateSearch =
+        "POST".equalsIgnoreCase(request.getMethod())
+            && "create".equals(request.getParameter("origin"))
+            && request.getParameter("companyRegNumber") != null;
+
+    String daoName = null;
+    String daoAddr = null;
+
+    // If the post is from CreateRequest and a reg was typed, try DAO lookup.
+    // On "not found" -> re-render CreateRequest with inline message so the "Create Request"
+    // button shows.
+    if (fromCreateSearch && !incomingReg.isBlank()) {
+      String url = "http://localhost:8083/api/company/registration?registrationNumber="
+          + java.net.URLEncoder.encode(incomingReg, java.nio.charset.StandardCharsets.UTF_8);
+      org.springframework.web.client.RestTemplate rt =
+          new org.springframework.web.client.RestTemplate();
+      try {
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> company = rt.getForObject(url, java.util.Map.class);
+        if (company == null) {
+          return renderCreateRequestWithInlineNotFound(session, incomingReg);
+        }
+        Object n = company.get("name");
+        Object a = company.get("address");
+        daoName = n == null ? "" : n.toString().trim();
+        daoAddr = a == null ? "" : a.toString().trim();
+      } catch (org.springframework.web.client.HttpStatusCodeException ex) {
+        return renderCreateRequestWithInlineNotFound(session, incomingReg);
+      } catch (Exception ex) {
+        return renderCreateRequestWithInlineNotFound(session, incomingReg);
+      }
+    }
+
+    // Load current DTO (if any) using current session id
+    String currentSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (currentSessionId != null) ? pdfExtractionDataCache.get(currentSessionId) : null;
+    String currentReg = (dto != null) ? nz.apply(dto.getRegistrationNumber()) : "";
+
+    // If the user typed a different reg number, rotate to a NEW pdfSessionId + fresh DTO
+    boolean regChanged =
+        (!incomingReg.isBlank() && !normReg(incomingReg).equals(normReg(currentReg)));
+    if (regChanged) {
+      String newId = java.util.UUID.randomUUID().toString();
+      session.setAttribute("pdfSessionId", newId);
+
+      dto = new RequestDTO();
+      dto.setRegistrationNumber(incomingReg);
+      dto.setDirectors(new java.util.ArrayList<>());
+      dto.setDocumentumTools(new java.util.ArrayList<>());
+      dto.setResolutionDocs(new java.util.ArrayList<>());
+
+    } else {
+      if (dto == null) {
+        dto = new RequestDTO();
+      }
+      if (dto.getDirectors() == null) {
+        dto.setDirectors(new java.util.ArrayList<>());
+      }
+      if (dto.getDocumentumTools() == null) {
+        dto.setDocumentumTools(new java.util.ArrayList<>());
+      }
+      if (dto.getResolutionDocs() == null) {
+        dto.setResolutionDocs(new java.util.ArrayList<>());
+      }
+      if ((dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank())
+          && !incomingReg.isBlank()) {
+        dto.setRegistrationNumber(incomingReg);
+      }
+    }
+
+    //From here on, use the (possibly rotated) session id
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+
+    //Merge posted company fields (non-blank only)
+    if (requestDto != null) {
+      String nm = dedupeComma.apply(requestDto.getCompanyName());
+      if (!nm.isBlank()) {
+        dto.setCompanyName(nm);
+      }
+
+      String addr = dedupeComma.apply(requestDto.getCompanyAddress());
+      if (!addr.isBlank()) {
+        dto.setCompanyAddress(addr);
+      }
+
+      //Only set registrationNumber from model if not blank AND not contradicting a rotated value
+      String regModel = nz.apply(requestDto.getRegistrationNumber());
+      if (!regModel.isBlank() && normReg(regModel).equals(normReg(dto.getRegistrationNumber()))) {
+        dto.setRegistrationNumber(regModel);
+      }
+    }
+
+    //If we came from CreateRequest and DAO returned name/address, prefer those
+    if (fromCreateSearch) {
+      if (daoName != null && !daoName.isBlank()) {
+        dto.setCompanyName(daoName);
+      }
+      if (daoAddr != null && !daoAddr.isBlank()) {
+        dto.setCompanyAddress(daoAddr);
+      }
+    }
+
+    //Directors: safe add/remove/pad without wiping data
+    java.util.List<RequestDTO.Director> directors = dto.getDirectors();
+    if (directors.isEmpty()) {
+      directors.add(new RequestDTO.Director());
+    }
+
+    //If model-bound directors arrived, merge by index (non-blank only)
+    if (requestDto != null && requestDto.getDirectors() != null && !requestDto.getDirectors()
+        .isEmpty()) {
+      java.util.List<RequestDTO.Director> incoming = requestDto.getDirectors();
+      while (directors.size() < incoming.size()) {
+        directors.add(new RequestDTO.Director());
+      }
+      for (int i = 0; i < incoming.size(); i++) {
+        RequestDTO.Director in = incoming.get(i);
+        RequestDTO.Director ex = directors.get(i);
+        if (in.getName() != null && !in.getName().isBlank()) {
+          ex.setName(in.getName().trim());
+        }
+        if (in.getSurname() != null && !in.getSurname().isBlank()) {
+          ex.setSurname(in.getSurname().trim());
+        }
+        if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
+          ex.setDesignation(in.getDesignation().trim());
+        }
+      }
+    }
+
+    boolean removing =
+        (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
+    if (removing) {
+      directors.remove(removeDirectorAt - 1);
+      if (directors.isEmpty()) {
+        directors.add(new RequestDTO.Director());
+      }
+    } else if (directorCount != null && directorCount > directors.size()) {
+      for (int i = directors.size(); i < directorCount; i++) {
+        directors.add(new RequestDTO.Director());
+      }
+    }
+    dto.setDirectors(directors);
+
+    //Tools / Resolution docs (counts only pad lists; values come from model when posted)
+    if (toolCount != null && toolCount > dto.getDocumentumTools().size()) {
+      for (int i = dto.getDocumentumTools().size(); i < toolCount; i++) {
+        dto.getDocumentumTools().add("");
+      }
+    }
+    if (resolutionDocCount != null && resolutionDocCount > dto.getResolutionDocs().size()) {
+      for (int i = dto.getResolutionDocs().size(); i < resolutionDocCount; i++) {
+        dto.getResolutionDocs().add("");
+      }
+    }
+
+    //Persist + render
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+
+    pdfExtractionDataCache.put(pdfSessionId, dto);
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+
+    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @GetMapping(value = "/searchCompanyDetails", produces = {MediaType.APPLICATION_XML_VALUE,
+      MediaType.TEXT_XML_VALUE})
+  public ResponseEntity<String> searchCompanyDetailsGet(
+      @RequestParam(value = "directorCount", required = false) Integer directorCount,
+      @RequestParam(value = "removeDirectorAt", required = false) Integer removeDirectorAt,
+      @RequestParam(value = "toolCount", required = false) Integer toolCount,
+      @RequestParam(value = "resolutionDocCount", required = false) Integer resolutionDocCount,
+      HttpSession session
+  ) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
+      pdfSessionId = java.util.UUID.randomUUID().toString();
+      session.setAttribute("pdfSessionId", pdfSessionId);
+    }
+
+    RequestDTO dto = pdfExtractionDataCache.getOrDefault(pdfSessionId, new RequestDTO());
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    ensureLists(dto);
+    ensureAtLeastOneDirector(dto);
+
+    // apply optional modifiers
+    java.util.List<RequestDTO.Director> directors = dto.getDirectors();
+    if (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size()) {
+      directors.remove(removeDirectorAt - 1);
+      if (directors.isEmpty()) {
+        directors.add(new RequestDTO.Director());
+      }
+    } else if (directorCount != null && directorCount > directors.size()) {
+      for (int i = directors.size(); i < directorCount; i++) {
+        directors.add(new RequestDTO.Director());
+      }
+    }
+    if (toolCount != null && toolCount > dto.getDocumentumTools().size()) {
+      for (int i = dto.getDocumentumTools().size(); i < toolCount; i++) {
+        dto.getDocumentumTools().add("");
+      }
+    }
+    if (resolutionDocCount != null && resolutionDocCount > dto.getResolutionDocs().size()) {
+      for (int i = dto.getResolutionDocs().size(); i < resolutionDocCount; i++) {
+        dto.getResolutionDocs().add("");
+      }
+    }
+
+    pdfExtractionDataCache.put(pdfSessionId, dto);
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  // ========== SAVE DRAFT FROM SEARCH RESULTS ==========
+  @PostMapping(value = "/saveDraftSearchResults", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> saveDraftSearchResults(@ModelAttribute RequestDTO form,
+                                                       HttpServletRequest httpReq) {
+    try {
+      //Log raw incoming params so we can see how the UI posts (e.g. directors[0].name0)
+      httpReq.getParameterMap().forEach((k, v) ->
+          logger.debug("[saveDraft] {} = {}", k, Arrays.toString(v)));
+
+      final String base = "http://localhost:8083";
+      RestTemplate rt = new RestTemplate();
+
+      //If updating, fetch existing so we can merge (prevents wiping authorities on empty posts)
+      RequestStagingDTO existing = null;
+      if (form.getStagingId() != null) {
+        try {
+          existing = rt.getForObject(
+              base + "/api/request-staging/{id}",
+              RequestStagingDTO.class,
+              form.getStagingId()
+          );
+        } catch (Exception ex) {
+          logger.warn("Could not fetch existing draft {} for merge: {}",
+              form.getStagingId(), ex.getMessage());
+        }
+      }
+
+      //Build outbound staging DTO
+      RequestStagingDTO dto = new RequestStagingDTO();
+      dto.setStagingId(form.getStagingId()); // null=create; non-null=update
+
+      //Company
+      dto.setCompanyRegistrationNumber(nz(form.getRegistrationNumber()));
+      dto.setCompanyName(dedupeComma(form.getCompanyName()));
+      dto.setCompanyAddress(dedupeComma(form.getCompanyAddress()));
+
+      //Request (ok if null)
+      dto.setRequestType(
+          mapRequestType(form.getMandateResolution())); // "1|2|3" -> Mandates|Resolutions|Both
+      dto.setRequestStatus("Draft");
+      dto.setRequestSubStatus("Saved");
+
+      //Waiver tools -> CSV
+      if (form.getDocumentumTools() != null) {
+        LinkedHashSet<String> tools = new LinkedHashSet<>();
+        for (String t : form.getDocumentumTools()) {
+          if (t != null && !t.isBlank()) {
+            tools.add(t.trim());
+          }
+        }
+        dto.setWaiverPermittedTools(String.join(", ", tools));
+      }
+
+      //Directors to Authorities (prefer parsed from raw params)
+      List<RequestDTO.Director> parsed = parseDirectorsFromParams(httpReq.getParameterMap());
+      logger.debug("[saveDraft] parsed {} directors from params", parsed.size());
+
+      List<RequestDTO.Director> incomingDirectors =
+          (!parsed.isEmpty() ? parsed :
+              (form.getDirectors() == null ? List.of() : form.getDirectors()));
+
+      if (!incomingDirectors.isEmpty()) {
+        List<RequestStagingDTO.AuthorityDraft> auths = new ArrayList<>();
+        for (RequestDTO.Director d : incomingDirectors) {
+          if (d == null || isAllBlank(d.getName(), d.getSurname(), d.getDesignation())) {
+            continue;
+          }
+          RequestStagingDTO.AuthorityDraft a = new RequestStagingDTO.AuthorityDraft();
+          a.setFirstname(nz(d.getName()));
+          a.setSurname(nz(d.getSurname()));
+          a.setDesignation(nz(d.getDesignation()));
+          a.setIsActive(Boolean.TRUE);
+          auths.add(a);
+        }
+        dto.setAuthorities(auths.isEmpty() ? null : auths);
+      } else {
+        //Nothing posted → keep existing authorities on update to avoid wiping
+        dto.setAuthorities(existing != null ? existing.getAuthorities() : null);
+      }
+
+      //Accounts not edited on this page — carry forward if updating
+      dto.setAccounts(existing != null ? existing.getAccounts() : null);
+
+      //Debug: show payload going to DAO ----
+      try {
+        ObjectMapper om = new ObjectMapper();
+        logger.info("Outgoing payload to DAO:\n{}",
+            om.writerWithDefaultPrettyPrinter().writeValueAsString(dto));
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      //Create or Update
+      if (dto.getStagingId() == null) {
+        RequestStagingDTO saved =
+            rt.postForObject(base + "/api/request-staging", dto, RequestStagingDTO.class);
+        if (saved != null) {
+          dto.setStagingId(saved.getStagingId());
+        }
+      } else {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        rt.exchange(base + "/api/request-staging/{id}",
+            HttpMethod.PUT, new HttpEntity<>(dto, headers), Void.class, dto.getStagingId());
+      }
+
+      try {
+        if (dto.getStagingId() != null) {
+          RequestStagingDTO after = rt.getForObject(
+              base + "/api/request-staging/{id}",
+              RequestStagingDTO.class,
+              dto.getStagingId()
+          );
+          logger.info("After-save authorities.size={}",
+              (after != null && after.getAuthorities() != null) ? after.getAuthorities().size() :
+                  null);
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      //Rebuild Draft table
+      RequestStagingDTO[] raws =
+          rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
+      List<RequestStagingDTO> list = (raws == null) ? List.of() : Arrays.asList(raws);
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      List<RequestTableDTO> rows = new ArrayList<>();
+      for (RequestStagingDTO d : list) {
+        RequestTableDTO r = new RequestTableDTO();
+        r.setRequestId(d.getStagingId());
+        r.setCompanyName(d.getCompanyName());
+        r.setRegistrationNumber(d.getCompanyRegistrationNumber());
+        r.setStatus(d.getRequestStatus());
+        r.setSubStatus(d.getRequestSubStatus());
+        r.setType(d.getRequestType());
+        rows.add(r);
+      }
+      wrapper.setRequest(rows);
+
+      String page = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+
+    } catch (Exception e) {
+      logger.error("saveDraftSearchResults failed", e);
+      String error = "<page><error>Unable to save draft.</error></page>";
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
     }
   }
 
+  @RequestMapping(
+      value = "/draft/save",
+      method = {RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> saveDraft(
+      @ModelAttribute RequestDTO form,
+      @RequestParam(value = "pageCode", required = false) String pageCode,
+      HttpServletRequest req
+  ) {
+    // 1) Inspect posted params
+    req.getParameterMap().forEach((k, v) ->
+        logger.debug("[/draft/save] {} = {}", k, java.util.Arrays.toString(v)));
+
+    final String base = "http://localhost:8083";
+    final RestTemplate rt = new RestTemplate();
+
+    // 2) Resolve pageCode
+    logger.info("[/draft/save] posted pageCode = {}", first(req.getParameterMap().get("pageCode")));
+    String resolved = resolvePage(req, pageCode);
+    String currentPage = normalizePageCode(resolved);
+    RequestStagingDTO existing = null;
+
+    // 3) Load existing draft if any
+    Long stagingIdFromForm = form.getStagingId();
+    if (stagingIdFromForm == null) {
+      String rawId = first(req.getParameterMap().get("stagingId"));
+      if (rawId != null && !rawId.isBlank()) {
+        try {
+          stagingIdFromForm = Long.valueOf(rawId.trim());
+        } catch (NumberFormatException ignore) {
+          // intentionally empty
+        }
+      }
+    }
+    if (stagingIdFromForm != null) {
+      try {
+        existing = rt.getForObject(
+            base + "/api/request-staging/{id}",
+            RequestStagingDTO.class,
+            stagingIdFromForm
+        );
+      } catch (Exception ex) {
+        logger.warn("Could not fetch existing draft {}: {}", stagingIdFromForm, ex.getMessage());
+      }
+    }
+    if ((currentPage == null || currentPage.isBlank()) && existing != null) {
+      currentPage = normalizePageCode(extractLastPageCode(existing.getRequestSubStatus()));
+    }
+    if (currentPage == null || currentPage.isBlank()) {
+      currentPage = "SEARCH_RESULTS";
+    }
+    logger.info("[/draft/save] RESOLVED pageCode = {}", currentPage);
+
+    // 4) Start from existing (or new)
+    RequestStagingDTO dto = (existing != null) ? existing : new RequestStagingDTO();
+    dto.setStagingId(stagingIdFromForm);
+    dto.setRequestStatus("Draft");
+    dto.setRequestSubStatus("Saved@" + currentPage);
+
+    // 5) Parse & merge posted fields
+    Map<String, String[]> params = req.getParameterMap();
+
+    // 5.1 Company (prefer last non-blank so visible inputs beat any hidden)
+    String reg = nz(lastNonBlank(req, "registrationNumber"));
+    String name = dedupeComma(nz(lastNonBlank(req, "companyName")));
+    String addr = dedupeComma(nz(lastNonBlank(req, "companyAddress")));
+    if (!reg.isBlank()) {
+      dto.setCompanyRegistrationNumber(reg);
+    }
+    if (!name.isBlank()) {
+      dto.setCompanyName(name);
+    }
+    if (!addr.isBlank()) {
+      dto.setCompanyAddress(addr);
+    }
+
+    // 5.2 Request type — prefer the LAST non-blank value (dropdown beats hidden)
+    String mr = nz(lastNonBlank(req, "mandateResolution"));        // dropdown
+    if (mr.isBlank()) {
+      mr = nz(lastNonBlank(req, "mandateResolutionCode")); // hidden (renamed)
+    }
+    if (mr.isBlank()) {
+      mr = nz(lastNonBlank(req, "requestType"));
+    }
+    if (mr.isBlank()) {
+      mr = nz(lastNonBlank(req, "type"));
+    }
+    if (!mr.isBlank()) {
+      dto.setRequestType(mapRequestType(mr));
+    }
+
+    // 5.3 Waiver tools
+    java.util.List<String> tools = parseDocumentumToolsFromParams(params);
+    if (tools.isEmpty()) {
+      String raw = nz(first(params.get("waiverPermittedTools")));
+      if (!raw.isBlank()) {
+        for (String t : raw.split(",")) {
+          String tt = t == null ? "" : t.trim();
+          if (!tt.isBlank()) {
+            tools.add(tt);
+          }
+        }
+      }
+    }
+    if (!tools.isEmpty()) {
+      java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+      for (String t : tools) {
+        set.add(t.trim());
+      }
+      dto.setWaiverPermittedTools(String.join(", ", set));
+    }
+
+    // 5.4 Directors -> Authorities
+    java.util.List<RequestDTO.Director> directors = parseDirectorsFromParamsGeneric(params);
+    if (directors.isEmpty()) {
+      // fallback for keys like directors[0].name0/surname0/designation0
+      directors = parseDirectorsFromParamsSuffix(params);
+    }
+    if (!directors.isEmpty()) {
+      java.util.List<RequestStagingDTO.AuthorityDraft> auths = new java.util.ArrayList<>();
+      for (RequestDTO.Director d : directors) {
+        if (d == null || isAllBlank(d.getName(), d.getSurname(), d.getDesignation())) {
+          continue;
+        }
+        RequestStagingDTO.AuthorityDraft a = new RequestStagingDTO.AuthorityDraft();
+        a.setFirstname(d.getName() == null ? "" : d.getName().trim());
+        a.setSurname(d.getSurname() == null ? "" : d.getSurname().trim());
+        a.setDesignation(d.getDesignation() == null ? "" : d.getDesignation().trim());
+        a.setIsActive(Boolean.TRUE);
+        auths.add(a);
+      }
+      if (!auths.isEmpty()) {
+        java.util.LinkedHashMap<String, RequestStagingDTO.AuthorityDraft> uniq =
+            new java.util.LinkedHashMap<>();
+        for (RequestStagingDTO.AuthorityDraft a : auths) {
+          String key = (
+              (a.getFirstname() == null ? "" : a.getFirstname().trim())
+                  + "|" + (a.getSurname() == null ? "" : a.getSurname().trim())
+                  + "|" + (a.getDesignation() == null ? "" : a.getDesignation().trim())
+          ).toLowerCase();
+          uniq.putIfAbsent(key, a);
+        }
+        dto.setAuthorities(new java.util.ArrayList<>(uniq.values()));
+      }
+    }
+
+    // 5.5 Accounts + Signatories
+    java.util.List<RequestStagingDTO.AccountDraft> accounts = parseAccountsFromParams(params);
+    if (!accounts.isEmpty()) {
+      dto.setAccounts(accounts);
+    }
+
+    // ---- FINAL TYPE DECISION (do not override explicit/page-derived) ----
+    String decidedType = dto.getRequestType();
+
+    // 1) If user posted a value, it’s already in dto via mapRequestType(mr)
+    // 2) If still blank, reuse existing
+    if (isBlank(decidedType) && existing != null && !isBlank(existing.getRequestType())) {
+      decidedType = existing.getRequestType();
+    }
+    // 3) If still blank, infer from the current page
+    if (isBlank(decidedType)) {
+      String byPage = inferTypeFromPage(currentPage); // "Both" wins only for BOTH pages
+      if (!isBlank(byPage)) {
+        decidedType = byPage;
+      }
+    }
+    // 4) Only if STILL blank, infer from lists
+    boolean hasAccts = dto.getAccounts() != null && !dto.getAccounts().isEmpty();
+    boolean hasAuth = dto.getAuthorities() != null && !dto.getAuthorities().isEmpty();
+    if (isBlank(decidedType)) {
+      if (hasAccts && hasAuth) {
+        decidedType = "Both";
+      } else if (hasAccts) {
+        decidedType = "Mandates";
+      } else if (hasAuth) {
+        decidedType = "Resolutions";
+      }
+    }
+    dto.setRequestType(decidedType);
+
+    // 5) Now normalize lists based on the final type
+    // IMPORTANT: do NOT normalize on Search Results page (prevents directors disappearing)
+    final boolean isSearchResults = "SEARCH_RESULTS".equalsIgnoreCase(currentPage);
+    if (!isSearchResults) {
+      normalizeListsByType(dto);
+    }
+
+    // 6) Debug outbound payload
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper om =
+          new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+      logger.info("[/draft/save] OUTBOUND JSON:\n{}",
+          om.writerWithDefaultPrettyPrinter().writeValueAsString(dto));
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+
+    // 7) Persist
+    if (dto.getStagingId() == null) {
+      RequestStagingDTO saved =
+          rt.postForObject(base + "/api/request-staging", dto, RequestStagingDTO.class);
+      if (saved != null) {
+        dto.setStagingId(saved.getStagingId());
+      }
+    } else {
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      rt.exchange(base + "/api/request-staging/{id}",
+          HttpMethod.PUT, new HttpEntity<>(dto, headers), Void.class, dto.getStagingId());
+    }
+
+    // 8) Optional verify
+    try {
+      ResponseEntity<String> raw =
+          rt.getForEntity(base + "/api/request-staging/{id}", String.class, dto.getStagingId());
+      logger.info("[/draft/save] AFTER PUT raw GET JSON:\n{}", raw.getBody());
+    } catch (Exception ex) {
+      logger.warn("[/draft/save] After-PUT verify failed: {}", ex.getMessage());
+    }
+
+    // 9) Return the Draft table
+    RequestStagingDTO[] raws =
+        rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
+    java.util.List<RequestStagingDTO> list =
+        (raws == null) ? java.util.List.of() : java.util.Arrays.asList(raws);
+
+    java.time.format.DateTimeFormatter fmt =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    java.util.List<RequestTableDTO> rows = new java.util.ArrayList<>();
+    for (RequestStagingDTO d : list) {
+      // Enrich per-row if created or requestType missing (DAO list may omit them)
+      RequestStagingDTO src = d;
+      if (d.getCreated() == null || isBlank(d.getRequestType())) {
+        try {
+          src = rt.getForObject(base + "/api/request-staging/{id}",
+              RequestStagingDTO.class, d.getStagingId());
+        } catch (Exception ignore) {
+          // intentionally empty
+        }
+        if (src == null) {
+          src = d;
+        }
+      }
+
+      RequestTableDTO r = new RequestTableDTO();
+      r.setRequestId(src.getStagingId());
+      r.setCompanyName(src.getCompanyName());
+      r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+      r.setStatus(src.getRequestStatus());
+      r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+      r.setType(src.getRequestType());  // for <type>
+      r.setCreated(src.getCreated() == null ? "" : src.getCreated().format(fmt)); // formatted
+      r.setUpdated(null);
+      rows.add(r);
+    }
+    wrapper.setRequest(rows);
+
+    String pageXml = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(pageXml);
+  }
+
+
+  @PostMapping(value = "/nextStep", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> handleNextStep(
+      @ModelAttribute RequestDTO requestDto,
+      @RequestParam(value = "mandateResolution", required = false) String requestType,
+      @RequestParam(value = "back", required = false) String back,
+      HttpServletRequest request,
+      HttpSession session
+  ) {
+    logger.debug("---- RAW PARAMS (nextStep) ----");
+    request.getParameterMap()
+        .forEach((key, values) -> logger.debug("{} = {}", key, java.util.Arrays.toString(values)));
+    logger.debug("--------------------------------");
+    logger.info("Received requestType: {}", requestType);
+
+    // normalize selection up-front so we can reuse it everywhere
+    final String reqSel = normalizeSelCode(requestType);
+
+    // Helpers
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> dedupeComma = s -> {
+      String t = nz.apply(s);
+      if (t.isEmpty()) {
+        return t;
+      }
+      String[] parts = t.split("\\s*,\\s*");
+      if (parts.length <= 1) {
+        return t;
+      }
+      java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+      for (String p : parts) {
+        if (!p.isBlank()) {
+          set.add(p);
+        }
+      }
+      return String.join(", ", set);
+    };
+
+    // Some UIs post fields like directors[0].name0; manually capture if present
+    java.util.List<RequestDTO.Director> manualDirectors = new java.util.ArrayList<>();
+    int idx = 0;
+    while (true) {
+      String name = request.getParameter("directors[" + idx + "].name" + idx);
+      String surname = request.getParameter("directors[" + idx + "].surname" + idx);
+      String designation = request.getParameter("directors[" + idx + "].designation" + idx);
+      if (name == null && surname == null && designation == null) {
+        break;
+      }
+      RequestDTO.Director d = new RequestDTO.Director();
+      d.setName(name);
+      d.setSurname(surname);
+      d.setDesignation(designation);
+      manualDirectors.add(d);
+      idx++;
+    }
+    if (!manualDirectors.isEmpty()) {
+      if (requestDto == null) {
+        requestDto = new RequestDTO();
+      }
+      requestDto.setDirectors(manualDirectors);
+      logger.info("Manually built {} directors from request params", manualDirectors.size());
+    }
+
+    // If user clicked "Back", just merge & return to SearchResults without validation
+    if ("1".equals(back)) {
+      String pdfSessionId = request.getParameter("pdfSessionId");
+      if (pdfSessionId == null) {
+        pdfSessionId = (String) session.getAttribute("pdfSessionId");
+      }
+
+      RequestDTO dto = (RequestDTO) session.getAttribute("requestData");
+      if (dto == null && pdfSessionId != null) {
+        dto = pdfExtractionDataCache.get(pdfSessionId);
+      }
+      if (dto == null) {
+        dto = new RequestDTO();
+      }
+
+      // Make sure lists exist
+      if (dto.getDirectors() == null) {
+        dto.setDirectors(new java.util.ArrayList<>());
+      }
+      if (dto.getDocumentumTools() == null) {
+        dto.setDocumentumTools(new java.util.ArrayList<>());
+      }
+      if (dto.getResolutionDocs() == null) {
+        dto.setResolutionDocs(new java.util.ArrayList<>());
+      }
+
+      // Merge (no duplication / no blank overwrite)
+      if (requestDto != null) {
+        String incomingName = dedupeComma.apply(requestDto.getCompanyName());
+        if (!incomingName.isBlank() && !incomingName.equals(nz.apply(dto.getCompanyName()))) {
+          dto.setCompanyName(incomingName);
+        }
+        String incomingAddr = dedupeComma.apply(requestDto.getCompanyAddress());
+        if (!incomingAddr.isBlank() && !incomingAddr.equals(nz.apply(dto.getCompanyAddress()))) {
+          dto.setCompanyAddress(incomingAddr);
+        }
+        String incomingReg = nz.apply(requestDto.getRegistrationNumber());
+        if (!incomingReg.isBlank() && !incomingReg.equals(nz.apply(dto.getRegistrationNumber()))) {
+          dto.setRegistrationNumber(incomingReg);
+        }
+
+        if (requestDto.getDirectors() != null && !requestDto.getDirectors().isEmpty()) {
+          java.util.List<RequestDTO.Director> existing =
+              dto.getDirectors() != null ? dto.getDirectors() : new java.util.ArrayList<>();
+          java.util.List<RequestDTO.Director> incoming = requestDto.getDirectors();
+          while (existing.size() < incoming.size()) {
+            existing.add(new RequestDTO.Director());
+          }
+          for (int i2 = 0; i2 < incoming.size(); i2++) {
+            RequestDTO.Director in = incoming.get(i2);
+            RequestDTO.Director ex = existing.get(i2);
+            if (in.getName() != null && !in.getName().isBlank()) {
+              ex.setName(in.getName().trim());
+            }
+            if (in.getSurname() != null && !in.getSurname().isBlank()) {
+              ex.setSurname(in.getSurname().trim());
+            }
+            if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
+              ex.setDesignation(in.getDesignation().trim());
+            }
+          }
+          dto.setDirectors(existing);
+        }
+
+        if (requestDto.getDocumentumTools() != null
+            && requestDto.getDocumentumTools().stream().anyMatch(t -> t != null && !t.isBlank())) {
+          dto.setDocumentumTools(requestDto.getDocumentumTools());
+        }
+        if (requestDto.getResolutionDocs() != null
+            && requestDto.getResolutionDocs().stream().anyMatch(r -> r != null && !r.isBlank())) {
+          dto.setResolutionDocs(requestDto.getResolutionDocs());
+        }
+      }
+
+      // restore or set selection for SearchResults
+      if (reqSel != null) {
+        dto.setMandateResolution(reqSel);
+      } else if (dto.getMandateResolution() == null || dto.getMandateResolution().isBlank()) {
+        // as a last resort, see if a raw param is present
+        String raw = request.getParameter("mandateResolution");
+        String norm = normalizeSelCode(raw);
+        if (norm != null) {
+          dto.setMandateResolution(norm);
+        }
+      }
+
+      dto.setPdfSessionId(pdfSessionId);
+      dto.setEditable(true);
+
+      session.setAttribute("requestData", dto);
+      if (pdfSessionId != null) {
+        pdfExtractionDataCache.put(pdfSessionId, dto);
+      }
+
+      RequestWrapper wrapper = new RequestWrapper();
+      wrapper.setRequest(dto);
+      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      return ResponseEntity.ok(page);
+    }
+
+    // ---------- PROCEED PATH (validate page fields, then route) ----------
+    // Load cached DTO
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto = (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : null;
+    if (dto == null) {
+      dto = new RequestDTO();
+    }
+
+    // Ensure lists exist
+    if (dto.getDirectors() == null) {
+      dto.setDirectors(new java.util.ArrayList<>());
+    }
+    if (dto.getDocumentumTools() == null) {
+      dto.setDocumentumTools(new java.util.ArrayList<>());
+    }
+    if (dto.getResolutionDocs() == null) {
+      dto.setResolutionDocs(new java.util.ArrayList<>());
+    }
+
+    // Merge posted values into DTO (non-blank only)
+    if (requestDto != null) {
+      String nm = dedupeComma.apply(requestDto.getCompanyName());
+      if (!nm.isBlank()) {
+        dto.setCompanyName(nm);
+      }
+
+      String addr = dedupeComma.apply(requestDto.getCompanyAddress());
+      if (!addr.isBlank()) {
+        dto.setCompanyAddress(addr);
+      }
+
+      String reg = nz.apply(requestDto.getRegistrationNumber());
+      if (!reg.isBlank()) {
+        dto.setRegistrationNumber(reg);
+      }
+
+      // Directors merge by index
+      if (requestDto.getDirectors() != null && !requestDto.getDirectors().isEmpty()) {
+        java.util.List<RequestDTO.Director> incoming = requestDto.getDirectors();
+        while (dto.getDirectors().size() < incoming.size()) {
+          dto.getDirectors().add(new RequestDTO.Director());
+        }
+        for (int i = 0; i < incoming.size(); i++) {
+          RequestDTO.Director in = incoming.get(i);
+          RequestDTO.Director ex = dto.getDirectors().get(i);
+          if (in.getName() != null && !in.getName().isBlank()) {
+            ex.setName(in.getName().trim());
+          }
+          if (in.getSurname() != null && !in.getSurname().isBlank()) {
+            ex.setSurname(in.getSurname().trim());
+          }
+          if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
+            ex.setDesignation(in.getDesignation().trim());
+          }
+        }
+      }
+
+      // Waiver tools merge by index
+      if (requestDto.getDocumentumTools() != null && !requestDto.getDocumentumTools().isEmpty()) {
+        java.util.List<String> incTools = requestDto.getDocumentumTools();
+        while (dto.getDocumentumTools().size() < incTools.size()) {
+          dto.getDocumentumTools().add("");
+        }
+        for (int i = 0; i < incTools.size(); i++) {
+          String v = nz.apply(incTools.get(i));
+          if (!v.isBlank()) {
+            dto.getDocumentumTools().set(i, v);
+          }
+        }
+      }
+    }
+
+    //  Persist the user's dropdown selection BEFORE validation so it sticks on errors too
+    if (reqSel != null) {
+      dto.setMandateResolution(reqSel);
+    }
+
+    // Persist merged DTO before validation
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
+      pdfSessionId = java.util.UUID.randomUUID().toString();
+      session.setAttribute("pdfSessionId", pdfSessionId);
+    }
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    pdfExtractionDataCache.put(pdfSessionId, dto);
+    session.setAttribute("requestData", dto);
+
+    // ---- Validation for SearchResults page fields ----
+    SearchResultsErrorModel errors = new SearchResultsErrorModel();
+    boolean hasErrors = false;
+
+    // Company details
+    if (nz.apply(dto.getCompanyName()).isBlank()) {
+      errors.setCompanyName("Company name is required");
+      hasErrors = true;
+    }
+    if (nz.apply(dto.getCompanyAddress()).isBlank()) {
+      errors.setCompanyAddress("Company address is required");
+      hasErrors = true;
+    }
+
+    // Company waiver (only if user added at least one tool field)
+    java.util.List<String> tools = dto.getDocumentumTools();
+    if (tools != null && !tools.isEmpty()) {
+      for (String t : tools) {
+        if (nz.apply(t).isBlank()) {
+          errors.setCompanyWaiver("Please enter the waiver tool");
+          hasErrors = true;
+          break;
+        }
+      }
+    }
+
+    // Directors: every present row must be fully populated (name, surname, designation)
+    java.util.List<RequestDTO.Director> directors = dto.getDirectors();
+    if (directors == null || directors.isEmpty()) {
+      errors.setFullName("Director name is required");
+      errors.setSurname("Director surname is required");
+      errors.setDesignation("Director designation is required");
+      hasErrors = true;
+    } else {
+      boolean anyMissing = false;
+      for (RequestDTO.Director d : directors) {
+        boolean rowMissing = nz.apply(d.getName()).isBlank()
+            || nz.apply(d.getSurname()).isBlank()
+            || nz.apply(d.getDesignation()).isBlank();
+        if (rowMissing) {
+          anyMissing = true;
+          break;
+        }
+      }
+      if (anyMissing) {
+        if (nz.apply(errors.getFullName()).isBlank()) {
+          errors.setFullName("Director name is required");
+        }
+        if (nz.apply(errors.getSurname()).isBlank()) {
+          errors.setSurname("Director surname is required");
+        }
+        if (nz.apply(errors.getDesignation()).isBlank()) {
+          errors.setDesignation("Director designation is required");
+        }
+        hasErrors = true;
+      }
+    }
+
+    if (hasErrors) {
+      // Stay on SearchResults and show field-level errors (selection already seeded)
+      RequestWrapper wrapper = new RequestWrapper();
+      wrapper.setRequest(dto);
+      wrapper.setSearchResultsErrorModel(errors);
+      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      return ResponseEntity.ok(page);
+    }
+
+    // ----- No field errors on SearchResults -> now enforce your existing choice/confirmation
+    // rules -----
+    String confirmationCheck = null;
+    if (requestType != null) {
+      switch (requestType) {
+        case "1" -> confirmationCheck = request.getParameter("confirmationCheckMandate");
+        case "2" -> confirmationCheck = request.getParameter("confirmationCheckResolution");
+        case "3" -> confirmationCheck = request.getParameter("confirmationCheckMandateResolution");
+        default ->
+          {
+            // intentionally empty (unknown requestType)
+            // or set a safe fallback, e.g. confirmationCheck = null;
+          }
+      }
+    }
+
+    if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
+      return ResponseEntity.ok("""
+          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                id="" heading=" " template="error" version="1">
+              <error xsi:type="validationError">
+                  <name>mandateResolution</name>
+                  <code>0</code>
+                  <message>Please select a valid request type.</message>
+              </error>
+          </page>
+          """);
+    }
+    if (confirmationCheck == null || !"1".equals(confirmationCheck)) {
+      return ResponseEntity.ok("""
+          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                id="" heading=" " template="error" version="1">
+              <error xsi:type="validationError">
+                  <name>confirmationCheck</name>
+                  <code>0</code>
+                  <message>Please check the confirmation box to proceed.</message>
+              </error>
+          </page>
+          """);
+    }
+
+    // Ensure the persisted dto also has the final selection
+    if (reqSel != null) {
+      dto.setMandateResolution(reqSel);
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+      session.setAttribute("requestData", dto);
+    }
+
+    // Route exactly as before
+    switch (requestType) {
+      case "1": // Mandates
+        return generateMandatesFillPage(1, null, null, null, null);
+      case "2": // Resolutions
+        return generateResolutionsFillPage(null, null);
+      case "3": // Mandates & Resolutions (combined – start at Accounts page)
+        return mrAccDetailsGet(session);
+      default:
+        return ResponseEntity.ok("""
+              <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    id="" heading=" " template="error" version="1">
+                <error xsi:type="validationError">
+                  <name>mandateResolution</name>
+                  <code>0</code>
+                  <message>Invalid request type.</message>
+                </error>
+              </page>
+            """);
+    }
+  }
+
+  //mandatesFill POST
   @PostMapping(value = "/mandatesFill", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayMandatesFillPost(
+      HttpServletRequest request,
       @RequestParam(defaultValue = "1") int accountCount,
       @RequestParam(required = false) String signatoryCounts,
-      @RequestParam(required = false) String removeSignatoryAt,
-      @RequestParam(required = false) Integer addSignatoryAt,
-      @RequestParam(required = false) Integer removeAccountAt
+      @RequestParam(required = false) String removeSignatoryAt, // "2_1"
+      @RequestParam(required = false) Integer addSignatoryAt,   // 2
+      @RequestParam(required = false) Integer removeAccountAt,
+      HttpSession session
   ) {
-    return generateMandatesFillPage(accountCount, signatoryCounts,
-        removeSignatoryAt, addSignatoryAt, removeAccountAt);
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    //1) Parse + merge by position (single value per name now)
+    java.util.List<RequestDTO.Account> parsed = parseAccountsFromRequest(request);
+    mergeAccounts(dto, parsed);
+
+    //2) Work on the live list
+    java.util.List<RequestDTO.Account> accounts = dto.getAccounts();
+    if (accounts == null) {
+      accounts = new java.util.ArrayList<>();
+    }
+
+    //3) Apply UI actions AFTER merge
+    if (addSignatoryAt != null && addSignatoryAt >= 1 && addSignatoryAt <= accounts.size()) {
+      accounts.get(addSignatoryAt - 1).getSignatories().add(createBlankSignatory());
+    }
+
+    if (removeSignatoryAt != null && !removeSignatoryAt.isEmpty()) {
+      try {
+        String[] parts = removeSignatoryAt.split("_");
+        if (parts.length == 2) {
+          int a = Integer.parseInt(parts[0]) - 1;
+          int s = Integer.parseInt(parts[1]) - 1;
+          if (a >= 0 && a < accounts.size()) {
+            java.util.List<RequestDTO.Signatory> signs = accounts.get(a).getSignatories();
+            if (signs != null && s >= 0 && s < signs.size()) {
+              signs.remove(s);
+            }
+            if (signs == null || signs.isEmpty()) {
+              accounts.get(a).setSignatories(new java.util.ArrayList<>(
+                  java.util.List.of(createBlankSignatory())));
+            }
+          }
+        }
+      } catch (NumberFormatException ignore) {
+        // intentionally empty
+      }
+    }
+
+    boolean deletingAccount =
+        (removeAccountAt != null && removeAccountAt >= 1 && removeAccountAt <= accounts.size());
+    if (deletingAccount) {
+      accounts.remove(removeAccountAt - 1);
+    }
+
+    //4) Append blanks to reach accountCount (exactly +1 when you clicked Add)
+    if (!deletingAccount) {
+      while (accounts.size() < accountCount) {
+        accounts.add(createBlankAccount());
+      }
+    }
+    if (accounts.isEmpty()) {
+      accounts.add(createBlankAccount());
+    }
+
+    dto.setAccounts(accounts);
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+
+    //5) Persist
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    //6) Render
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
   @GetMapping(value = "/mandatesFill", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayMandatesFillGet(
+      @RequestParam(required = false) Long stagingId,
+      @RequestParam(required = false) String pdfSessionId,
       @RequestParam(defaultValue = "1") int accountCount,
       @RequestParam(required = false) String signatoryCounts,
       @RequestParam(required = false) String removeSignatoryAt,
       @RequestParam(required = false) Integer addSignatoryAt,
-      @RequestParam(required = false) Integer removeAccountAt
+      @RequestParam(required = false) Integer removeAccountAt,
+      HttpServletRequest req, //Nneeded for applyAccAndSigsEditsFromRequest
+      HttpSession session
   ) {
-    return generateMandatesFillPage(accountCount, signatoryCounts,
-        removeSignatoryAt, addSignatoryAt, removeAccountAt);
+    // 1) Keep existing session resolution
+    if (pdfSessionId == null) {
+      Object sessionVal = session.getAttribute("pdfSessionId");
+      if (sessionVal != null) {
+        pdfSessionId = sessionVal.toString();
+      }
+    }
+
+    //2) When editing an existing draft, preload from DAO
+    if (stagingId != null) {
+      RequestWrapper wrapper = buildAutoFillWrapperFromStaging(stagingId, pdfSessionId);
+      RequestDTO dto = wrapper.getRequest();
+      if (dto == null) {
+        dto = new RequestDTO();
+        wrapper.setRequest(dto);
+      }
+
+      //Apply current request’s in-page edits (accountCount, remove*, field edits from inputs)
+      applyAccAndSigsEditsFromRequest(req, dto);
+
+      //Handle "add signatory" button (explicitly grow by 1 blank row)
+      if (addSignatoryAt != null && addSignatoryAt > 0) {
+        ensureAccounts(dto, addSignatoryAt);
+        RequestDTO.Account acc = dto.getAccounts().get(addSignatoryAt - 1);
+        int cur = (acc.getSignatories() == null) ? 0 : acc.getSignatories().size();
+        ensureSignatories(acc, cur + 1);
+      }
+
+      //Keep session vars as before (some flows rely on them)
+      session.setAttribute("pdfSessionId", dto.getPdfSessionId());
+      session.setAttribute("requestData", dto);
+
+      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    }
+
+    // 3)Existing behavior: serve from PDF extraction cache if present
+    if (pdfSessionId != null && pdfExtractionDataCache.containsKey(pdfSessionId)) {
+      RequestDTO dto = pdfExtractionDataCache.get(pdfSessionId);
+      session.setAttribute("pdfSessionId", pdfSessionId);
+      session.setAttribute("requestData", dto);
+
+      RequestWrapper wrapper = new RequestWrapper();
+      wrapper.setRequest(dto);
+      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    }
+
+    // 4)Existing fallback (your skeleton page generator)
+    return generateMandatesFillPage(
+        accountCount, signatoryCounts, removeSignatoryAt, addSignatoryAt, removeAccountAt
+    );
   }
 
+  //First load / fallback
   private ResponseEntity<String> generateMandatesFillPage(
       int accountCount,
       String signatoryCounts,
@@ -187,129 +1753,257 @@ public class MandatesResolutionUIController {
       Integer addSignatoryAt,
       Integer removeAccountAt
   ) {
-    RequestWrapper wrapper = new RequestWrapper();
-    RequestDTO dto = new RequestDTO();
-    List<Integer> signatoryCountList = new ArrayList<>();
+    HttpSession session =
+        ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
+            .getSession();
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
 
-    //Parse signatoryCounts safely
-    if (signatoryCounts != null && !signatoryCounts.isEmpty()) {
-      String[] parts = signatoryCounts.split(",");
-      for (String part : parts) {
-        try {
-          signatoryCountList.add(Integer.parseInt(part.trim()));
-        } catch (NumberFormatException e) {
-          signatoryCountList.add(1); //Fallback if invalid
-        }
+    RequestDTO dto = (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : null;
+    if (dto == null) {
+      dto = new RequestDTO();
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    java.util.List<RequestDTO.Account> accounts =
+        (dto.getAccounts() != null) ? dto.getAccounts() : new java.util.ArrayList<>();
+    if (accounts.isEmpty()) {
+      int target = Math.max(1, accountCount);
+      for (int i = 0; i < target; i++) {
+        accounts.add(createBlankAccount());
       }
     }
 
-    //Ensure signatoryCountList matches accountCount
-    while (signatoryCountList.size() < accountCount) {
-      signatoryCountList.add(1);
+    if (addSignatoryAt != null && addSignatoryAt >= 1 && addSignatoryAt <= accounts.size()) {
+      accounts.get(addSignatoryAt - 1).getSignatories().add(createBlankSignatory());
     }
 
-    //Handle Add Signatory
-    if (addSignatoryAt != null && addSignatoryAt >= 1 && addSignatoryAt <= accountCount) {
-      int index = addSignatoryAt - 1;
-      signatoryCountList.set(index, signatoryCountList.get(index) + 1);
-    }
-
-    //Handle Remove Signatory
     if (removeSignatoryAt != null && !removeSignatoryAt.isEmpty()) {
       try {
         String[] parts = removeSignatoryAt.split("_");
         if (parts.length == 2) {
-          int accountIndex = Integer.parseInt(parts[0]) - 1;
-          int signatoryIndex = Integer.parseInt(parts[1]) - 1;
-          if (accountIndex >= 0 && accountIndex < signatoryCountList.size()) {
-            int currentCount = signatoryCountList.get(accountIndex);
-            if (currentCount > 1 && signatoryIndex >= 0 && signatoryIndex < currentCount) {
-              signatoryCountList.set(accountIndex, currentCount - 1);
+          int a = Integer.parseInt(parts[0]) - 1;
+          int s = Integer.parseInt(parts[1]) - 1;
+          if (a >= 0 && a < accounts.size()) {
+            java.util.List<RequestDTO.Signatory> signs = accounts.get(a).getSignatories();
+            if (signs != null && s >= 0 && s < signs.size()) {
+              signs.remove(s);
             }
           }
         }
-      } catch (NumberFormatException e) {
-        System.out.println("Invalid removeSignatoryAt format: " + removeSignatoryAt);
+      } catch (NumberFormatException ignore) {
+        // intentionally empty
       }
     }
 
-    //Handle Remove Account
-    if (removeAccountAt != null && removeAccountAt >= 1 && removeAccountAt <= accountCount) {
-      int index = removeAccountAt - 1;
-      if (index < signatoryCountList.size()) {
-        signatoryCountList.remove(index);
-        accountCount--;
-      }
-    }
-
-    //Build DTO accounts with signatories
-    List<RequestDTO.Account> accounts = new ArrayList<>();
-    for (int i = 0; i < accountCount; i++) {
-      RequestDTO.Account acc = new RequestDTO.Account();
-      acc.setAccountName("");
-      acc.setAccountNo("");
-
-      int signatoryCount = signatoryCountList.get(i);
-      List<RequestDTO.Signatory> signatories = new ArrayList<>();
-      for (int j = 0; j < signatoryCount; j++) {
-        RequestDTO.Signatory s = new RequestDTO.Signatory();
-        s.setFullName("");
-        s.setIdNumber("");
-        s.setInstruction("");
-        signatories.add(s);
-      }
-      acc.setSignatories(signatories);
-      accounts.add(acc);
+    if (removeAccountAt != null && removeAccountAt >= 1 && removeAccountAt <= accounts.size()) {
+      accounts.remove(removeAccountAt - 1);
     }
 
     dto.setAccounts(accounts);
-    wrapper.setRequestDTO(dto);
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
 
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/mandatesSignatureCard", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayMandatesSignatureCard() {
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"),
-        new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
-  }
-
-  @PostMapping(value = "/resolutionsFill", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayResolutionsFill(
-      @RequestParam(defaultValue = "1") int directorCount,
-      @RequestParam(required = false) Integer removeDirectorAt
+  /**
+   * Generate the Resolutions AutoFill page with persisted state in cache + session.
+   * Keeps at least 1 director; supports removing a director by 1-based index.
+   */
+  private ResponseEntity<String> generateResolutionsFillPage(
+      Integer directorCount,
+      Integer removeDirectorAt
   ) {
-    RequestWrapper wrapper = new RequestWrapper();
-    RequestDTO dto = new RequestDTO();
+    //Load from session/cache
+    HttpSession session =
+        ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
+            .getRequest()
+            .getSession();
 
-    List<RequestDTO.Director> directors = new ArrayList<>();
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
 
-    //Builds the directors list
-    for (int i = 0; i < directorCount; i++) {
-      RequestDTO.Director director = new RequestDTO.Director();
-      director.setName("");
-      director.setSurname("");
-      director.setDesignation("");
-      directors.add(director);
+    RequestDTO dto = null;
+    if (pdfSessionId != null) {
+      dto = pdfExtractionDataCache.get(pdfSessionId);
+    }
+    if (dto == null) {
+      dto = new RequestDTO();
+      dto.setDirectors(new ArrayList<>());
     }
 
-    //Remove button for directors
-    if (removeDirectorAt != null) {
-      int indexToRemove = removeDirectorAt - 1; //UI sends 1-based
-      if (indexToRemove >= 0 && indexToRemove < directors.size()) {
-        directors.remove(indexToRemove);
-        directorCount--; //Reeflects the updated count
+    List<RequestDTO.Director> directors = dto.getDirectors();
+    if (directors == null) {
+      directors = new ArrayList<>();
+    }
+
+    //Ensure at least directorCount directors exist
+    if (directorCount == null || directorCount < 1) {
+      directorCount = 1;
+    }
+    while (directors.size() < directorCount) {
+      directors.add(createBlankDirector());
+    }
+
+    //Remove Director (1-based index)
+    if (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size()) {
+      directors.remove(removeDirectorAt - 1);
+      //Keep at least one row so the page renders
+      if (directors.isEmpty()) {
+        directors.add(createBlankDirector());
       }
     }
 
+    //Persist into DTO / session / cache
     dto.setDirectors(directors);
-    wrapper.setRequestDTO(dto);
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
 
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    //Wrap & render
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
+
+  // /mandatesSignatureCard POST (VALIDATING VERSION)
+  @PostMapping(value = "/mandatesSignatureCard", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayMandatesSignatureCardPost(
+      HttpServletRequest request,
+      HttpSession session
+  ) {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    // 1) Parse & merge by position (your existing helpers)
+    java.util.List<RequestDTO.Account> parsed = parseAccountsFromRequest(request);
+    mergeAccounts(dto, parsed);
+
+    // 2) Ensure there is at least one account and each account has at least one signatory row
+    if (dto.getAccounts().isEmpty()) {
+      dto.getAccounts().add(createBlankAccount());
+    }
+    for (RequestDTO.Account acc : dto.getAccounts()) {
+      if (acc.getSignatories() == null) {
+        acc.setSignatories(new java.util.ArrayList<>());
+      }
+      if (acc.getSignatories().isEmpty()) {
+        acc.getSignatories().add(createBlankSignatory());
+      }
+    }
+
+    // 3) Validate required fields for MandatesAutoFill
+    MandatesAutoFillErrorModel errors = new MandatesAutoFillErrorModel();
+    boolean hasErrors = false;
+
+    for (RequestDTO.Account acc : dto.getAccounts()) {
+      if (nz.apply(acc.getAccountName()).isBlank()) {
+        errors.setAccountName("Account name is required");
+        hasErrors = true;
+      }
+      if (nz.apply(acc.getAccountNo()).isBlank()) {
+        errors.setAccountNo("Account number is required");
+        hasErrors = true;
+      }
+
+      java.util.List<RequestDTO.Signatory> signs = acc.getSignatories();
+      if (signs == null || signs.isEmpty()) {
+        // Safety (shouldn’t happen due to step 2, but keep messages consistent)
+        errors.setSignatoryFullName("Full name is required");
+        errors.setSignatoryIdNumber("ID number is required");
+        errors.setSignatoryInstruction("Instruction is required");
+        hasErrors = true;
+        continue;
+      }
+
+      for (RequestDTO.Signatory s : signs) {
+        if (nz.apply(s.getFullName()).isBlank()) {
+          errors.setSignatoryFullName("Full name is required");
+          hasErrors = true;
+        }
+        if (nz.apply(s.getIdNumber()).isBlank()) {
+          errors.setSignatoryIdNumber("ID number is required");
+          hasErrors = true;
+        }
+        if (nz.apply(s.getInstruction()).isBlank()) {
+          errors.setSignatoryInstruction("Instruction is required");
+          hasErrors = true;
+        }
+      }
+    }
+
+    // 4) Persist the merged DTO (so the user sees their latest entries on re-render)
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    if (hasErrors) {
+      //Stay on Mandates Auto Fill and show inline error messages
+      RequestWrapper wrapper = new RequestWrapper();
+      wrapper.setRequest(dto);
+      wrapper.setMandatesAutoFillErrorModel(errors);
+
+      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      return ResponseEntity.ok(page);
+    }
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  // /mandatesSignatureCard GET (unchanged)
+  @GetMapping(value = "/mandatesSignatureCard", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayMandatesSignatureCardGet(HttpSession session) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto = (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : null;
+    if (dto == null) {
+      dto = new RequestDTO();
+      dto.setAccounts(new java.util.ArrayList<>());
+      if (dto.getAccounts().isEmpty()) {
+        RequestDTO.Account a = new RequestDTO.Account();
+        a.setAccountName("");
+        a.setAccountNo("");
+        a.setSignatories(new java.util.ArrayList<>(java.util.List.of(createBlankSignatory())));
+        dto.getAccounts().add(a);
+      }
+    }
+
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
 
   //Success Pages
   @PostMapping(value = "/mandatesSuccess", produces = MediaType.APPLICATION_XML_VALUE)
@@ -318,11 +2012,733 @@ public class MandatesResolutionUIController {
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
+  // ======================= MANDATES SUBMIT =======================
+  @PostMapping(value = "/mandatesSubmit", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> handleMandatesSubmit(HttpServletRequest request,
+                                                     HttpSession session) {
+    System.out.println("Submitting Mandates (FINAL)...");
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    try {
+      // Load UI state
+      String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+      RequestDTO uiData =
+          (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+      if (uiData.getAccounts() == null) {
+        uiData.setAccounts(new java.util.ArrayList<>());
+      }
+
+      // Merge last edits from form
+      java.util.List<RequestDTO.Account> parsed = parseAccountsFromRequest(request);
+      mergeAccounts(uiData, parsed);
+
+      // ---- Validate ----
+      MandatesSignatureCardErrorModel errors = new MandatesSignatureCardErrorModel();
+      boolean hasErrors = false;
+      if (uiData.getAccounts().isEmpty()) {
+        uiData.getAccounts().add(createBlankAccount());
+      }
+      for (RequestDTO.Account acc : uiData.getAccounts()) {
+        if (nz.apply(acc.getAccountName()).isBlank()) {
+          errors.setAccountName("Account name is required");
+          hasErrors = true;
+        }
+        if (nz.apply(acc.getAccountNo()).isBlank()) {
+          errors.setAccountNo("Account number is required");
+          hasErrors = true;
+        }
+        var signs = acc.getSignatories();
+        if (signs == null || signs.isEmpty()) {
+          errors.setSignatoryFullName("Full name is required");
+          errors.setSignatoryIdNumber("ID number is required");
+          errors.setCapacity("Capacity is required");
+          errors.setGroup("Group is required");
+          hasErrors = true;
+          continue;
+        }
+        for (RequestDTO.Signatory s : signs) {
+          String inst = nz.apply(s.getInstruction()).toUpperCase();
+          if ("REMOVE".equals(inst)) {
+            continue;
+          }
+          if (nz.apply(s.getFullName()).isBlank()) {
+            errors.setSignatoryFullName("Full name is required");
+            hasErrors = true;
+          }
+          if (nz.apply(s.getIdNumber()).isBlank()) {
+            errors.setSignatoryIdNumber("ID number is required");
+            hasErrors = true;
+          }
+          if (nz.apply(s.getCapacity()).isBlank()) {
+            errors.setCapacity("Capacity is required");
+            hasErrors = true;
+          }
+          if (nz.apply(s.getGroup()).isBlank()) {
+            errors.setGroup("Group is required");
+            hasErrors = true;
+          }
+        }
+      }
+
+      // Persist UI state back to session/cache
+      uiData.setPdfSessionId(pdfSessionId);
+      uiData.setEditable(true);
+      if (pdfSessionId != null) {
+        pdfExtractionDataCache.put(pdfSessionId, uiData);
+      }
+      session.setAttribute("requestData", uiData);
+
+      if (hasErrors) {
+        RequestWrapper wrapper = new RequestWrapper();
+        wrapper.setRequest(uiData);
+        wrapper.setMandatesSignatureCardErrorModel(errors);
+        String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+        return ResponseEntity.ok(page);
+      }
+
+      // -- stamp logged-in user --
+      LoginDTO current = (LoginDTO) session.getAttribute("currentUser");
+      String uname =
+          (current != null && current.getUserId() != null && !current.getUserId().isBlank())
+              ? current.getUserId()
+              :
+              (request.getUserPrincipal() != null ? nz.apply(request.getUserPrincipal().getName()) :
+                  "");
+      if (uname.isBlank()) {
+        uname = "UI_USER";
+      }
+      uiData.setLoggedInUsername(uname);
+      uiData.setLoggedInEmail(current != null ? nz.apply(current.getEmail()) : "");
+
+      // ---- Submit to backend ----
+      SubmissionPayload payload = buildSubmissionPayload(uiData, "Mandates");
+      za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
+          postSnapshotToBackend(payload);
+
+      if (result != null && result.getRequest() != null) {
+        var r = result.getRequest();
+        logger.info("Mandates submission OK: requestId={}, processId={}, assignedUser={}",
+            r.getRequestId(), r.getProcessId(), r.getAssignedUser());
+      }
+
+      return displayMandatesSuccess();
+
+    } catch (Exception e) {
+      logger.error("Mandates submit failed", e);
+      return ResponseEntity.ok("""
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+          id="" heading=" " template="error" version="1">
+            <error xsi:type="systemError"><code>500</code>
+            <message>Failed to save submission.</message></error>
+          </page>
+          """);
+    }
+  }
+
+  @PostMapping(value = "/resolutionsFill", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayResolutionsFillPost(
+      HttpServletRequest request,
+      @RequestParam(required = false) Integer directorCount,
+      @RequestParam(required = false) Integer removeDirectorAt,
+      HttpSession session
+  ) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getDirectors() == null) {
+      dto.setDirectors(new java.util.ArrayList<>());
+    }
+
+    // Persist company fields coming as hidden inputs (for Back → SearchResults)
+    String nm = request.getParameter("companyName");
+    String ad = request.getParameter("companyAddress");
+    String rn = request.getParameter("registrationNumber");
+    if (nm != null && !nm.isBlank()) {
+      dto.setCompanyName(nm.trim());
+    }
+    if (ad != null && !ad.isBlank()) {
+      dto.setCompanyAddress(ad.trim());
+    }
+    if (rn != null && !rn.isBlank()) {
+      dto.setRegistrationNumber(rn.trim());
+    }
+
+    // 1) Merge posted directors by position (from ResolutionAutoFill)
+    java.util.List<RequestDTO.Director> parsed =
+        parseDirectorsFromRequest(request); // uses directorName_/Surname_/Designation_
+    mergeDirectorsByPosition(dto, parsed);
+
+    java.util.List<RequestDTO.Director> directors = dto.getDirectors();
+    if (directors == null) {
+      directors = new java.util.ArrayList<>();
+    }
+    if (directors.isEmpty()) {
+      directors.add(createBlankDirector());
+    }
+
+    // 2) Removal FIRST (don’t re-pad during the same request)
+    boolean removing =
+        (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
+    if (removing) {
+      directors.remove(removeDirectorAt - 1);
+      if (directors.isEmpty()) {
+        directors.add(createBlankDirector());
+      }
+    } else if (directorCount != null && directorCount > directors.size()) {
+      // 3) Only pad when NOT removing
+      for (int i = directors.size(); i < directorCount; i++) {
+        directors.add(createBlankDirector());
+      }
+    }
+
+    dto.setDirectors(directors);
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @GetMapping(value = "/resolutionsFill", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayResolutionsFillGet(
+      @RequestParam(required = false) Integer directorCount,
+      @RequestParam(required = false) Integer removeDirectorAt
+  ) {
+    return generateResolutionsFillPage(directorCount, removeDirectorAt);
+  }
+
   @PostMapping(value = "/resolutionsSuccess", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayResolutionSuccess() {
     String page = xsltProcessor.returnPage(xmlPagePath("ResolutionSuccessPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
+
+  // ======================= RESOLUTIONS SUBMIT =======================
+  @PostMapping(value = "/resolutionSubmit", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayResolutionSubmit(HttpServletRequest request,
+                                                        HttpSession session) {
+    System.out.println("Submitting Resolution (FINAL)...");
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    try {
+      String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+      RequestDTO uiData =
+          (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+      if (uiData.getDirectors() == null) {
+        uiData.setDirectors(new java.util.ArrayList<>());
+      }
+
+      // Merge last edits (includes instruction)
+      java.util.List<RequestDTO.Director> parsed = parseDirectorsFromRequest(request);
+      mergeDirectorsByPosition(uiData, parsed);
+
+      // ---- Validate ----
+      ResolutionsAutoFillErrorModel errors = new ResolutionsAutoFillErrorModel();
+      boolean hasErrors = false;
+      if (uiData.getDirectors().isEmpty()) {
+        uiData.getDirectors().add(createBlankDirector());
+        errors.setDirectorName("Director name is required");
+        errors.setDirectorSurname("Director surname is required");
+        errors.setDirectorDesignation("Director designation is required");
+        errors.setDirectorInstruction("Instruction is required");
+        hasErrors = true;
+      } else {
+        for (RequestDTO.Director d : uiData.getDirectors()) {
+          if (nz.apply(d.getName()).isBlank()) {
+            errors.setDirectorName("Director name is required");
+            hasErrors = true;
+          }
+          if (nz.apply(d.getSurname()).isBlank()) {
+            errors.setDirectorSurname("Director surname is required");
+            hasErrors = true;
+          }
+          if (nz.apply(d.getDesignation()).isBlank()) {
+            errors.setDirectorDesignation("Director designation is required");
+            hasErrors = true;
+          }
+          if (nz.apply(d.getInstruction()).isBlank()) {
+            errors.setDirectorInstruction("Instruction is required");
+            hasErrors = true;
+          }
+        }
+      }
+
+      uiData.setPdfSessionId(pdfSessionId);
+      uiData.setEditable(true);
+      if (pdfSessionId != null) {
+        pdfExtractionDataCache.put(pdfSessionId, uiData);
+      }
+      session.setAttribute("requestData", uiData);
+
+      if (hasErrors) {
+        RequestWrapper wrapper = new RequestWrapper();
+        wrapper.setRequest(uiData);
+        wrapper.setResolutionsAutoFillErrorModel(errors);
+        String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
+        return ResponseEntity.ok(page);
+      }
+
+      // -- stamp logged-in user --
+      LoginDTO current = (LoginDTO) session.getAttribute("currentUser");
+      String uname =
+          (current != null && current.getUserId() != null && !current.getUserId().isBlank())
+              ? current.getUserId()
+              :
+              (request.getUserPrincipal() != null ? nz.apply(request.getUserPrincipal().getName()) :
+                  "");
+      if (uname.isBlank()) {
+        uname = "UI_USER";
+      }
+      uiData.setLoggedInUsername(uname);
+      uiData.setLoggedInEmail(current != null ? nz.apply(current.getEmail()) : "");
+
+      // ---- Submit to backend ----
+      SubmissionPayload payload = buildSubmissionPayload(uiData, "Resolutions");
+      za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
+          postSnapshotToBackend(payload);
+
+      if (result != null && result.getRequest() != null) {
+        var r = result.getRequest();
+        logger.info("Resolutions submission OK: requestId={}, processId={}, assignedUser={}",
+            r.getRequestId(), r.getProcessId(), r.getAssignedUser());
+      }
+
+      return displayResolutionSuccess();
+
+    } catch (Exception e) {
+      logger.error("Resolution submit failed", e);
+      return ResponseEntity.ok("""
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+          id="" heading=" " template="error" version="1">
+            <error xsi:type="systemError"><code>500</code>
+            <message>Failed to save resolution submission.</message></error>
+          </page>
+          """);
+    }
+  }
+
+  // =======================  Mandates & Resolutions  =======================
+
+  //ACCOUNTS
+  @PostMapping(value = "/mandatesResolutionsAccDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrAccDetailsPost(
+      HttpServletRequest request,
+      @RequestParam(defaultValue = "1") int accountCount,
+      @RequestParam(required = false) String removeSignatoryAt, // "i_j"
+      @RequestParam(required = false) Integer addSignatoryAt,   // i
+      @RequestParam(required = false) Integer removeAccountAt,  // i
+      HttpSession session
+  ) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    //1) Parse + merge current form edits
+    var parsed = parseAccountsFromRequest(request);
+    mergeAccounts(dto, parsed);
+
+    //2) Apply UI actions
+    var accounts = dto.getAccounts();
+    if (addSignatoryAt != null && addSignatoryAt >= 1 && addSignatoryAt <= accounts.size()) {
+      accounts.get(addSignatoryAt - 1).getSignatories().add(createBlankSignatory());
+    }
+    if (removeSignatoryAt != null && !removeSignatoryAt.isBlank()) {
+      try {
+        String[] p = removeSignatoryAt.split("_");
+        int ai = Integer.parseInt(p[0]) - 1;
+        int si = Integer.parseInt(p[1]) - 1;
+        if (ai >= 0 && ai < accounts.size()) {
+          var sigs = accounts.get(ai).getSignatories();
+          if (sigs != null && si >= 0 && si < sigs.size()) {
+            sigs.remove(si);
+          }
+          if (sigs == null || sigs.isEmpty()) {
+            accounts.get(ai).setSignatories(
+                new java.util.ArrayList<>(java.util.List.of(createBlankSignatory())));
+          }
+        }
+      } catch (Exception ignored) {
+        // intentionally empty
+      }
+    }
+    if (removeAccountAt != null && removeAccountAt >= 1 && removeAccountAt <= accounts.size()) {
+      accounts.remove(removeAccountAt - 1);
+    }
+
+    //Pad to accountCount (only expand)
+    while (accounts.size() < Math.max(1, accountCount)) {
+      accounts.add(createBlankAccount());
+    }
+
+    dto.setAccounts(accounts);
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @GetMapping(value = "/mandatesResolutionsAccDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrAccDetailsGet(HttpSession session) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null || dto.getAccounts().isEmpty()) {
+      dto.setAccounts(new java.util.ArrayList<>(java.util.List.of(createBlankAccount())));
+    }
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  //SIGNATURE CARD (VALIDATES ACCOUNT + APPOINTED SIGNATORIES like MandatesAutoFill)
+  @PostMapping(value = "/mandatesResolutionsSignatureCard", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrSigCardPost(HttpServletRequest request, HttpSession session) {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    // Merge current edits from Account Details
+    var parsed = parseAccountsFromRequest(request);
+    mergeAccounts(dto, parsed);
+
+    // ---- Validate accounts + appointed signatories (REQUIRED on this page) ----
+    boolean hasErrors = false;
+    MandatesAutoFillErrorModel accErrors = new MandatesAutoFillErrorModel();
+
+    if (dto.getAccounts().isEmpty()) {
+      dto.getAccounts().add(createBlankAccount());
+      accErrors.setAccountName("Account name is required");
+      accErrors.setAccountNo("Account number is required");
+      // signatory messages too (to light up the table)
+      accErrors.setSignatoryFullName("Full name is required");
+      accErrors.setSignatoryIdNumber("ID number is required");
+      accErrors.setSignatoryInstruction("Instruction is required");
+      hasErrors = true;
+    } else {
+      for (RequestDTO.Account a : dto.getAccounts()) {
+        if (nz.apply(a.getAccountName()).isBlank()) {
+          accErrors.setAccountName("Account name is required");
+          hasErrors = true;
+        }
+        if (nz.apply(a.getAccountNo()).isBlank()) {
+          accErrors.setAccountNo("Account number is required");
+          hasErrors = true;
+        }
+
+        var sigs = a.getSignatories();
+        if (sigs == null || sigs.isEmpty()) {
+          accErrors.setSignatoryFullName("Full name is required");
+          accErrors.setSignatoryIdNumber("ID number is required");
+          accErrors.setSignatoryInstruction("Instruction is required");
+          hasErrors = true;
+        } else {
+          for (RequestDTO.Signatory s : sigs) {
+            if (nz.apply(s.getFullName()).isBlank()) {
+              accErrors.setSignatoryFullName("Full name is required");
+              hasErrors = true;
+            }
+            if (nz.apply(s.getIdNumber()).isBlank()) {
+              accErrors.setSignatoryIdNumber("ID number is required");
+              hasErrors = true;
+            }
+            if (nz.apply(s.getInstruction()).isBlank()) {
+              accErrors.setSignatoryInstruction("Instruction is required");
+              hasErrors = true;
+            }
+          }
+        }
+      }
+    }
+
+    // Persist + reflect state
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    if (hasErrors) {
+      // Stay on Accounts page with inline errors
+      RequestWrapper wrapper = new RequestWrapper();
+      wrapper.setRequest(dto);
+      wrapper.setMandatesAutoFillErrorModel(accErrors);
+
+      String page =
+          xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+      return ResponseEntity.ok(page);
+    }
+
+    // No errors → proceed to Signature Card confirmation page
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page =
+        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @GetMapping(value = "/mandatesResolutionsSignatureCard", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrSigCardGet(HttpSession session) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getAccounts() == null || dto.getAccounts().isEmpty()) {
+      dto.setAccounts(new java.util.ArrayList<>(java.util.List.of(createBlankAccount())));
+    }
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page =
+        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  // DIRECTORS
+  @PostMapping(value = "/mandatesResolutionsDirectorsDetails", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrDirectorsPost(
+      HttpServletRequest request,
+      @RequestParam(required = false) Integer directorCount,
+      @RequestParam(required = false) Integer removeDirectorAt,
+      HttpSession session
+  ) {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+
+    // Ensure lists exist
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+    if (dto.getDirectors() == null) {
+      dto.setDirectors(new java.util.ArrayList<>());
+    }
+
+    // Persist latest signature-card edits (accounts/signatories)
+    java.util.List<RequestDTO.Account> parsedAcc = parseAccountsFromRequest(request);
+    mergeAccounts(dto, parsedAcc);
+
+    // --- NO VALIDATION HERE ---
+    // Only make sure the structures exist so the next page can render safely.
+    if (dto.getAccounts().isEmpty()) {
+      dto.getAccounts().add(createBlankAccount());
+    }
+    for (RequestDTO.Account acc : dto.getAccounts()) {
+      if (acc.getSignatories() == null) {
+        acc.setSignatories(new java.util.ArrayList<>());
+      }
+      if (acc.getSignatories().isEmpty()) {
+        acc.getSignatories().add(createBlankSignatory());
+      }
+    }
+
+    // Existing directors logic (always proceed)
+    var parsedDirs = parseDirectorsFromRequest(request);
+    mergeDirectorsByPosition(dto, parsedDirs);
+
+    var directors = dto.getDirectors();
+    if (directors.isEmpty()) {
+      directors.add(createBlankDirector());
+    }
+
+    if (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size()) {
+      directors.remove(removeDirectorAt - 1);
+      if (directors.isEmpty()) {
+        directors.add(createBlankDirector());
+      }
+    } else if (directorCount != null && directorCount > directors.size()) {
+      for (int i = directors.size(); i < directorCount; i++) {
+        directors.add(createBlankDirector());
+      }
+    }
+    dto.setDirectors(directors);
+
+    // Persist + render next page
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page =
+        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @GetMapping(value = "/mandatesResolutionsDirectorsDetails", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrDirectorsGet(HttpSession session) {
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    RequestDTO dto =
+        (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+    if (dto.getDirectors() == null || dto.getDirectors().isEmpty()) {
+      dto.setDirectors(new java.util.ArrayList<>(java.util.List.of(createBlankDirector())));
+    }
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setEditable(true);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
+    session.setAttribute("requestData", dto);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page =
+        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  //SUCCESS
+  @PostMapping(value = "/mandatesResolutionsSuccess", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayMandatesResolutionsSuccess() {
+    String page = xsltProcessor.returnPage(xmlPagePath("MandatesResolutionsSuccess"));
+    return ResponseEntity.ok(page);
+  }
+
+
+  //SUBMIT
+  // ======================= MANDATES & RESOLUTIONS SUBMIT =======================
+  @PostMapping(value = "/mandatesResolutionsSubmit", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> mrSubmit(HttpServletRequest request, HttpSession session) {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    try {
+      String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+      RequestDTO uiData =
+          (pdfSessionId != null) ? pdfExtractionDataCache.get(pdfSessionId) : new RequestDTO();
+      if (uiData.getAccounts() == null) {
+        uiData.setAccounts(new java.util.ArrayList<>());
+      }
+      if (uiData.getDirectors() == null) {
+        uiData.setDirectors(new java.util.ArrayList<>());
+      }
+
+      // Last-moment merges
+      mergeAccounts(uiData, parseAccountsFromRequest(request));
+      mergeDirectorsByPosition(uiData, parseDirectorsFromRequest(request));
+
+      // ---- Validate Directors (required on this page) ----
+      boolean dirErrors = false;
+      ResolutionsAutoFillErrorModel dirErr = new ResolutionsAutoFillErrorModel();
+      if (uiData.getDirectors().isEmpty()) {
+        uiData.getDirectors().add(createBlankDirector());
+        dirErr.setDirectorName("Director name is required");
+        dirErr.setDirectorSurname("Director surname is required");
+        dirErr.setDirectorDesignation("Director designation is required");
+        dirErrors = true;
+      } else {
+        for (RequestDTO.Director d : uiData.getDirectors()) {
+          if (nz.apply(d.getName()).isBlank()) {
+            dirErr.setDirectorName("Director name is required");
+            dirErrors = true;
+          }
+          if (nz.apply(d.getSurname()).isBlank()) {
+            dirErr.setDirectorSurname("Director surname is required");
+            dirErrors = true;
+          }
+          if (nz.apply(d.getDesignation()).isBlank()) {
+            dirErr.setDirectorDesignation("Director designation is required");
+            dirErrors = true;
+          }
+        }
+      }
+
+      uiData.setPdfSessionId(pdfSessionId);
+      uiData.setEditable(true);
+      if (pdfSessionId != null) {
+        pdfExtractionDataCache.put(pdfSessionId, uiData);
+      }
+      session.setAttribute("requestData", uiData);
+
+      if (dirErrors) {
+        RequestWrapper wrapErr = new RequestWrapper();
+        wrapErr.setRequest(uiData);
+        wrapErr.setResolutionsAutoFillErrorModel(dirErr);
+        String page =
+            xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapErr);
+        return ResponseEntity.ok(page);
+      }
+
+      // -- stamp logged-in user --
+      LoginDTO current = (LoginDTO) session.getAttribute("currentUser");
+      String uname =
+          (current != null && current.getUserId() != null && !current.getUserId().isBlank())
+              ? current.getUserId()
+              :
+              (request.getUserPrincipal() != null ? nz.apply(request.getUserPrincipal().getName()) :
+                  "");
+      if (uname.isBlank()) {
+        uname = "UI_USER";
+      }
+      uiData.setLoggedInUsername(uname);
+      uiData.setLoggedInEmail(current != null ? nz.apply(current.getEmail()) : "");
+
+      // Submit (backend handles workflow and returns processId/assignedUser)
+      SubmissionPayload payload = buildSubmissionPayload(uiData, "Both");
+      za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
+          postSnapshotToBackend(payload);
+
+      System.out.println("Mandates & Resolutions submission OK. RequestId: "
+          + (result != null && result.getRequest() != null ? result.getRequest().getRequestId() :
+          "n/a"));
+
+      return displayMandatesResolutionsSuccess();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return ResponseEntity.ok("""
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+          id="" heading=" " template="error" version="1">
+            <error xsi:type="systemError"><code>500</code>
+            <message>Failed to save Mandates & Resolutions submission.</message></error>
+          </page>
+          """);
+    }
+  }
+
+// ===================== VIEW REQUEST + APPROVE/REJECT COMMENT FLOW =====================
 
   @PostMapping(value = "/viewRequestSuccess", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayViewRequestSuccess() {
@@ -330,176 +2746,4004 @@ public class MandatesResolutionUIController {
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
+  @PostMapping(value = "/viewRequestSuccessRejectPage", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayviewRequestSuccessRejectPage() {
+    String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
+    return new ResponseEntity<>(page, HttpStatus.OK);
+  }
+
+  // ===== Open Reject panel (loads subStatus so XSL can label correctly)
   @PostMapping(value = "/viewRequestReject", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayViewRequestReject() {
-    String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"),
-        new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
+  public ResponseEntity<String> displayViewRequestRejectPage(
+      @RequestParam("requestId") Long requestId) {
+    RequestWrapper wrapper = new RequestWrapper();
+    RequestDTO dto = new RequestDTO();
+    dto.setRequestId(requestId);
+
+    try {
+      RestTemplate rt = new RestTemplate();
+      var resp =
+          rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        dto.setSubStatus(resp.getBody().getSubStatus());
+      }
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/viewRequest", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayViewRequest() {
-    String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
+  // ===== Open Approve panel (loads subStatus so XSL can label correctly)
+  @PostMapping(value = "/viewRequestApprovePage", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayViewRequestApprovePage(
+      @RequestParam("requestId") Long requestId) {
+    RequestWrapper wrapper = new RequestWrapper();
+    RequestDTO dto = new RequestDTO();
+    dto.setRequestId(requestId);
+
+    try {
+      RestTemplate rt = new RestTemplate();
+      var resp =
+          rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        dto.setSubStatus(resp.getBody().getSubStatus());
+      }
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("ViewRequestApprovePage"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
-  //Search bar (CreateRequest.xsl) and values on SearchResults.xsl
-  @PostMapping(value = "/searchCompanyDetails", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> fetchMergedDetails(
-      @RequestParam("companyRegNumber") String registrationNumber,
-      @RequestParam(value = "removeDirectorAt", required = false) Integer removeDirectorAt,
-      @RequestParam(value = "directorCount", required = false) Integer directorCount) {
-    RestTemplate restTemplate = new RestTemplate();
-    String mergeUrl;
+  /**
+   * Submit a REJECT (comment required) -> Completed + Rejected; backend can terminate Camunda
+   * via outcome=Reject.
+   */
+  @PostMapping(value = "/comment/reject", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitRejectComment(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "subStatus", required = false) String subStatusFromForm,
+      @RequestParam("commentbox") String commentText,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpServletRequest servletRequest
+  ) {
+    // ---------- Inline validation (keeps modal open) ----------
+    if (!"1".equals(confirm) || commentText == null || commentText.trim().isEmpty()) {
+      ApproveRejectErrorModel em = new ApproveRejectErrorModel();
+      if (!"1".equals(confirm)) {
+        em.setConfirmationCheckMandate("Please tick the confirmation checkbox to proceed.");
+      }
+      if (commentText == null || commentText.trim().isEmpty()) {
+        em.setCommentbox("Please provide a reason for rejection.");
+      }
+      em.setCommentboxValue(commentText == null ? "" : commentText);
 
-    //Determines which service url will be used
-    boolean isMockMode = "MOCK".equalsIgnoreCase(integrationMode);
-    if (isMockMode) {
-      mergeUrl = NODE_BACKEND_URL + "/merge/simulation"; //Mock data (Mock services)
+      RequestWrapper wrapper = new RequestWrapper();
+      RequestDTO dto = new RequestDTO();
+      dto.setRequestId(requestId);
+
+      try {
+        RestTemplate rt = new RestTemplate();
+        var resp =
+            rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+          dto.setSubStatus(resp.getBody().getSubStatus());
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      wrapper.setRequest(dto);
+      wrapper.setApproveRejectErrorModel(em);
+
+      // Re-render the same Reject modal with inline errors
+      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    }
+
+    // ---------- Happy path ----------
+    try {
+      RestTemplate rt = new RestTemplate();
+
+      // 1) Save REJECT comment (internal)
+      String creator = (servletRequest.getUserPrincipal() != null)
+          ? servletRequest.getUserPrincipal().getName() : "ui";
+      var payload = new java.util.HashMap<String, Object>();
+      payload.put("requestId", requestId);
+      payload.put("commentText", commentText.trim());
+      payload.put("isInternal", Boolean.TRUE);
+      payload.put("creator", creator);
+      rt.postForEntity("http://localhost:8083/api/comment", payload, Object.class);
+
+      // 2) PUT: Completed + Rejected + processOutcome=Reject (triggers DAO -> reject-path)
+      var update = new java.util.HashMap<String, Object>();
+      update.put("status", "Completed");      // exact
+      update.put("subStatus", SS_REJECTED);   // "Rejected"
+      update.put("processOutcome", "Reject"); // IMPORTANT
+
+      var h = new org.springframework.http.HttpHeaders();
+      h.setContentType(MediaType.APPLICATION_JSON);
+      var entity = new org.springframework.http.HttpEntity<>(update, h);
+      rt.exchange("http://localhost:8083/api/request/{id}", HttpMethod.PUT, entity, Void.class,
+          requestId);
+
+      // (Optional) sanity log
+      try {
+        var check =
+            rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+        if (check.getStatusCode().is2xxSuccessful() && check.getBody() != null) {
+          logger.info("After REJECT PUT -> status={}, subStatus={}, processId={}",
+              check.getBody().getStatus(), check.getBody().getSubStatus(),
+              check.getBody().getProcessId());
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      // Success page
+      String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
+      return ResponseEntity.ok(page);
+
+    } catch (Exception ex) {
+      logger.error("Failed to reject/update request: {}", ex.getMessage(), ex);
+      return ResponseEntity.ok("""
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Could not save rejection.</error>
+            </page>
+          """);
+    }
+  }
+
+  /**
+   * Submit an APPROVE (comment optional) -> advance subStatus + success page.
+   */
+  @PostMapping(value = "/comment/approve", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitApproveComment(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "subStatus", required = false) String subStatusFromForm,
+      @RequestParam(value = "commentbox", required = false) String commentText,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpServletRequest servletRequest
+  ) {
+    // ---------- Inline validation (checkbox only) ----------
+    if (!"1".equals(confirm)) {
+      ApproveRejectErrorModel em = new ApproveRejectErrorModel();
+      em.setConfirmationCheckMandate("Please tick the confirmation checkbox to proceed.");
+
+      RequestWrapper wrapper = new RequestWrapper();
+      RequestDTO dto = new RequestDTO();
+      dto.setRequestId(requestId);
+
+      try {
+        RestTemplate rt = new RestTemplate();
+        var resp =
+            rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+          dto.setSubStatus(resp.getBody().getSubStatus());
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      wrapper.setRequest(dto);
+      wrapper.setApproveRejectErrorModel(em);
+
+      // Re-render the same Approve modal with inline errors
+      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestApprovePage"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    }
+
+    // ---------- Happy path ----------
+    try {
+      RestTemplate rt = new RestTemplate();
+
+      // 1) Optional APPROVE comment (external)
+      if (commentText != null && !commentText.trim().isEmpty()) {
+        var payload = new java.util.HashMap<String, Object>();
+        payload.put("requestId", requestId);
+        payload.put("commentText", commentText.trim());
+        payload.put("isInternal", Boolean.FALSE);
+        String creator = (servletRequest.getUserPrincipal() != null)
+            ? servletRequest.getUserPrincipal().getName() : "ui";
+        payload.put("creator", creator);
+        rt.postForEntity("http://localhost:8083/api/comment", payload, Object.class);
+      }
+
+      // 2) Current subStatus (fresh)
+      String currentSub = subStatusFromForm;
+      try {
+        var resp =
+            rt.getForEntity("http://localhost:8083/api/request/{id}", RequestDTO.class, requestId);
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null
+            && resp.getBody().getSubStatus() != null) {
+          currentSub = resp.getBody().getSubStatus();
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+
+      // Already final? just show success
+      if (canonical(currentSub).equalsIgnoreCase(SS_DONE)) {
+        String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
+        return ResponseEntity.ok(page);
+      }
+
+      String next = nextSubStatus(currentSub, true);
+      String newStatus = next.equals(SS_DONE) ? "Completed" : "In Progress";
+
+      // 3) Update request (+ outcome=Approve to advance Camunda)
+      var update = new java.util.HashMap<String, Object>();
+      update.put("status", newStatus);
+      update.put("subStatus", next);
+      update.put("processOutcome", "Approve");   // DAO field name
+
+      var h = new org.springframework.http.HttpHeaders();
+      h.setContentType(MediaType.APPLICATION_JSON);
+      var entity = new org.springframework.http.HttpEntity<>(update, h);
+      rt.exchange("http://localhost:8083/api/request/{id}", HttpMethod.PUT, entity, Void.class,
+          requestId);
+
+      // Success page
+      String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
+      return ResponseEntity.ok(page);
+
+    } catch (Exception ex) {
+      logger.error("Failed to approve/update request: {}", ex.getMessage(), ex);
+      return ResponseEntity.ok("""
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Could not complete approval.</error>
+            </page>
+          """);
+    }
+  }
+
+  /**
+   * Main View Request page (now also fetches newest comments for approve/reject).
+   */
+  @PostMapping(value = "/viewRequest/{requestId}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayViewRequest(
+      @PathVariable Long requestId,
+      HttpSession session,
+      HttpServletRequest servletRequest
+  ) {
+    try {
+      RestTemplate rt = new RestTemplate();
+
+      // Resolve display name (like Profile endpoint)
+      LoginDTO user = (LoginDTO) session.getAttribute("currentUser");
+      String displayName = null;
+      if (user != null) {
+        displayName = (user.getUserId() != null && !user.getUserId().isBlank())
+            ? user.getUserId()
+            : ((user.getFirstName() == null ? "" : user.getFirstName())
+            + " " + (user.getLastName() == null ? "" : user.getLastName())).trim();
+      }
+      if ((displayName == null || displayName.isBlank())
+          && servletRequest.getUserPrincipal() != null) {
+        displayName = servletRequest.getUserPrincipal().getName();
+      }
+      if (displayName == null || displayName.isBlank()) {
+        displayName = "UI";
+      }
+
+      // 1) Load submission (company, request, accounts + nested signatories)
+      String submissionUrl = "http://localhost:8083/api/submission/" + requestId;
+      ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui
+          .model.dto.MandateResolutionSubmissionResultDTO>
+          subResp =
+          rt.getForEntity(
+              submissionUrl,
+              za.co.rmb.tts.mandates.resolutions.ui
+                  .model.dto.MandateResolutionSubmissionResultDTO.class
+          );
+
+      if (!subResp.getStatusCode().is2xxSuccessful() || subResp.getBody() == null) {
+        throw new RuntimeException("Failed to fetch submission " + requestId);
+      }
+      var sub = subResp.getBody();
+
+      logger.info("viewRequest {} -> accounts={}, authorities={}, hasRequest={}",
+          requestId,
+          (sub.getAccounts() == null ? -1 : sub.getAccounts().size()),
+          (sub.getAuthorities() == null ? -1 : sub.getAuthorities().size()),
+          (sub.getRequest() != null));
+
+      // 2) Fetch comments (DAO) — newestFirst=true
+      String commentsUrl =
+          "http://localhost:8083/api/comment/request/" + requestId + "?newestFirst=true";
+      ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
+          commentsUrl,
+          HttpMethod.GET,
+          null,
+          new org.springframework.core.ParameterizedTypeReference
+              <java.util.List<java.util.Map<String, Object>>>() {
+          }
+      );
+
+      // Format helper
+      java.time.format.DateTimeFormatter viewFmt =
+          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+      java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO> approvedRows =
+          new java.util.ArrayList<>();
+      java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO> rejectedRows =
+          new java.util.ArrayList<>();
+
+      if (commentsResp.getStatusCode().is2xxSuccessful() && commentsResp.getBody() != null) {
+        for (var c : commentsResp.getBody()) {
+          String text =
+              (c.get("commentText") == null) ? "" : String.valueOf(c.get("commentText")).trim();
+          if (text.isEmpty()) {
+            continue;
+          }
+
+          Object isInt = c.getOrDefault("isInternal", c.getOrDefault("isinternal", null));
+          boolean reject = (isInt instanceof Boolean)
+              ? ((Boolean) isInt)
+              : "true".equalsIgnoreCase(String.valueOf(isInt));
+
+          String creator =
+              (c.get("creator") == null) ? "" : String.valueOf(c.get("creator")).trim();
+          if (creator.isBlank() || "ui".equalsIgnoreCase(creator)) {
+            creator = displayName;
+          }
+
+          String createdStr = "";
+          Object created = c.get("created");
+          if (created != null) {
+            String raw = String.valueOf(created).trim();
+            try {
+              if (isAllDigits(raw)) {
+                long val = Long.parseLong(raw);
+                createdStr = formatEpochMillis(val, viewFmt);
+              } else {
+                createdStr = tryFormatIso(raw, viewFmt);
+              }
+            } catch (Exception ignore) {
+              createdStr = raw;
+            }
+          }
+
+          var row = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO();
+          row.setCreator(creator);
+          row.setCreated(createdStr);
+          row.setText(text);
+
+          if (reject) {
+            rejectedRows.add(row);
+          } else {
+            approvedRows.add(row);
+          }
+        }
+      }
+
+      // Optional: compute newest approve/reject strings (unchanged)
+      String newestReject = null;
+      String newestApprove = null;
+      if (commentsResp.getStatusCode().is2xxSuccessful() && commentsResp.getBody() != null) {
+        for (var c : commentsResp.getBody()) {
+          Object text = c.get("commentText");
+          Object isInt = c.getOrDefault("isInternal", c.getOrDefault("isinternal", null));
+          String t = (text == null) ? "" : text.toString().trim();
+          boolean reject = (isInt instanceof Boolean) ? ((Boolean) isInt) :
+              "true".equalsIgnoreCase(String.valueOf(isInt));
+
+          if (reject && newestReject == null && !t.isEmpty()) {
+            newestReject = t;
+          }
+          if (!reject && newestApprove == null && !t.isEmpty()) {
+            newestApprove = t;
+          }
+          if (newestReject != null && newestApprove != null) {
+            break;
+          }
+        }
+      }
+
+      logger.info("viewRequest {} -> comments: approved={}, rejected={}", requestId,
+          approvedRows.size(), rejectedRows.size());
+
+      // 3) Helpers
+      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+      java.util.function.Function<String, String> keyN =
+          s -> s == null ? "" : s.trim().toUpperCase();
+      java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
+        String n = nz.apply(num);
+        if (!n.isEmpty()) {
+          return "NUM#" + n;
+        }
+        return "NAME#" + keyN.apply(name);
+      };
+
+      // 4) Seed accounts map
+      java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
+      if (sub.getAccounts() != null) {
+        for (var a : sub.getAccounts()) {
+          String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
+          AccountDTO bucket = accountsByKey.computeIfAbsent(k, kk -> {
+            AccountDTO ad = new AccountDTO();
+            ad.setAccountName(nz.apply(a.getAccountName()));
+            ad.setAccountNumber(nz.apply(a.getAccountNumber()));
+            ad.setSignatories(new java.util.ArrayList<>());
+            return ad;
+          });
+          var apiSigs = a.getSignatories();
+          if (apiSigs != null) {
+            for (var s : apiSigs) {
+              SignatoryDTO sd = new SignatoryDTO();
+              sd.setFullName(nz.apply(s.getFullName()));
+              sd.setIdNumber(nz.apply(s.getIdNumber()));
+              sd.setInstructions(nz.apply(s.getInstructions()));
+              sd.setCapacity(nz.apply(s.getCapacity()));
+              sd.setGroupCategory(nz.apply(s.getGroupCategory()));
+              sd.setAccountName(bucket.getAccountName());
+              sd.setAccountNumber(bucket.getAccountNumber());
+              bucket.getSignatories().add(sd);
+            }
+          }
+        }
+      }
+
+      // 5) Build wrapper for XSL
+      RequestTableDTO view = new RequestTableDTO();
+      if (sub.getRequest() != null) {
+        view.setRequestId(sub.getRequest().getRequestId());
+        view.setCompanyId(sub.getRequest().getCompanyId());
+        view.setSla(sub.getRequest().getSla());
+        view.setType(sub.getRequest().getType());
+        view.setStatus(sub.getRequest().getStatus());
+        view.setSubStatus(sub.getRequest().getSubStatus());
+        view.setCreated(
+            sub.getRequest().getCreated() != null ? sub.getRequest().getCreated().toString() :
+                null);
+        view.setUpdated(
+            sub.getRequest().getUpdated() != null ? sub.getRequest().getUpdated().toString() :
+                null);
+        view.setProcessId(sub.getRequest().getProcessId());
+        view.setAssignedUser(sub.getRequest().getAssignedUser());
+        view.setRequestIdForDisplay(sub.getRequest().getRequestIdForDisplay());
+
+        // ---- Directors (set instruction everywhere) ----
+        try {
+          var dirs =
+              new java.util.ArrayList<za.co.rmb.tts.mandates.resolutions
+                  .ui.model.dto.DirectorDTO>();
+
+          // 1) Prefer authorities returned on the submission
+          var authsSub = sub.getAuthorities();
+          boolean submissionHasInstr = false;
+
+          if (authsSub != null && !authsSub.isEmpty()) {
+            for (var a : authsSub) {
+              boolean hasInstr = java.util.Arrays.stream(a.getClass().getMethods())
+                  .anyMatch(m -> m.getName().equals("getInstructions"));
+              if (hasInstr) {
+                submissionHasInstr = true;
+              }
+
+              // existing logging:
+              logger.info("AUTH from submission: class={}, hasGetInstructions={}",
+                  a.getClass().getName(), hasInstr);
+
+              // map firstname/surname/designation as you already do...
+              String first = null;
+              String last = null;
+              String role = null;
+              try {
+                first = (String) a.getClass().getMethod("getFirstname").invoke(a);
+              } catch (Exception ignore) {
+                // intentionally empty
+              }
+              try {
+                last = (String) a.getClass().getMethod("getSurname").invoke(a);
+              } catch (Exception ignore) {
+                // intentionally empty
+              }
+              try {
+                role = (String) a.getClass().getMethod("getDesignation").invoke(a);
+              } catch (Exception ignore) {
+                // intentionally empty
+              }
+
+              // if the method doesn't exist, extractInstruction() will default to Add.
+              // We'll correct that after the loop if submissionHasInstr == false.
+              String instEff = extractInstruction(a);
+
+              var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
+              dd.setName(nz.apply(first));
+              dd.setSurname(nz.apply(last));
+              dd.setDesignation(nz.apply(role));
+              dd.setInstruction(instEff);
+              if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
+                  .isEmpty())) {
+                dirs.add(dd);
+              }
+            }
+          }
+
+//  If submission had NO instructions at all, replace with the DAO authorities (which do)
+          if (!submissionHasInstr && sub.getRequest() != null
+              && sub.getRequest().getCompanyId() != null) {
+            try {
+              Long companyId = sub.getRequest().getCompanyId();
+              String url = "http://localhost:8083/api/authority/company/" + companyId;
+              var resp = rt.exchange(
+                  url, HttpMethod.GET, null,
+                  new org.springframework.core.ParameterizedTypeReference<
+                      java.util.List<za.co.rmb.tts.mandates.resolutions.ui
+                          .model.dto.AuthorityDTO>>() {
+                  });
+
+              var authsApi = (resp.getStatusCode().is2xxSuccessful()) ? resp.getBody() : null;
+              if (authsApi != null && !authsApi.isEmpty()) {
+                dirs.clear();
+                for (var a : authsApi) {
+                  var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
+                  dd.setName(nz.apply(a.getFirstname()));
+                  dd.setSurname(nz.apply(a.getSurname()));
+                  dd.setDesignation(nz.apply(a.getDesignation()));
+                  //  AuthorityDTO has instructions — use it directly
+                  String instr = nz.apply(a.getInstructions());
+                  if (instr.isEmpty()) {
+                    // last resort inference from isActive (optional)
+                    Boolean active = a.getIsActive();
+                    instr = (Boolean.FALSE.equals(active)) ? "Remove" : "Add";
+                  }
+                  dd.setInstruction(instr);
+                  if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
+                      .isEmpty())) {
+                    dirs.add(dd);
+                  }
+                }
+              }
+            } catch (Exception e) {
+              logger.warn("Authority lookup fallback failed: {}", e.toString());
+            }
+          }
+
+
+          // 2) Fallback: fetch by companyId -> List<AuthorityDTO>
+          if (dirs.isEmpty() && sub.getRequest() != null
+              && sub.getRequest().getCompanyId() != null) {
+            Long companyId = sub.getRequest().getCompanyId();
+            try {
+              String url = "http://localhost:8083/api/authority/company/" + companyId;
+              var resp = rt.exchange(
+                  url,
+                  HttpMethod.GET,
+                  null,
+                  new org.springframework.core.ParameterizedTypeReference<
+                      java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.AuthorityDTO>
+                      >() {
+                  }
+              );
+              var authsApi = (resp.getStatusCode().is2xxSuccessful()) ? resp.getBody() : null;
+              if (authsApi != null) {
+                for (var a : authsApi) {
+                  if (a == null) {
+                    continue;
+                  }
+
+                  Boolean active = null;
+                  try {
+                    active = (Boolean) a.getClass().getMethod("getIsActive").invoke(a);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+
+                  String instr = null;
+                  try {
+                    instr = (String) a.getClass().getMethod("getInstructions").invoke(a);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+
+                  String instEff = (instr != null && !instr.isBlank())
+                      ? instr.trim()
+                      : (Boolean.FALSE.equals(active) ? "Remove" : "Add");
+
+                  var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
+                  dd.setName(nz.apply(a.getFirstname()));
+                  dd.setSurname(nz.apply(a.getSurname()));
+                  dd.setDesignation(nz.apply(a.getDesignation()));
+                  dd.setInstruction(instEff);   // 👈 ensure set
+
+                  if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
+                      .isEmpty())) {
+                    dirs.add(dd);
+                  }
+                }
+              }
+            } catch (Exception e) {
+              logger.warn("Authority lookup by companyId {} failed: {}", companyId, e.toString());
+            }
+          }
+
+          // 3) Still nothing? Fall back to request.getDirectors()
+          if (dirs.isEmpty() && sub.getRequest() != null) {
+            try {
+              var sourceDirs =
+                  (java.util.List<?>) sub.getRequest().getClass().getMethod("getDirectors")
+                      .invoke(sub.getRequest());
+              if (sourceDirs != null) {
+                for (Object d : sourceDirs) {
+                  String name = null;
+                  String surname = null;
+                  String designation = null;
+                  String instruction = null;
+                  try {
+                    name = (String) d.getClass().getMethod("getName").invoke(d);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+                  try {
+                    surname = (String) d.getClass().getMethod("getSurname").invoke(d);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+                  try {
+                    designation = (String) d.getClass().getMethod("getDesignation").invoke(d);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+                  try {
+                    instruction = (String) d.getClass().getMethod("getInstruction").invoke(d);
+                  } catch (Exception ignore) {
+                    // intentionally empty
+                  }
+
+                  var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
+                  dd.setName(nz.apply(name));
+                  dd.setSurname(nz.apply(surname));
+                  dd.setDesignation(nz.apply(designation));
+                  dd.setInstruction(nz.apply(instruction));
+
+                  if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
+                      .isEmpty())) {
+                    dirs.add(dd);
+                  }
+                }
+              }
+            } catch (ReflectiveOperationException ignore) {
+              // ok
+            }
+          }
+
+          logger.info("viewRequest {} -> directors(mapped)={}", requestId, dirs.size());
+          view.setDirectors(dirs);
+
+        } catch (Exception e) {
+          logger.warn("Mapping directors failed: {}", e.toString());
+        }
+
+      } else {
+        view.setRequestId(requestId);
+      }
+
+      view.setCompanyName(
+          (sub.getCompany() != null && sub.getCompany().getName() != null)
+              ? sub.getCompany().getName() : "Unknown"
+      );
+
+      // Inject newest approve/reject comments (already normalized)
+      view.setApprovedComments(approvedRows);
+      view.setRejectedComments(rejectedRows);
+
+      view.setAccounts(new java.util.ArrayList<>(accountsByKey.values()));
+      view.setSignatories(null);
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(java.util.List.of(view));
+
+      String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching request for view: {}", e.getMessage(), e);
+      return ResponseEntity.ok("""
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Unable to load request for viewing.</error>
+          </page>
+          """
+      );
+    }
+  }
+
+  @GetMapping(value = "/draft/view", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> viewDraft(
+      @RequestParam("id") Long id,
+      HttpSession session
+  ) {
+    final String base = "http://localhost:8083";
+    RestTemplate rt = new RestTemplate();
+
+    RequestStagingDTO s =
+        rt.getForObject(base + "/api/request-staging/{id}", RequestStagingDTO.class, id);
+    if (s == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    // 1) Which page to open? Prefer the token saved in subStatus "Saved@PAGE"
+    String page = normalizePageCode(extractLastPageCode(s.getRequestSubStatus()));
+    if (page == null) {
+      // Fallback heuristic (old behaviour)
+      page = (s.getAccounts() != null && !s.getAccounts().isEmpty())
+          ? "MANDATES_AUTOFILL"
+          : "SEARCH_RESULTS";
+    }
+
+    // 2) Keep any existing pdfSessionId (if you track it), or seed fresh
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
+      pdfSessionId = java.util.UUID.randomUUID().toString();
+    }
+
+    // 3) Build wrapper based on page and render appropriate XSL
+    RequestWrapper w;
+    String xsl;
+
+    switch (page) {
+      case "SEARCH_RESULTS" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "SearchResults";
+        }
+      case "DIRECTORS_DETAILS" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "MandatesResolutionsDirectorsDetails";
+        }
+      // Treat RESOLUTION_AUTOFILL like the directors/search path
+      case "RESOLUTION_AUTOFILL" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId); // includes directors + tools
+          xsl = "ResolutionAutoFill";
+        }
+      case "MANDATES_AUTOFILL",
+           "ACC_DETAILS",
+           "MANDATES_SIGNATURE_CARD",
+           "MANDATES_RESOLUTIONS_SIGNATURE_CARD" ->
+        {
+          w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
+          xsl = switch (page) {
+            case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
+            case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
+            case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
+            default -> "MandatesAutoFill";
+          };
+        }
+      default ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "SearchResults";
+        }
+    }
+
+    //  Seed dropdown selection (numeric "1|2|3") into the wrapper for XSLT
+    String sel = normalizeSelCode(s.getRequestType());
+    if (sel == null && s.getRequestSubStatus() != null) {
+      int at = s.getRequestSubStatus().lastIndexOf('@');
+      if (at > -1) {
+        sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
+      }
+    }
+    if (sel != null && w != null && w.getRequest() != null) {
+      w.getRequest().setMandateResolution(sel);
+    }
+
+    // Put in session for downstream flows
+    session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
+    session.setAttribute("requestData", w.getRequest());
+
+    String pageXml = xsltProcessor.generatePage(xslPagePath(xsl), w);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(pageXml);
+  }
+
+  private ResponseEntity<String> renderDraft(Long id, HttpSession session) {
+    final String base = "http://localhost:8083";
+    RestTemplate rt = new RestTemplate();
+
+    RequestStagingDTO s =
+        rt.getForObject(base + "/api/request-staging/{id}", RequestStagingDTO.class, id);
+    if (s == null) {
+      String xml = "<page><error>Draft not found.</error></page>";
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(xml);
+    }
+
+    // Decide page: if draft already has accounts, go to MandatesAutoFill; otherwise SearchResults
+    boolean goAutoFill = (s.getAccounts() != null && !s.getAccounts().isEmpty());
+
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
+      pdfSessionId = java.util.UUID.randomUUID().toString();
+    }
+
+    if (goAutoFill) {
+      RequestWrapper w = buildAutoFillWrapperFromStaging(id, pdfSessionId);
+
+      // (Seeding optional here, safe anyway)
+      String sel = normalizeSelCode(s.getRequestType());
+      if (sel == null && s.getRequestSubStatus() != null) {
+        int at = s.getRequestSubStatus().lastIndexOf('@');
+        if (at > -1) {
+          sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
+        }
+      }
+      if (sel != null && w.getRequest() != null) {
+        w.getRequest().setMandateResolution(sel);
+      }
+
+      session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
+      session.setAttribute("requestData", w.getRequest());
+      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), w);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+
     } else {
-      mergeUrl = NODE_BACKEND_URL + "/merge/search"; //Live data (Live integration)
-    }
+      RequestWrapper w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
 
-    try {
-      //Prepares and send the request to the backend project
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-//      Creates the JSON request body containing the company
-//      registration number typed in the search bar
-      Map<String, String> requestBody = Map.of("registrationNumber", registrationNumber);
-      HttpEntity<Map<String, String>> request = new HttpEntity<>(requestBody, headers);
-
-      ResponseEntity<Map> response = restTemplate.postForEntity(mergeUrl, request, Map.class);
-      Map<String, Object> data = response.getBody();
-
-      System.out.println("Raw response from Node backend: " + data);
-
-      if (data == null || !data.containsKey("hogan") || data.get("hogan") == null) {
-        throw new RuntimeException("Missing Hogan data");
-      }
-
-      // Build RequestDTO and RequestWrapper
-      RequestWrapper wrapper = new RequestWrapper();
-      RequestDTO dto = new RequestDTO();
-      dto.setRegistrationNumber(registrationNumber);
-
-      //Extracts the hogan data and sets them into the DTO (RequestDTO)
-      Map<String, Object> hoganData = (Map<String, Object>) data.get("hogan");
-      dto.setCompanyName((String) hoganData.get("companyName"));
-      dto.setCompanyAddress((String) hoganData.get("companyAddress"));
-
-      //Extracts the directors list from hogan data
-      List<Map<String, String>> directorsData = (List<Map<String, String>>)
-          hoganData.get("directors");
-      List<RequestDTO.Director> directors = new ArrayList<>();
-      if (directorsData != null) {
-        for (Map<String, String> directorMap : directorsData) {
-          RequestDTO.Director d = new RequestDTO.Director();
-          d.setName(directorMap.get("name"));
-          d.setSurname(directorMap.get("surname"));
-          d.setDesignation(directorMap.get("designation"));
-          directors.add(d);
+      //  Seed dropdown selection for the SearchResults page
+      String sel = normalizeSelCode(s.getRequestType());
+      if (sel == null && s.getRequestSubStatus() != null) {
+        int at = s.getRequestSubStatus().lastIndexOf('@');
+        if (at > -1) {
+          sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
         }
       }
-
-      // Handle "Add Director" dynamic row
-      int currentCount = directors.size();
-      if (directorCount != null && directorCount > currentCount) {
-        int toAdd = directorCount - currentCount;
-        for (int i = 0; i < toAdd; i++) {
-          RequestDTO.Director emptyDirector = new RequestDTO.Director();
-          emptyDirector.setName("");
-          emptyDirector.setSurname("");
-          emptyDirector.setDesignation("");
-          directors.add(emptyDirector);
-        }
+      if (sel != null && w.getRequest() != null) {
+        w.getRequest().setMandateResolution(sel);
       }
 
-      // Handle "Remove Director" dynamic removal
-      if (removeDirectorAt != null && removeDirectorAt > 0
-          && removeDirectorAt <= directors.size()) {
-        directors.remove(removeDirectorAt - 1); // position() is 1-based
-      }
-      dto.setDirectors(directors);
-
-      List<String> tools = (List<String>) data.get("documentum");
-      dto.setDocumentumTools(tools);
-
-      //Sets editable based on MOCK mode on application.yaml (true= editable false= read only)
-      dto.setEditable(isMockMode);
-
-      wrapper.setRequestDTO(dto);
-
-      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
-
-      //Debug XML
-      System.out.println("Generated XML to XSLT:\n" + page);
-
-      return ResponseEntity.ok(page);
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      String errorXml = """
-          <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" heading=" " id="" template="error" version="1" xsi:noNamespaceSchemaLocation="../xsd/v1/error_1.xsd">
-              <error xsi:type="systemError">
-                  <code>404</code>
-                  <message>Company registration number not found.</message>
-              </error>
-          </page>
-          """;
-      return ResponseEntity.status(HttpStatus.OK).body(errorXml);
+      session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
+      session.setAttribute("requestData", w.getRequest());
+      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), w);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
     }
   }
 
-  @PostMapping(value = "/proceedWithoutHogan", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String>
-      proceedWithoutHoganPage(@RequestParam("companyRegNumber") String registrationNumber) {
-    RestTemplate restTemplate = new RestTemplate();
-    String mergeUrl = NODE_BACKEND_URL + "/merge/search";
+  @RequestMapping(
+      value = "/draft/view",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> viewDraftQuery(
+      @RequestParam("id") Long id,
+      HttpSession session
+  ) {
+    return viewDraft(id, session);
+  }
 
+  //Edit request page
+  @RequestMapping(
+      value = "/editRequest/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> displayEditRequest(@PathVariable Long requestId) {
     try {
-      // Prepare and send the request to the backend project
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      Map<String, String> requestBody = Map.of("registrationNumber", registrationNumber);
-      HttpEntity<Map<String, String>> request = new HttpEntity<>(requestBody, headers);
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      logWrapperAndPage("EditRequest", requestId, wrapper, page);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    } catch (Exception e) {
+      logger.error("Error fetching request for edit: {}", e.getMessage(), e);
+      return ResponseEntity.ok()
+          .contentType(MediaType.APPLICATION_XML)
+          .body("<page><error>Unable to load request for editing.</error></page>");
+    }
+  }
 
-      ResponseEntity<Map> response = restTemplate.postForEntity(mergeUrl, request, Map.class);
-      Map<String, Object> data = response.getBody();
+  //Add one blank signatory row to account at 1-based index {addSignatoryAt} ===
+  @PostMapping(value = "/editRequestAddSignatory/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editRequestAddSignatory(@PathVariable Long requestId,
+                                                        @RequestParam("addSignatoryAt")
+                                                        int accountIndex1) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getAccounts() == null) {
+        view.setAccounts(new java.util.ArrayList<>());
+      }
+      int ai = Math.max(1, accountIndex1) - 1;
 
-      System.out.println("Raw response from Node backend: " + data);
+      if (ai >= 0 && ai < view.getAccounts().size()) {
+        AccountDTO acc = view.getAccounts().get(ai);
+        if (acc.getSignatories() == null) {
+          acc.setSignatories(new java.util.ArrayList<>());
+        }
 
-      if (data == null) {
-        throw new RuntimeException("No data returned from Node backend");
+        SignatoryDTO blank = new SignatoryDTO();
+        blank.setFullName("");
+        blank.setIdNumber("");
+        blank.setInstructions("");
+        blank.setCapacity("");
+        blank.setGroupCategory("");
+        blank.setAccountName(acc.getAccountName());
+        blank.setAccountNumber(acc.getAccountNumber());
+
+        acc.getSignatories().add(blank);
       }
 
-      // Process documentum tools and registration number only
-      RequestWrapper wrapper = new RequestWrapper();
-      RequestDTO dto = new RequestDTO();
-      dto.setRegistrationNumber(registrationNumber);
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
 
-      List<String> tools = (List<String>) data.get("documentum");
-      dto.setDocumentumTools(tools);
+      //Logging
+      logger.info("AddSignatory: requestId={}, accountIndex1={}", requestId, accountIndex1);
+      logWrapperAndPage("EditRequest-AddSignatory", requestId, wrapper, page);
 
-      wrapper.setRequestDTO(dto);
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add signatory failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add signatory row.</error></page>");
+    }
+  }
 
-      String page = xsltProcessor.generatePage(xslPagePath("ProceedWithoutHogan"), wrapper);
-      System.out.println("Received companyRegNumber: " + registrationNumber);
+  //Remove signatory given "aPos_sPos" (both 1-based)
+  @PostMapping(value = "/editRequestRemoveSignatory/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editRequestRemoveSignatory(@PathVariable Long requestId,
+                                                           @RequestParam("removeSignatoryAt")
+                                                           String at) {
+    try {
+      String[] parts = at.split("_");
+      int a1 = Integer.parseInt(parts[0]);
+      int s1 = Integer.parseInt(parts[1]);
+
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+
+      if (view.getAccounts() != null) {
+        int ai = a1 - 1;
+        if (ai >= 0 && ai < view.getAccounts().size()) {
+          var acc = view.getAccounts().get(ai);
+          if (acc.getSignatories() != null) {
+            int si = s1 - 1;
+            if (si >= 0 && si < acc.getSignatories().size()) {
+              acc.getSignatories().remove(si);
+            }
+          }
+        }
+      }
+
+      //Dumps
+      dumpWrapperJson("EditRequest-RemoveSignatory", wrapper, requestId);
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      dumpPageXml("EditRequest-RemoveSignatory", page, requestId);
+
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Remove signatory failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to remove signatory row.</error></page>");
+    }
+  }
+
+  @PostMapping(value = "/editRequestAddDirector/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editRequestAddDirector(@PathVariable Long requestId) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getDirectors() == null) {
+        view.setDirectors(new java.util.ArrayList<>());
+      }
+
+      DirectorDTO blank = new DirectorDTO();
+      blank.setAuthorityId(null);
+      blank.setName("");
+      blank.setSurname("");
+      blank.setDesignation("");
+      view.getDirectors().add(blank);
+
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      logWrapperAndPage("EditRequest-AddDirector", requestId, wrapper, page);
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add director failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add director row.</error></page>");
+    }
+  }
+
+  @PostMapping(value = "/editRequestRemoveDirector/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editRequestRemoveDirector(@PathVariable Long requestId,
+                                                          @RequestParam("removeDirectorAt")
+                                                          int index1) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getDirectors() != null) {
+        int i = Math.max(1, index1) - 1;
+        if (i >= 0 && i < view.getDirectors().size()) {
+          view.getDirectors().remove(i);
+        }
+      }
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      logWrapperAndPage("EditRequest-RemoveDirector", requestId, wrapper, page);
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Remove director failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to remove director row.</error></page>");
+    }
+  }
+
+
+  //Add blank account section (with no signatories by default) ===
+  @PostMapping(value = "/editRequestAddAccount/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editRequestAddAccount(@PathVariable Long requestId) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getAccounts() == null) {
+        view.setAccounts(new java.util.ArrayList<>());
+      }
+
+      AccountDTO newAcc = new AccountDTO();
+      newAcc.setAccountName("");
+      newAcc.setAccountNumber("");
+      newAcc.setSignatories(new java.util.ArrayList<>());
+
+      view.getAccounts().add(newAcc);
+
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+
+      //LOGGING
+      logger.info("AddAccount: requestId={}", requestId);
+      logWrapperAndPage("EditRequest-AddAccount", requestId, wrapper, page);
+
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add account failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add account section.</error></page>");
+    }
+  }
+
+  //Remove account section at 1-based index {removeAccountAt}
+  @RequestMapping(
+      value = "/editRequestRemoveAccount/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> editRequestRemoveAccount(
+      @PathVariable Long requestId,
+      @RequestParam("removeAccountAt") int accountIndex1
+  ) {
+    try {
+      logger.info("RemoveAccount CALLED: requestId={}, removeAccountAt={}", requestId,
+          accountIndex1);
+
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+
+      if (view.getAccounts() != null) {
+        int ai = Math.max(1, accountIndex1) - 1;
+        if (ai >= 0 && ai < view.getAccounts().size()) {
+          view.getAccounts().remove(ai);
+        } else {
+          logger.warn("RemoveAccount: index out of range. size={}, requestedZeroBased={}",
+              view.getAccounts().size(), ai);
+        }
+      } else {
+        logger.warn("RemoveAccount: accounts list is null");
+      }
+
+      dumpWrapperJson("EditRequest-RemoveAccount", wrapper, requestId);
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      dumpPageXml("EditRequest-RemoveAccount", page, requestId);
+
+      logger.info("RemoveAccount DONE: requestId={}, accountsNow={}",
+          requestId, view.getAccounts() == null ? 0 : view.getAccounts().size());
+
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
-      e.printStackTrace();
-      String errorXml = """
-          <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" heading=" " id="" template="error" version="1" xsi:noNamespaceSchemaLocation="../xsd/v1/error_1.xsd">
-              <error xsi:type="systemError">
-                  <code>404</code>
-                  <message>Company registration number not found.</message>
-              </error>
-          </page>
+      logger.error("Remove account failed: {}", e.getMessage(), e);
+      String errorPage = renderSimpleErrorPage(
+          "Remove Account",
+          "Unable to remove account section.",
+          "app-domain/ui/editRequest/" + requestId
+      );
+      return ResponseEntity.ok(errorPage);
+    }
+  }
+
+  //Save edits from the Edit Request page and then go back to the Landing page
+  @RequestMapping(
+      value = "/editRequestSave/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> editRequestSave(@PathVariable Long requestId,
+                                                HttpServletRequest request) {
+    try {
+      //Parse form
+      Map<String, String[]> params = request.getParameterMap();
+
+      //Collect 1-based account indices present in the form
+      java.util.regex.Pattern accIdxPat =
+          java.util.regex.Pattern.compile("^(accountName|accountNo|accountId)_(\\d+)$");
+      java.util.SortedSet<Integer> accountIdxs = new java.util.TreeSet<>();
+      for (String k : params.keySet()) {
+        java.util.regex.Matcher m = accIdxPat.matcher(k);
+        if (m.matches()) {
+          accountIdxs.add(Integer.parseInt(m.group(2)));
+        }
+      }
+
+      //Build in-memory representation of the form rows
+      class FormAcc {
+        String accountId;  //may be null for new rows
+        String accountName;
+        String accountNo;
+        java.util.List<Map<String, Object>> signatories = new java.util.ArrayList<>();
+      }
+
+      java.util.List<FormAcc> formAccounts = new java.util.ArrayList<>();
+
+      for (Integer ai : accountIdxs) {
+        FormAcc fa = new FormAcc();
+        fa.accountId = getParam(params, "accountId_" + ai);   //hidden field from XSL
+        fa.accountName = getParam(params, "accountName_" + ai);
+        fa.accountNo = getParam(params, "accountNo_" + ai);
+
+        //Signatory rows under this account
+        java.util.regex.Pattern sigIdxPat = java.util.regex.Pattern.compile(
+            "^(fullName|idNumber|capacity|group|instruction)_" + ai + "_(\\d+)$");
+        java.util.SortedSet<Integer> sigIdxs = new java.util.TreeSet<>();
+        for (String k : params.keySet()) {
+          java.util.regex.Matcher m = sigIdxPat.matcher(k);
+          if (m.matches()) {
+            sigIdxs.add(Integer.parseInt(m.group(2)));
+          }
+        }
+        for (Integer sj : sigIdxs) {
+          String fullName = getParam(params, "fullName_" + ai + "_" + sj);
+          String idNumber = getParam(params, "idNumber_" + ai + "_" + sj);
+          String capacity = getParam(params, "capacity_" + ai + "_" + sj);
+          String group = getParam(params, "group_" + ai + "_" + sj);
+          String instruction = getParam(params, "instruction_" + ai + "_" + sj);
+          if (instruction == null || instruction.isBlank()) {
+            instruction =
+                getParam(params, "origInstruction_" + ai + "_" + sj); // fallback to saved value
+          }
+
+          if (isAllBlank(fullName, idNumber, capacity, group, instruction)) {
+            continue;
+          }
+
+          Map<String, Object> s = new java.util.LinkedHashMap<>();
+          s.put("fullName", nz(fullName));
+          s.put("idNumber", nz(idNumber));
+          s.put("capacity", nz(capacity));
+          s.put("groupCategory", nz(group));
+          s.put("instructions", nz(instruction)); // Add|Remove
+          fa.signatories.add(s);
+        }
+
+        //Skip completely blank account rows
+        if (isAllBlank(fa.accountName, fa.accountNo) && fa.signatories.isEmpty()) {
+          continue;
+        }
+
+        formAccounts.add(fa);
+      }
+
+      //Load current state (companyId & existing accounts)
+      String base = "http://localhost:8083";
+      RestTemplate rt = new RestTemplate();
+
+      MandateResolutionSubmissionResultDTO sub =
+          rt.getForObject(base + "/api/submission/{id}", MandateResolutionSubmissionResultDTO.class,
+              requestId);
+      if (sub == null || sub.getCompany() == null) {
+        logger.error("Cannot load submission for requestId {}", requestId);
+        return ResponseEntity.ok(
+            "<page><error>Unable to save: submission not found.</error></page>");
+      }
+      Long companyId = sub.getCompany().getCompanyId();
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Account> existingById =
+          new java.util.HashMap<>();
+      if (sub.getAccounts() != null) {
+        for (MandateResolutionSubmissionResultDTO.Account a : sub.getAccounts()) {
+          existingById.put(a.getAccountId(), a);
+        }
+      }
+
+      //Persist: PUT existing, POST new, DELETE removed
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+
+      java.util.Set<Long> keptExistingIds = new java.util.HashSet<>();
+
+      //Upserts
+      for (FormAcc fa : formAccounts) {
+        Map<String, Object> dto = new java.util.LinkedHashMap<>();
+        dto.put("companyId", companyId);
+        dto.put("accountName", nz(fa.accountName));
+        dto.put("accountNumber", nz(fa.accountNo));
+        dto.put("isActive", Boolean.TRUE);
+        dto.put("signatories", fa.signatories);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(dto, headers);
+
+        if (fa.accountId != null && !fa.accountId.isBlank()) {
+          Long accountId = Long.valueOf(fa.accountId);
+          rt.exchange(base + "/api/account/{accountId}", HttpMethod.PUT, entity, Object.class,
+              accountId);
+          keptExistingIds.add(accountId);
+          logger.info("Updated account {}", accountId);
+        } else {
+          var created = rt.postForEntity(base + "/api/account", entity, Object.class);
+          logger.info("Created account; status={}", created.getStatusCode());
+        }
+      }
+
+      //Deletes (anything that existed but isn’t in the form anymore)
+      for (Long existingId : existingById.keySet()) {
+        if (!keptExistingIds.contains(existingId)) {
+          rt.delete(base + "/api/account/{accountId}", existingId);
+          logger.info("Deleted account {}", existingId);
+        }
+      }
+
+      // ===== DIRECTORS (Authorities) =====
+
+      // 1) Parse rows from form: dirFirstName_#, dirSurname_#, dirDesignation_#, dirId_#
+      java.util.regex.Pattern dirIdxPat =
+          java.util.regex.Pattern.compile(
+              "^(dirFirstName|dirSurname|dirDesignation|dirId)_(\\d+)$");
+      java.util.SortedSet<Integer> dirIdxs = new java.util.TreeSet<>();
+      for (String k : params.keySet()) {
+        java.util.regex.Matcher m = dirIdxPat.matcher(k);
+        if (m.matches()) {
+          dirIdxs.add(Integer.parseInt(m.group(2)));
+        }
+      }
+
+      class FormDir {
+        String id;          // authorityId (blank/null for new)
+        String firstName;
+        String surname;
+        String designation;
+      }
+
+      java.util.List<FormDir> formDirs = new java.util.ArrayList<>();
+      for (Integer i : dirIdxs) {
+        FormDir d = new FormDir();
+        d.id = getParam(params, "dirId_" + i);
+        d.firstName = getParam(params, "dirFirstName_" + i);
+        d.surname = getParam(params, "dirSurname_" + i);
+        d.designation = getParam(params, "dirDesignation_" + i);
+
+        // skip rows that are completely blank
+        if (!isAllBlank(d.firstName, d.surname, d.designation)) {
+          formDirs.add(d);
+        }
+      }
+
+      // 2) Build existing authorities map (by id) to detect deletes
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Authority> existingAuthById =
+          new java.util.HashMap<>();
+      if (sub.getAuthorities() != null) {
+        for (MandateResolutionSubmissionResultDTO.Authority a : sub.getAuthorities()) {
+          if (a != null && a.getAuthorityId() != null) {
+            existingAuthById.put(a.getAuthorityId(), a);
+          }
+        }
+      }
+
+      java.util.Set<Long> keptAuthorityIds = new java.util.HashSet<>();
+
+      // 3) Upserts (PUT for existing id, POST for new)
+      for (FormDir d : formDirs) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("companyId", companyId);
+        payload.put("firstname", nz(d.firstName));
+        payload.put("surname", nz(d.surname));
+        payload.put("designation", nz(d.designation));
+        payload.put("isActive", Boolean.TRUE);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+        if (d.id != null && !d.id.isBlank()) {
+          Long id = Long.valueOf(d.id);
+          rt.exchange(base + "/api/authority/{id}", HttpMethod.PUT, entity, Object.class, id);
+          keptAuthorityIds.add(id);
+          logger.info("Updated authority {}", id);
+        } else {
+          var created = rt.postForEntity(base + "/api/authority", entity, Object.class);
+          logger.info("Created authority; status={}", created.getStatusCode());
+        }
+      }
+
+      // 4) Deletes (anything that existed but isn’t in the form anymore)
+      for (Long id : existingAuthById.keySet()) {
+        if (!keptAuthorityIds.contains(id)) {
+          rt.delete(base + "/api/authority/{id}", id);
+          logger.info("Deleted authority {}", id);
+        }
+      }
+
+      //Takes you the Landing Page once the edit is successful
+      return displayRequestTable();
+
+    } catch (Exception e) {
+      logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
+      String error = """
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Unable to save changes for this request.</error>
+            </page>
           """;
-      return ResponseEntity.status(HttpStatus.OK).body(errorXml);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
+    }
+  }
+
+
+//  @PostMapping(
+//      value = "/file-upload",
+//      consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+//      produces = MediaType.APPLICATION_XML_VALUE
+//  )
+//  public ResponseEntity<String> handleFileUpload(
+//      @RequestParam("file") MultipartFile uploadedFile,
+//      @RequestParam(value = "registrationNumber") String registrationNumber,
+//      HttpSession session
+//  ) {
+//    System.out.println("=== [file-upload] HIT ===");
+//    System.out.println("File: " + (uploadedFile != null ? uploadedFile.getOriginalFilename() :
+//    "NULL"));
+//    System.out.println("Registration Number: " + registrationNumber);
+//
+//    if (uploadedFile == null || uploadedFile.isEmpty()) {
+//      return ResponseEntity.ok("<page><error>No file provided</error></page>");
+//    }
+//
+//    try {
+//      ExtractedPdfDataDTO savedData = documentUploadClient.uploadFile(uploadedFile,
+//      registrationNumber);
+//      if (savedData != null) {
+//        session.setAttribute("pdfSessionId", savedData.getPdfSessionId());
+//        System.out.println("pdfSessionId set in session: " + savedData.getPdfSessionId());
+//
+//        RequestDTO dto = new RequestDTO();
+//        dto.setPdfSessionId(savedData.getPdfSessionId());
+//        dto.setRegistrationNumber(registrationNumber);
+//        dto.setEditable(true);
+//
+//        pdfExtractionDataCache.put(dto.getPdfSessionId(), dto);
+//      }
+//      // IMPORTANT: Return lightweight <page>, not the next screen
+//      return ResponseEntity.ok("""
+//        <?xml version="1.0" encoding="UTF-8"?>
+//        <page xmlns:comm="http://ws.online.fnb.co.za/v1/common/"
+//              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+//              id="upload"
+//              template="message"
+//              version="1">
+//            <info>File uploaded successfully</info>
+//        </page>
+//        """);
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//      return ResponseEntity.ok("<page><error>Failed to upload file</error></page>");
+//    }
+//  }
+
+  /**
+   * STEP 2: Proceed after successful file upload
+   * BiFrost submits the form again (without file). We render the actual XSL page here.
+   */
+  @PostMapping(
+      value = "/proceedPdfExtraction",
+      consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE
+  )
+  public ResponseEntity<Void> proceedPdfExtraction(
+      @RequestParam(value = "registrationNumber", required = false) String registrationNumber,
+      HttpSession session
+  ) {
+    System.out.println(">>> [proceedPdfExtraction] HIT <<<");
+
+    try {
+      String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+      if (pdfSessionId == null || pdfSessionId.isBlank()) {
+        System.out.println("No file uploaded before proceeding.");
+        return ResponseEntity.ok().build();
+      }
+
+      RequestDTO dto = pdfExtractionDataCache.get(pdfSessionId);
+      if (dto == null) {
+        if (registrationNumber == null || registrationNumber.isBlank()) {
+          System.out.println("Registration number is required.");
+          return ResponseEntity.ok().build();
+        }
+        dto = new RequestDTO();
+        dto.setPdfSessionId(pdfSessionId);
+        dto.setRegistrationNumber(registrationNumber);
+        dto.setEditable(true);
+        pdfExtractionDataCache.put(pdfSessionId, dto);
+      }
+
+      System.out.println("PDF extraction started in background for session: " + pdfSessionId);
+
+      return ResponseEntity.ok().build(); //
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("Failed to process proceed step: " + e.getMessage());
+      return ResponseEntity.ok().build();
+    }
+  }
+
+  /**
+   * Error handler for BiFrost if upload fails.
+   */
+  @PostMapping("/upload-error")
+  public ResponseEntity<String> uploadError() {
+    System.out.println(">>> [upload-error] File upload failed <<<");
+    return ResponseEntity.ok("<page><error>Upload error</error></page>");
+  }
+
+  @PostMapping(value = "/validateLogin", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> validateLogin(
+      @RequestParam("userName") String userName,
+      @RequestParam("passKey") String passKey,
+      HttpSession session
+  ) {
+    try {
+      if (userName == null || userName.isBlank() || passKey == null || passKey.isBlank()) {
+        String errorPage = generateErrorPage("Username and password are required.");
+        return ResponseEntity.ok(errorPage);
+      }
+
+      String backendUrl = "http://localhost:8083/api/login/unmasked/" + userName;
+      RestTemplate restTemplate = new RestTemplate();
+
+      ResponseEntity<LoginDTO> response = restTemplate.exchange(
+          backendUrl, HttpMethod.GET, null, LoginDTO.class
+      );
+
+      if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+        LoginDTO loginUser = response.getBody();
+
+        if (passKey.equals(loginUser.getPassKey())) {
+          //Store user in session (doesn't keep the password)
+          loginUser.setPassKey(null);
+          session.setAttribute("currentUser", loginUser);
+
+          //Returns to request table landing page
+          return displayRequestTable();
+        }
+      }
+      return ResponseEntity.ok(generateErrorPage("Incorrect username or password."));
+    } catch (HttpClientErrorException.NotFound e) {
+      return ResponseEntity.ok(generateErrorPage("Incorrect username or password."));
+    } catch (Exception e) {
+      e.printStackTrace();
+      return ResponseEntity.ok(
+          generateErrorPage("Login service unavailable, please try again later."));
+    }
+  }
+
+  private String generateErrorPage(String message) {
+    return """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+        <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              id=""
+              heading=" "
+              template="error"
+              version="1">
+            <error xsi:type="validationError">
+                <name>login</name>
+                <code>0</code>
+                <message>%s</message>
+            </error>
+        </page>
+        """.formatted(message);
+  }
+
+  /**
+   * Helper used by all edit actions to build the XSL wrapper from backend data.
+   */
+  private RequestTableWrapper buildEditWrapper(Long requestId) {
+    RestTemplate rt = new RestTemplate();
+
+    //1) Load submission (request, company, accounts + nested signatories if any)
+    String submissionUrl = "http://localhost:8083/api/submission/" + requestId;
+    ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui
+        .model.dto.MandateResolutionSubmissionResultDTO>
+        subResp = rt.getForEntity(
+        submissionUrl,
+        za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO.class
+    );
+
+    if (!subResp.getStatusCode().is2xxSuccessful() || subResp.getBody() == null) {
+      throw new RuntimeException("Failed to fetch submission " + requestId);
+    }
+    var sub = subResp.getBody();
+
+    //Helpers
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> keyN = s -> s == null ? "" : s.trim().toUpperCase();
+    java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
+      String n = nz.apply(num);
+      if (!n.isEmpty()) {
+        return "NUM#" + n;
+      }
+      return "NAME#" + keyN.apply(name);
+    };
+
+    //2) Seed accounts (keep order)
+    java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
+    if (sub.getAccounts() != null) {
+      for (var a : sub.getAccounts()) {
+        String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
+        AccountDTO bucket = accountsByKey.get(k);
+        if (bucket == null) {
+          bucket = new AccountDTO();
+          bucket.setAccountName(nz.apply(a.getAccountName()));
+          bucket.setAccountNumber(nz.apply(a.getAccountNumber()));
+          bucket.setSignatories(new java.util.ArrayList<>());
+          accountsByKey.put(k, bucket);
+        }
+
+        //Attach nested signatories if present
+        try {
+          //If your Account class really has getSignatories()
+          if (a.getSignatories() != null) {
+            for (var s : a.getSignatories()) {
+              SignatoryDTO d = new SignatoryDTO();
+              d.setFullName(nz.apply(s.getFullName()));
+              d.setIdNumber(nz.apply(s.getIdNumber()));
+              d.setInstructions(nz.apply(s.getInstructions()));
+              d.setCapacity(nz.apply(s.getCapacity()));
+              d.setGroupCategory(nz.apply(s.getGroupCategory()));
+              d.setAccountName(bucket.getAccountName());
+              d.setAccountNumber(bucket.getAccountNumber());
+              bucket.getSignatories().add(d);
+            }
+          }
+        } catch (NoSuchMethodError | RuntimeException ignored) {
+          //If nested signatories are not present on Account from backend, we’ll rely on the
+          // overlay below.
+        }
+      }
+    }
+
+    //3) Optional: overlay by request if your DAO provides it
+    try {
+      String sigUrl = "http://localhost:8083/api/signatory/byRequest/" + requestId;
+      ResponseEntity<SignatoryDTO[]> sigResp = rt.getForEntity(sigUrl, SignatoryDTO[].class);
+      if (sigResp.getStatusCode().is2xxSuccessful() && sigResp.getBody() != null) {
+        for (SignatoryDTO s : sigResp.getBody()) {
+          String k = accKey.apply(s.getAccountNumber(), s.getAccountName());
+          AccountDTO bucket = accountsByKey.get(k);
+          if (bucket == null) {
+            bucket = new AccountDTO();
+            bucket.setAccountNumber(nz.apply(s.getAccountNumber()));
+            bucket.setAccountName(nz.apply(s.getAccountName()));
+            bucket.setSignatories(new java.util.ArrayList<>());
+            accountsByKey.put(k, bucket);
+          }
+          if ((s.getAccountName() == null || s.getAccountName().isBlank())
+              && bucket.getAccountName() != null) {
+            s.setAccountName(bucket.getAccountName());
+          }
+          if ((s.getAccountNumber() == null || s.getAccountNumber().isBlank())
+              && bucket.getAccountNumber() != null) {
+            s.setAccountNumber(bucket.getAccountNumber());
+          }
+          bucket.getSignatories().add(s);
+        }
+      }
+    } catch (Exception ignored) {
+      // intentionally empty
+    }
+
+    //4) Build wrapper
+    RequestTableDTO view = new RequestTableDTO();
+    if (sub.getRequest() != null) {
+      view.setRequestId(sub.getRequest().getRequestId());
+      view.setCompanyId(sub.getRequest().getCompanyId());
+      view.setSla(sub.getRequest().getSla());
+      view.setType(sub.getRequest().getType());
+      view.setStatus(sub.getRequest().getStatus());
+      view.setSubStatus(sub.getRequest().getSubStatus());
+      view.setCreated(
+          sub.getRequest().getCreated() != null ? sub.getRequest().getCreated().toString() : null);
+      view.setUpdated(
+          sub.getRequest().getUpdated() != null ? sub.getRequest().getUpdated().toString() : null);
+
+      // ---- Directors (for Resolutions edit screen) ----
+      // Source them from the submission's authorities (mirror DTO)
+      if (sub.getAuthorities() != null) {
+        var dirs = new java.util.ArrayList<DirectorDTO>();
+        for (var a : sub.getAuthorities()) {
+          if (a == null || (a.getIsActive() != null && !a.getIsActive())) {
+            continue;
+          }
+          DirectorDTO dd = new DirectorDTO();
+          dd.setAuthorityId(a.getAuthorityId());
+          dd.setName(nz.apply(a.getFirstname()));
+          dd.setSurname(nz.apply(a.getSurname()));
+          dd.setDesignation(nz.apply(a.getDesignation()));
+          dirs.add(dd);
+        }
+        view.setDirectors(dirs);
+      }
+    }
+    view.setCompanyName(
+        (sub.getCompany() != null && sub.getCompany().getName() != null)
+            ? sub.getCompany().getName() : "Unknown"
+    );
+    view.setAccounts(new java.util.ArrayList<>(accountsByKey.values()));
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    wrapper.setRequest(java.util.List.of(view));
+
+    return wrapper;
+  }
+
+  private static String extractInstruction(Object a) {
+    String v = null;
+    String[] cand = {"getInstructions", "getInstruction", "getChangeType", "getChange", "getStatus",
+        "getAction"};
+    for (String m : cand) {
+      try {
+        Object o = a.getClass().getMethod(m).invoke(a);
+        if (o != null && !o.toString().trim().isEmpty()) {
+          v = o.toString().trim();
+          break;
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
+      }
+    }
+    // If still blank, try to infer from isActive
+    try {
+      Object act = a.getClass().getMethod("getIsActive").invoke(a);
+      if (v == null || v.isBlank()) {
+        if (Boolean.FALSE.equals(act)) {
+          return "Remove";
+        }
+        if (Boolean.TRUE.equals(act)) {
+          return "Add";
+        }
+      }
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+    return (v == null || v.isBlank()) ? "Add" : v;
+  }
+
+
+  private void ensureAccounts(RequestDTO dto, int count) {
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+    var list = dto.getAccounts();
+    while (list.size() < count) {
+      RequestDTO.Account a = new RequestDTO.Account();
+      a.setAccountName("");
+      setAccountNumber(a, "");
+      a.setSignatories(new java.util.ArrayList<>());
+      // seed with 1 empty RequestDTO.Signatory
+      a.getSignatories().add(createBlankSignatory());
+      list.add(a);
+    }
+  }
+
+  // Prefer exact "both" pages BEFORE generic "resolution"/"mandate"
+  private static String inferTypeFromPage(String pageCode) {
+    if (pageCode == null) {
+      return null;
+    }
+    String p = pageCode.toUpperCase();
+    if (p.contains("MANDATE_RESOLUTION") || p.contains("BOTH")) {
+      return "Both";
+    }
+    if (p.contains("RESOLUTION")) {
+      return "Resolutions";
+    }
+    if (p.contains("MANDATE") || p.contains("ACC_DETAILS")) {
+      return "Mandates";
+    }
+    return null;
+  }
+
+  private static void normalizeListsByType(RequestStagingDTO dto) {
+    String t = dto.getRequestType();
+    if (t == null) {
+      return;
+    }
+    switch ((t == null ? "" : t.toUpperCase(Locale.ROOT))) {
+      case "MANDATES"    -> dto.setAuthorities(null);  // keep only Mandates
+      case "RESOLUTIONS" -> dto.setAccounts(null);     // keep only Resolutions
+      case "BOTH"        ->
+        {
+          /* leave both lists as-is */
+        }
+      default            ->
+        {
+          /* no-op or log/throw for unknown type */
+        }
+    }
+  }
+
+  private static String tryFormatIso(String text, java.time.format.DateTimeFormatter outFmt) {
+    if (text == null || text.isBlank()) {
+      return "";
+    }
+    try {
+      return java.time.OffsetDateTime.parse(text).toLocalDateTime().format(outFmt);
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+    try {
+      return java.time.LocalDateTime.parse(text).format(outFmt);
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+    try {
+      return java.time.Instant.parse(text).atZone(java.time.ZoneId.systemDefault())
+          .toLocalDateTime().format(outFmt);
+    } catch (Exception ignore) {
+      // intentionally empty
+    }
+    return text; // show raw if unknown format
+  }
+
+  private static String formatEpochMillis(long epoch, java.time.format.DateTimeFormatter outFmt) {
+    if (String.valueOf(epoch).length() <= 10) {
+      epoch = epoch * 1000L; // seconds -> millis
+    }
+    return java.time.Instant.ofEpochMilli(epoch)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDateTime()
+        .format(outFmt);
+  }
+
+  private static boolean isAllDigits(String s) {
+    if (s == null || s.isBlank()) {
+      return false;
+    }
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c < '0' || c > '9') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Recursively search any object/array for a "created"-like field (case-insensitive).
+   */
+  private static String findCreatedAnyCase(com.fasterxml.jackson.databind.JsonNode node) {
+    if (node == null || node.isNull()) {
+      return null;
+    }
+
+    if (node.isObject()) {
+      java.util.Iterator<java.util.Map.Entry<String, com.fasterxml.jackson.databind.JsonNode>> it =
+          node.fields();
+      while (it.hasNext()) {
+        var e = it.next();
+        String name = e.getKey();
+        com.fasterxml.jackson.databind.JsonNode val = e.getValue();
+        if (name != null) {
+          String ln = name.toLowerCase();
+          if (ln.equals("created") || ln.equals("createddate") || ln.equals("datecreated")
+              || ln.equals("created_at") || ln.equals("createdat")) {
+            if (val.isTextual()) {
+              return val.asText();
+            }
+            if (val.isNumber()) {
+              return String.valueOf(val.longValue());
+            }
+          }
+        }
+        String rec = findCreatedAnyCase(val);
+        if (rec != null) {
+          return rec;
+        }
+      }
+    } else if (node.isArray()) {
+      for (com.fasterxml.jackson.databind.JsonNode child : node) {
+        String rec = findCreatedAnyCase(child);
+        if (rec != null) {
+          return rec;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static String firstNonBlankText(com.fasterxml.jackson.databind.JsonNode root,
+                                          String... keys) {
+    for (String k : keys) {
+      com.fasterxml.jackson.databind.JsonNode n = root.get(k);
+      if (n != null && !n.isNull() && n.isTextual()) {
+        String v = n.asText();
+        if (v != null && !v.isBlank()) {
+          return v;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static Long firstNonNullLong(com.fasterxml.jackson.databind.JsonNode root,
+                                       String... keys) {
+    for (String k : keys) {
+      com.fasterxml.jackson.databind.JsonNode n = root.get(k);
+      if (n != null && !n.isNull() && n.isNumber()) {
+        return n.longValue();
+      }
+    }
+    return null;
+  }
+
+
+  private void ensureSignatories(RequestDTO.Account acc, int count) {
+    if (acc.getSignatories() == null) {
+      acc.setSignatories(new java.util.ArrayList<>());
+    }
+    var list = acc.getSignatories();
+    while (list.size() < count) {
+      list.add(createBlankSignatory());
+    }
+  }
+
+  private void applyAccAndSigsEditsFromRequest(HttpServletRequest req, RequestDTO dto) {
+    if (dto.getAccounts() == null) {
+      dto.setAccounts(new java.util.ArrayList<>());
+    }
+
+    Integer accountCount = optInt(req.getParameter("accountCount"));
+    if (accountCount != null && accountCount > 0) {
+      ensureAccounts(dto, accountCount);
+    }
+
+    for (int i = 1; ; i++) {
+      String name = req.getParameter("accountName_" + i);
+      String no = req.getParameter("accountNo_" + i);
+      if (name == null && no == null) {
+        break;
+      }
+
+      ensureAccounts(dto, i);
+      RequestDTO.Account acc = dto.getAccounts().get(i - 1);
+      if (name != null) {
+        acc.setAccountName(nz(name));
+      }
+      if (no != null) {
+        setAccountNumber(acc, nz(no));
+      }
+
+      for (int j = 1; ; j++) {
+        String fn = req.getParameter("fullName_" + i + "_" + j);
+        String id = req.getParameter("idNumber_" + i + "_" + j);
+        String ins = req.getParameter("instruction_" + i + "_" + j);
+        String cp = req.getParameter("capacity_" + i + "_" + j);
+        String gp = req.getParameter("group_" + i + "_" + j);
+        if (fn == null && id == null && ins == null && cp == null && gp == null) {
+          break;
+        }
+
+        ensureSignatories(acc, j);
+        RequestDTO.Signatory s = acc.getSignatories().get(j - 1);
+        if (fn != null) {
+          s.setFullName(nz(fn));
+        }
+        if (id != null) {
+          s.setIdNumber(nz(id));
+        }
+        if (ins != null) {
+          s.setInstruction(nz(ins));  // singular
+        }
+        if (cp != null) {
+          s.setCapacity(nz(cp));
+        }
+        if (gp != null) {
+          s.setGroup(nz(gp));
+        }
+      }
+    }
+
+    String removeSigAt = req.getParameter("removeSignatoryAt");
+    if (removeSigAt != null && removeSigAt.contains("_")) {
+      String[] parts = removeSigAt.split("_");
+      try {
+        int ai = Math.max(1, Integer.parseInt(parts[0])) - 1;
+        int si = Math.max(1, Integer.parseInt(parts[1])) - 1;
+        var accs = dto.getAccounts();
+        if (accs != null && ai >= 0 && ai < accs.size()) {
+          var acc = accs.get(ai);
+          if (acc.getSignatories() != null && si >= 0 && si < acc.getSignatories().size()) {
+            acc.getSignatories().remove(si);
+          }
+        }
+      } catch (Exception ignored) {
+        // intentionally empty
+      }
+    }
+
+    Integer removeAccAt = optInt(req.getParameter("removeAccountAt"));
+    if (removeAccAt != null && removeAccAt > 0 && dto.getAccounts() != null) {
+      int ai = removeAccAt - 1;
+      if (ai >= 0 && ai < dto.getAccounts().size()) {
+        dto.getAccounts().remove(ai);
+      }
+    }
+  }
+
+  private static String first(String[] arr) {
+    return (arr == null || arr.length == 0) ? null : arr[0];
+  }
+
+  private static void updateSignatoriesFromParams(RequestStagingDTO dto,
+                                                  java.util.Map<String, String[]> p) {
+  }
+
+  private static void updateSignatureCardExtras(RequestStagingDTO dto,
+                                                java.util.Map<String, String[]> p) {
+  }
+
+  private static void updateUploadedDocs(RequestStagingDTO dto, java.util.Map<String, String[]> p) {
+  }
+
+
+  // ===== Logging helpers =====
+  private static String head(String s, int max) {
+    if (s == null) {
+      return "null";
+    }
+    return (s.length() <= max) ? s :
+        s.substring(0, max) + "\n... [truncated " + (s.length() - max) + " chars]";
+  }
+
+  private void dumpWrapperJson(String tag, Object wrapper, long requestId) {
+    try {
+      java.nio.file.Path p =
+          java.nio.file.Files.createTempFile(tag + "-WRAPPER-" + requestId + "-", ".json");
+      String json = new com.fasterxml.jackson.databind.ObjectMapper()
+          .writerWithDefaultPrettyPrinter().writeValueAsString(wrapper);
+      java.nio.file.Files.writeString(p, json);
+      logger.warn("{} wrapper dumped to: {}", tag, p.toAbsolutePath());
+    } catch (Exception ex) {
+      logger.warn("{} wrapper dump failed: {}", tag, ex.toString());
+    }
+  }
+
+  private void dumpPageXml(String tag, String pageXml, long requestId) {
+    try {
+      java.nio.file.Path p =
+          java.nio.file.Files.createTempFile(tag + "-PAGE-" + requestId + "-", ".xml");
+      java.nio.file.Files.writeString(p, pageXml);
+      logger.warn("{} page XML dumped to: {}", tag, p.toAbsolutePath());
+      logger.debug("{} rendered XML ({} chars):\n{}", tag, pageXml.length(), pageXml);
+    } catch (Exception ex) {
+      logger.warn("{} page dump failed: {}", tag, ex.toString());
+    }
+  }
+
+
+  private static Path dumpText(String baseName, String ext, String content) {
+    try {
+      String fn = baseName + "-" + System.currentTimeMillis() + "." + ext;
+      Path p = Paths.get(System.getProperty("java.io.tmpdir"), fn);
+      Files.writeString(p, content == null ? "" : content, StandardCharsets.UTF_8);
+      return p;
+    } catch (Exception e) {
+      // best-effort only
+      return Paths.get("unknown");
+    }
+  }
+
+  private static String toPrettyJson(Object o) {
+    try {
+      ObjectMapper om = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+      return om.writeValueAsString(o);
+    } catch (Exception e) {
+      return String.valueOf(o);
+    }
+  }
+
+  private void logWrapperAndPage(String label, Long requestId, RequestTableWrapper wrapper,
+                                 String page) {
+    try {
+      // basic metrics
+      int accCount = 0;
+      int sigCount = 0;
+      if (wrapper != null && wrapper.getRequest() != null && !wrapper.getRequest().isEmpty()) {
+        var v = wrapper.getRequest().get(0);
+        if (v.getAccounts() != null) {
+          accCount = v.getAccounts().size();
+          for (var a : v.getAccounts()) {
+            if (a.getSignatories() != null) {
+              sigCount += a.getSignatories().size();
+            }
+          }
+        }
+        if (v.getSignatories() != null) {
+          sigCount += v.getSignatories().size();
+        }
+      }
+
+      logger.info("{} render: requestId={}, accounts={}, signatories={}",
+          label, requestId, accCount, sigCount);
+
+      // pre-XSL (wrapper) as JSON
+      String json = toPrettyJson(wrapper);
+      logger.debug("{} wrapper JSON ({} chars):\n{}", label, json.length(), head(json, 1800));
+      Path wfile = dumpText(label + "-WRAPPER-" + requestId, "json", json);
+      logger.warn("{} wrapper dumped to: {}", label, wfile.toAbsolutePath());
+
+      // rendered page (XML)
+      logger.debug("{} rendered XML ({} chars):\n{}", label, (page == null ? 0 : page.length()),
+          head(page, 1800));
+      Path pfile = dumpText(label + "-PAGE-" + requestId, "xml", page);
+      logger.warn("{} page XML dumped to: {}", label, pfile.toAbsolutePath());
+
+    } catch (Exception ex) {
+      logger.warn("logWrapperAndPage failed: {}", ex.toString());
+    }
+  }
+
+  // Minimal XML escape (good enough for short messages)
+  private static String xmlEscape(String s) {
+    if (s == null) {
+      return "";
+    }
+    return s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;");
+  }
+
+  // Build a valid ns1 page the renderer understands
+  private static String renderSimpleErrorPage(String heading, String message, String backUrl) {
+    return """
+        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              id="errorPage" title="Error" template="main" version="1">
+          <symbol xsi:type="ns1:formLayout">
+            <ns1:form ns1:action="%3$s" ns1:name="errorForm">
+              <ns1:sections ns1:align="left" ns1:width="full">
+                <ns1:symbol xsi:type="ns1:textHeading">
+                  <ns1:value>%1$s</ns1:value>
+                </ns1:symbol>
+              </ns1:sections>
+              <ns1:sections ns1:align="left" ns1:width="full">
+                <ns1:symbol xsi:type="ns1:text">
+                  <ns1:value>%2$s</ns1:value>
+                </ns1:symbol>
+              </ns1:sections>
+            </ns1:form>
+          </symbol>
+          <symbol xsi:type="ns1:footer" ns1:buttonAlign="right">
+            <ns1:baseButton ns1:id="back"
+                            ns1:url="%3$s"
+                            ns1:label="Back"
+                            ns1:formSubmit="false"
+                            ns1:target="main"/>
+          </symbol>
+        </page>
+        """.formatted(xmlEscape(heading), xmlEscape(message), xmlEscape(backUrl));
+  }
+
+
+  /**
+   * Consistent XML error template generator
+   */
+  private String generateErrorPageFileUpload(String message) {
+    return """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+        <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              id=""
+              heading=" "
+              template="error"
+              version="1">
+            <error xsi:type="validationError">
+                <name>proceedPdfExtraction</name>
+                <code>0</code>
+                <message>%s</message>
+            </error>
+        </page>
+        """.formatted(message);
+  }
+
+  // ======================= WORKFLOW STARTER =======================
+  private void startWorkflow(Long companyId, String submittedBy) {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String workflowUrl = "http://localhost:8082/workflow/start";
+
+      Map<String, Object> variables = new HashMap<>();
+      variables.put("companyId", companyId);
+      variables.put("submittedBy", submittedBy);
+
+      Map<String, Object> requestBody = new HashMap<>();
+      requestBody.put("key", "mandatesResolutionsService");
+      requestBody.put("data", variables);
+
+      ResponseEntity<String> response =
+          restTemplate.postForEntity(workflowUrl, requestBody, String.class);
+
+      System.out.println("Workflow started, processId: " + response.getBody());
+    } catch (Exception e) {
+      System.err.println("Workflow failed: " + e.getMessage());
+    }
+  }
+
+  // ======================= SUBMISSION MAPPER =======================
+
+  /**
+   * Build a submission payload (as Map) compatible with DAO service.
+   * - Accounts are sent as a list.
+   * - Signatories are flattened and carry their parent accountNumber for linkage.
+   */
+
+  // Helper: normalize a registration number for comparison (strip non-alnum, upper-case)
+  private static String normReg(String s) {
+    return (s == null) ? "" : s.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+  }
+
+  private static String getParam(Map<String, String[]> params, String key) {
+    String[] v = params.get(key);
+    return (v != null && v.length > 0) ? v[0] : null;
+  }
+
+  private static boolean isAllBlank(String... vals) {
+    if (vals == null) {
+      return true;
+    }
+    for (String v : vals) {
+      if (v != null && !v.trim().isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean trySave(RestTemplate rt, String url, HttpMethod method, HttpEntity<?> entity) {
+    try {
+      ResponseEntity<String> resp = rt.exchange(url, method, entity, String.class);
+      boolean ok = resp.getStatusCode().is2xxSuccessful();
+      if (!ok) {
+        logger.warn("Save attempt {} {} -> {} body={}", method, url, resp.getStatusCode(),
+            resp.getBody());
+      } else {
+        logger.info("Save OK via {} {}", method, url);
+      }
+      return ok;
+    } catch (org.springframework.web.client.HttpStatusCodeException ex) {
+      logger.warn("Save attempt {} {} failed: {} {} body={}", method, url,
+          ex.getStatusCode().value(), ex.getStatusText(), ex.getResponseBodyAsString());
+      return false;
+    } catch (Exception e) {
+      logger.warn("Save attempt {} {} error: {}", method, url, e.toString());
+      return false;
+    }
+  }
+
+  /**
+   * Treat untouched signatory rows as empty.
+   */
+  private static boolean isEmptySignatory(RequestDTO.Signatory s) {
+    if (s == null) {
+      return true;
+    }
+    return (s.getFullName() == null || s.getFullName().isBlank())
+        && (s.getIdNumber() == null || s.getIdNumber().isBlank())
+        && (s.getInstruction() == null || s.getInstruction().isBlank())
+        && (s.getCapacity() == null || s.getCapacity().isBlank())
+        && (s.getGroup() == null || s.getGroup().isBlank());
+  }
+
+
+  // ===== Session helpers (ALL RequestDTO.* types, no SignatoryDTO here) =====
+
+  private static String nz(String s) {
+    return s == null ? "" : s.trim();
+  }
+
+  private Integer optInt(String s) {
+    try {
+      return (s == null) ? null : Integer.valueOf(s.trim());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * show "Saved" in table, but keep "@PAGE" in DB so we can reopen there
+   */
+  private static String cleanSubStatus(String sub) {
+    if (sub == null) {
+      return null;
+    }
+    int at = sub.indexOf('@');
+    return (at >= 0) ? sub.substring(0, at) : sub;
+  }
+
+  /**
+   * read the page token from "Saved@PAGE"; validate against known set
+   */
+  private static String extractLastPageCode(String sub) {
+    if (sub == null) {
+      return null;
+    }
+    int at = sub.indexOf('@');
+    if (at < 0 || at == sub.length() - 1) {
+      return null;
+    }
+    String code = sub.substring(at + 1).trim();
+    java.util.Set<String> known = java.util.Set.of(
+        "SEARCH_RESULTS",
+        "MANDATES_AUTOFILL",
+        "RESOLUTION_AUTOFILL",
+        "ACC_DETAILS",
+        "DIRECTORS_DETAILS",
+        "MANDATES_SIGNATURE_CARD",
+        "MANDATES_RESOLUTIONS_SIGNATURE_CARD"
+    );
+    return known.contains(code) ? code : null;
+  }
+
+  private void ensureLists(RequestDTO dto) {
+    if (dto.getDirectors() == null) {
+      dto.setDirectors(new java.util.ArrayList<>());
+    }
+    if (dto.getDocumentumTools() == null) {
+      dto.setDocumentumTools(new java.util.ArrayList<>());
+    }
+    if (dto.getResolutionDocs() == null) {
+      dto.setResolutionDocs(new java.util.ArrayList<>());
+    }
+  }
+
+  private void ensureAtLeastOneDirector(RequestDTO dto) {
+    ensureLists(dto);
+    if (dto.getDirectors().isEmpty()) {
+      dto.getDirectors().add(new RequestDTO.Director());
+    }
+  }
+
+  private static String dedupeComma(String s) {
+    String t = nz(s);
+    if (t.isEmpty()) {
+      return t;
+    }
+    String[] parts = t.split("\\s*,\\s*");
+    java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+    for (String p : parts) {
+      if (!p.isBlank()) {
+        set.add(p);
+      }
+    }
+    return String.join(", ", set);
+  }
+
+  private static String mapRequestType(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String s = raw.trim();
+    if (s.isEmpty()) {
+      return null;
+    }
+
+    // Numeric codes from the XSL (authoritative)
+    if (s.equals("1")) {
+      return "Mandates";
+    }
+    if (s.equals("2")) {
+      return "Resolutions";
+    }
+    if (s.equals("3")) {
+      return "Both";
+    }
+
+    // Common letters / synonyms / casing
+    String u = s.toUpperCase();
+    if (u.equals("M")) {
+      return "Mandates";
+    }
+    if (u.equals("R")) {
+      return "Resolutions";
+    }
+    if (u.equals("B")) {
+      return "Both";
+    }
+
+    // Text values
+    if (u.startsWith("MANDATE") && !u.contains("RESOLUTION")) {
+      return "Mandates";
+    }
+    if (u.startsWith("RESOLUTION")) {
+      return "Resolutions";
+    }
+    if (u.contains("BOTH") || u.contains("AND")) {
+      return "Both";
+    }
+
+    // Unknown → leave null so later inference (page / lists) can decide
+    return null;
+  }
+
+  /**
+   * Map canonical type text -> UI dropdown code.
+   */
+  private static String mapTypeToCode(String type) {
+    if (type == null) {
+      return "";
+    }
+    String u = type.trim().toUpperCase();
+    if (u.startsWith("MAN")) {
+      return "1";
+    }
+    if (u.startsWith("RES")) {
+      return "2";
+    }
+    if (u.startsWith("BOTH")) {
+      return "3";
+    }
+    // if it is already "1|2|3" return as-is
+    if (u.equals("1") || u.equals("2") || u.equals("3")) {
+      return type.trim();
+    }
+    return "";
+  }
+
+
+  private static String normalizePageCode(String code) {
+    if (code == null) {
+      return null;
+    }
+    String c = code.trim().toUpperCase();
+    return switch (c) {
+      case "RESOLUTIONS_FILL" -> "RESOLUTION_AUTOFILL"; // alias fix
+      default -> c;
+    };
+  }
+
+  private static boolean allBlank(String... ss) {
+    if (ss == null) {
+      return true;
+    }
+    for (String s : ss) {
+      if (s != null && !s.trim().isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.trim().isEmpty();
+  }
+
+  /**
+   * Accepts directors[i].name|surname|designation OR directors[i].name0/surname0/designation0
+   */
+  private static java.util.List<RequestDTO.Director> parseDirectorsFromParamsSuffix(
+      Map<String, String[]> params) {
+    java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+        "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$");
+    java.util.Map<Integer, RequestDTO.Director> byIdx = new java.util.TreeMap<>();
+    params.forEach((key, values) -> {
+      if (values == null || values.length == 0) {
+        return;
+      }
+      String v = values[0] == null ? "" : values[0].trim();
+
+      java.util.regex.Matcher m = p.matcher(key);
+      if (!m.matches()) {
+        return;
+      }
+
+      int idx = Integer.parseInt(m.group(1));
+      String field = m.group(2);
+
+      RequestDTO.Director d = byIdx.computeIfAbsent(idx, i -> new RequestDTO.Director());
+      switch (field) {
+        case "name"       -> d.setName(v);
+        case "surname"    -> d.setSurname(v);
+        case "designation" -> d.setDesignation(v);
+        default           ->
+          {
+            /* no-op */
+          } // keep if your Checkstyle requires a default
+      }
+    });
+    java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
+    for (RequestDTO.Director d : byIdx.values()) {
+      boolean allBlank =
+          (d.getName() == null || d.getName().isBlank())
+              && (d.getSurname() == null || d.getSurname().isBlank())
+              && (d.getDesignation() == null || d.getDesignation().isBlank());
+      if (!allBlank) {
+        out.add(d);
+      }
+    }
+    return out;
+  }
+
+
+  /**
+   * Parse directors from raw params across all page variants.
+   */
+  private static java.util.List<RequestDTO.Director> parseDirectorsFromParamsGeneric(
+      Map<String, String[]> params) {
+    // Helpers
+    java.util.function.Function<String[], String> lastNonBlank = arr -> {
+      if (arr == null || arr.length == 0) {
+        return null;
+      }
+      for (int i = arr.length - 1; i >= 0; i--) {
+        String v = arr[i];
+        if (v != null && !v.trim().isEmpty()) {
+          return v.trim();
+        }
+      }
+      String tail = arr[arr.length - 1];
+      return tail == null ? null : tail.trim();
+    };
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
+    // Patterns:
+    // A) directors[0].name  (optionally directors[0].name0)
+    java.util.regex.Pattern bracketPattern = java.util.regex.Pattern.compile(
+        "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$"
+    );
+    // B) directorName_1 / directorSurname_1 / directorDesignation_1  (1-based index)
+    java.util.regex.Pattern underscorePattern = java.util.regex.Pattern.compile(
+        "^director(Name|Surname|Designation)_(\\d+)$"
+    );
+
+    java.util.Map<Integer, RequestDTO.Director> byIndex = new java.util.TreeMap<>(); // keep order
+
+    for (var e : params.entrySet()) {
+      String key = e.getKey();
+      String val = lastNonBlank.apply(e.getValue());
+      if (val == null) {
+        continue;
+      }
+
+      java.util.regex.Matcher bracketMatcher = bracketPattern.matcher(key);
+      // or: var bracketMatcher = pBracket.matcher(key);
+      if (bracketMatcher.matches()) {
+        int idx = Integer.parseInt(bracketMatcher.group(1)); // 0-based from UI table
+        String field = bracketMatcher.group(2);
+
+        RequestDTO.Director d = byIndex.computeIfAbsent(idx, i -> new RequestDTO.Director());
+        switch (field) {
+          case "name"        -> d.setName(nz.apply(val));
+          case "surname"     -> d.setSurname(nz.apply(val));
+          case "designation" -> d.setDesignation(nz.apply(val));
+          default ->
+            {
+              /* intentionally ignore unknown fields */
+            }
+        }
+        continue;
+      }
+
+      java.util.regex.Matcher underscoreMatcher = underscorePattern.matcher(key);
+      if (underscoreMatcher.matches()) {
+        String which = underscoreMatcher.group(1);   // Name | Surname | Designation
+        int idx1 = Integer.parseInt(underscoreMatcher.group(2));
+        int idx = Math.max(0, idx1 - 1);             // convert to 0-based
+
+        RequestDTO.Director d = byIndex.computeIfAbsent(idx, i -> new RequestDTO.Director());
+        switch (which) {
+          case "Name"        -> d.setName(nz.apply(val));
+          case "Surname"     -> d.setSurname(nz.apply(val));
+          case "Designation" -> d.setDesignation(nz.apply(val));
+          default ->
+            {
+              /* intentionally ignore unknown fields */
+            }
+        }
+      }
+    }
+
+    // Build ordered list, drop fully blank rows
+    java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
+    for (var entry : byIndex.entrySet()) {
+      RequestDTO.Director d = entry.getValue();
+      if (d == null) {
+        continue;
+      }
+      boolean blank = (d.getName() == null || d.getName().isBlank())
+          && (d.getSurname() == null || d.getSurname().isBlank())
+          && (d.getDesignation() == null || d.getDesignation().isBlank());
+      if (!blank) {
+        out.add(d);
+      }
+    }
+    return out;
+  }
+
+
+  /**
+   * Collect any shape of documentumTools params into a clean, distinct list.
+   */
+  private static java.util.List<String> parseDocumentumToolsFromParams(
+      java.util.Map<String, String[]> params) {
+    java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+    for (java.util.Map.Entry<String, String[]> e : params.entrySet()) {
+      String key = e.getKey();
+      if (key == null) {
+        continue;
+      }
+
+      // Standard MVC array binding: documentumTools and documentumTools[0], [1], ...
+      if (key.equals("documentumTools") || key.startsWith("documentumTools[")) {
+        for (String v : e.getValue()) {
+          if (v != null && !v.isBlank()) {
+            out.add(v.trim());
+          }
+        }
+      }
+
+      // Be liberal: support a repeated single key "documentumTool"
+      if (key.equals("documentumTool")) {
+        for (String v : e.getValue()) {
+          if (v != null && !v.isBlank()) {
+            out.add(v.trim());
+          }
+        }
+      }
+    }
+    return new java.util.ArrayList<>(out);
+  }
+
+  /**
+   * Split a CSV safely into a list (trim, dedupe, drop blanks).
+   */
+  private static java.util.List<String> csvToList(String csv) {
+    java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+    if (csv != null) {
+      for (String part : csv.split("\\s*,\\s*")) {
+        if (part != null && !part.isBlank()) {
+          set.add(part.trim());
+        }
+      }
+    }
+    return new java.util.ArrayList<>(set);
+  }
+
+  /**
+   * Return the framework error page (template="error") with your message.
+   */
+  private ResponseEntity<String> validationError(String message) {
+    String body =
+        "<page xmlns:comm=\"http://ws.online.fnb.co.za/common/\" "
+            +
+            "      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+            +
+            "      id=\"\" heading=\" \" template=\"error\" version=\"1\">"
+            +
+            "  <error xsi:type=\"validationError\">"
+            +
+            "    <name>confirmationCheck</name>"
+            +
+            "    <code>0</code>"
+            +
+            "    <message>" + escapeXml(message) + "</message>"
+            +
+            "  </error>"
+            +
+            "</page>";
+    return ResponseEntity
+        .ok()
+        .contentType(MediaType.TEXT_XML)   // engine expects XML here
+        .body(body);
+  }
+
+  /**
+   * minimal XML text escaper
+   */
+  private static String escapeXml(String s) {
+    if (s == null) {
+      return "";
+    }
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace("\"", "&quot;").replace("'", "&apos;");
+  }
+
+  private ResponseEntity<String> renderCreateRequestWithInlineNotFound(HttpSession session,
+                                                                       String reg) {
+    // ensure session id
+    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
+      pdfSessionId = java.util.UUID.randomUUID().toString();
+      session.setAttribute("pdfSessionId", pdfSessionId);
+    }
+
+    RequestDTO dto = new RequestDTO();
+    dto.setPdfSessionId(pdfSessionId);
+    dto.setRegistrationNumber(reg == null ? "" : reg.trim());
+    dto.setErrorMessage("Company registration number not found.");
+    dto.setEditable(true);
+
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_XML)
+        .body(page);
+  }
+
+
+  // Parse accounts & nested signatories posted by any of the XSL pages
+  private List<RequestStagingDTO.AccountDraft> parseAccountsFromParams(
+      Map<String, String[]> params) {
+
+    // pick the last non-blank value (mirrors how browsers may post duplicates)
+    final java.util.function.Function<String[], String> pick = arr -> {
+      if (arr == null || arr.length == 0) {
+        return "";
+      }
+      String best = null;
+      for (String v : arr) {
+        if (v != null && !v.trim().isEmpty()) {
+          best = v.trim();
+        }
+      }
+      if (best != null) {
+        return best;
+      }
+      String tail = arr[arr.length - 1];
+      return tail == null ? "" : tail.trim();
+    };
+
+    // --- Patterns (precompiled) ---
+    final Pattern accNamePat = Pattern.compile("^accountName_(\\d+)$");
+    final Pattern accNoPat = Pattern.compile("^accountNo_(\\d+)$");
+    final Pattern accNumberPat = Pattern.compile("^accountNumber_(\\d+)$"); // alt key support
+
+    final Pattern fullNamePat = Pattern.compile("^fullName_(\\d+)_(\\d+)$");
+    final Pattern idNumPat = Pattern.compile("^idNumber_(\\d+)_(\\d+)$");
+    final Pattern instrPat = Pattern.compile("^instruction_(\\d+)_(\\d+)$");
+    final Pattern capacityPat = Pattern.compile("^capacity_(\\d+)_(\\d+)$");
+    final Pattern groupPat = Pattern.compile("^group_(\\d+)_(\\d+)$");
+
+    // Keep natural order by account index, and signatory index
+    Map<Integer, RequestStagingDTO.AccountDraft> accountsByIdx = new TreeMap<>();
+    Map<Integer, Map<Integer, RequestStagingDTO.SignatoryDraft>> signsByAcc = new HashMap<>();
+
+    for (Map.Entry<String, String[]> e : params.entrySet()) {
+      String key = e.getKey();
+      String val = pick.apply(e.getValue());
+      Matcher m;
+
+      // accountName_#
+      m = accNamePat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        RequestStagingDTO.AccountDraft acc =
+            accountsByIdx.computeIfAbsent(i, k -> new RequestStagingDTO.AccountDraft());
+        acc.setAccountName(val);
+        if (acc.getIsActive() == null) {
+          acc.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // accountNo_# (UI) or accountNumber_# (alt)
+      m = accNoPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        RequestStagingDTO.AccountDraft acc =
+            accountsByIdx.computeIfAbsent(i, k -> new RequestStagingDTO.AccountDraft());
+        acc.setAccountNumber(val);
+        if (acc.getIsActive() == null) {
+          acc.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+      m = accNumberPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        RequestStagingDTO.AccountDraft acc =
+            accountsByIdx.computeIfAbsent(i, k -> new RequestStagingDTO.AccountDraft());
+        acc.setAccountNumber(val);
+        if (acc.getIsActive() == null) {
+          acc.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // fullName_#_#
+      m = fullNamePat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        int j = Integer.parseInt(m.group(2));
+        RequestStagingDTO.SignatoryDraft sd = signsByAcc
+            .computeIfAbsent(i, k -> new TreeMap<>())
+            .computeIfAbsent(j, k -> new RequestStagingDTO.SignatoryDraft());
+        sd.setFullName(val);
+        if (sd.getIsActive() == null) {
+          sd.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // idNumber_#_#
+      m = idNumPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        int j = Integer.parseInt(m.group(2));
+        RequestStagingDTO.SignatoryDraft sd = signsByAcc
+            .computeIfAbsent(i, k -> new TreeMap<>())
+            .computeIfAbsent(j, k -> new RequestStagingDTO.SignatoryDraft());
+        sd.setIdNumber(val);
+        if (sd.getIsActive() == null) {
+          sd.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // instruction_#_#
+      m = instrPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        int j = Integer.parseInt(m.group(2));
+        RequestStagingDTO.SignatoryDraft sd = signsByAcc
+            .computeIfAbsent(i, k -> new TreeMap<>())
+            .computeIfAbsent(j, k -> new RequestStagingDTO.SignatoryDraft());
+        sd.setInstructions(val); // staging field is "instructions"
+        if (sd.getIsActive() == null) {
+          sd.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // capacity_#_#
+      m = capacityPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        int j = Integer.parseInt(m.group(2));
+        RequestStagingDTO.SignatoryDraft sd = signsByAcc
+            .computeIfAbsent(i, k -> new TreeMap<>())
+            .computeIfAbsent(j, k -> new RequestStagingDTO.SignatoryDraft());
+        sd.setCapacity(val);
+        if (sd.getIsActive() == null) {
+          sd.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+
+      // group_#_#
+      m = groupPat.matcher(key);
+      if (m.matches()) {
+        int i = Integer.parseInt(m.group(1));
+        int j = Integer.parseInt(m.group(2));
+        RequestStagingDTO.SignatoryDraft sd = signsByAcc
+            .computeIfAbsent(i, k -> new TreeMap<>())
+            .computeIfAbsent(j, k -> new RequestStagingDTO.SignatoryDraft());
+        sd.setGroupCategory(val);
+        if (sd.getIsActive() == null) {
+          sd.setIsActive(Boolean.TRUE);
+        }
+        continue;
+      }
+    }
+
+    // Attach non-empty signatories to each account (and prune empty rows)
+    for (Map.Entry<Integer, Map<Integer, RequestStagingDTO.SignatoryDraft>> accEntry :
+        signsByAcc.entrySet()) {
+      int i = accEntry.getKey();
+      RequestStagingDTO.AccountDraft acc =
+          accountsByIdx.computeIfAbsent(i, k -> new RequestStagingDTO.AccountDraft());
+      List<RequestStagingDTO.SignatoryDraft> clean = new ArrayList<>();
+      for (RequestStagingDTO.SignatoryDraft sd : accEntry.getValue().values()) {
+        boolean emptyRow =
+            isBlank(sd.getFullName())
+                && isBlank(sd.getIdNumber())
+                && isBlank(sd.getInstructions()); // capacity/group are optional
+        if (!emptyRow) {
+          clean.add(sd);
+        }
+      }
+      acc.setSignatories(clean.isEmpty() ? null : clean);
+      if (acc.getIsActive() == null) {
+        acc.setIsActive(Boolean.TRUE);
+      }
+    }
+
+    // Build final ordered list, dropping accounts that are truly empty
+    List<RequestStagingDTO.AccountDraft> out = new ArrayList<>();
+    for (RequestStagingDTO.AccountDraft acc : accountsByIdx.values()) {
+      boolean hasAnything =
+          !isBlank(acc.getAccountName())
+              || !isBlank(acc.getAccountNumber())
+              || (acc.getSignatories() != null && !acc.getSignatories().isEmpty());
+      if (hasAnything) {
+        if (acc.getIsActive() == null) {
+          acc.setIsActive(Boolean.TRUE);
+        }
+        out.add(acc);
+      }
+    }
+
+    logger.debug("[parseAccountsFromParams] detected accounts: {}", accountsByIdx.keySet());
+    logger.debug("[parseAccountsFromParams] returning {} account(s)", out.size());
+    return out;
+  }
+
+  private static String normalizeSelCode(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String r = raw.trim();
+    if (r.isEmpty()) {
+      return null;
+    }
+
+    // already numeric?
+    if ("1".equals(r) || "2".equals(r) || "3".equals(r)) {
+      return r;
+    }
+
+    switch (r.toUpperCase()) {
+      case "MANDATE":
+      case "MANDATES":
+      case "M":
+        return "1";
+      case "RESOLUTION":
+      case "RESOLUTIONS":
+      case "R":
+        return "2";
+      case "BOTH":
+      case "MANDATE & RESOLUTION":
+      case "MANDATE AND RESOLUTION":
+      case "M+R":
+      case "MR":
+        return "3";
+      default:
+        return null;
+    }
+  }
+
+  private static String toTypeFromCode(String code) {
+    return switch (code) {
+      case "1" -> "MANDATE";
+      case "2" -> "RESOLUTION";
+      case "3" -> "BOTH";
+      default -> null;
+    };
+  }
+
+
+  private RequestWrapper buildAutoFillWrapperFromStaging(Long stagingId, String pdfSessionId) {
+    final String base = "http://localhost:8083";
+    RestTemplate rt = new RestTemplate();
+
+    RequestDTO ui = new RequestDTO();
+    ui.setPdfSessionId(nz(pdfSessionId));
+    ui.setStagingId(stagingId);
+
+    if (stagingId != null) {
+      RequestStagingDTO s = rt.getForObject(base + "/api/request-staging/{id}",
+          RequestStagingDTO.class, stagingId);
+
+      if (s != null) {
+        //Company
+        ui.setCompanyName(nz(s.getCompanyName()));
+        ui.setCompanyAddress(nz(s.getCompanyAddress()));
+        ui.setRegistrationNumber(nz(s.getCompanyRegistrationNumber()));
+
+        //Dropdown "1|2|3" mapped from text Mandates|Resolutions|Both
+        ui.setMandateResolution(unmapRequestTypeToDropdown(s.getRequestType()));
+
+        //Waiver tools -> hydrate as list for XSL
+        ui.setDocumentumTools(csvToList(nz(s.getWaiverPermittedTools())));
+
+        //Authorities -> Directors (needed for Mandates AutoFill)
+        if (s.getAuthorities() != null && !s.getAuthorities().isEmpty()) {
+          java.util.List<RequestDTO.Director> directors = new java.util.ArrayList<>();
+          for (var a : s.getAuthorities()) {
+            if (a == null || Boolean.FALSE.equals(a.getIsActive())) {
+              continue;
+            }
+            RequestDTO.Director d = new RequestDTO.Director();
+            d.setName(nz(a.getFirstname()));
+            d.setSurname(nz(a.getSurname()));
+            d.setDesignation(nz(a.getDesignation()));
+            directors.add(d);
+          }
+          if (!directors.isEmpty()) {
+            ui.setDirectors(directors);
+          }
+        }
+
+        //Accounts + signatories
+        if (s.getAccounts() != null) {
+          java.util.List<RequestDTO.Account> accs = new java.util.ArrayList<>();
+          for (var a : s.getAccounts()) {
+            if (a == null || Boolean.FALSE.equals(a.getIsActive())) {
+              continue;
+            }
+
+            RequestDTO.Account ua = new RequestDTO.Account();
+            ua.setAccountName(nz(a.getAccountName()));
+            setAccountNumber(ua, nz(a.getAccountNumber())); //Sets accountNo in UI DTO
+
+            java.util.List<RequestDTO.Signatory> sigs = new java.util.ArrayList<>();
+            if (a.getSignatories() != null) {
+              for (var sd : a.getSignatories()) {
+                if (sd == null || Boolean.FALSE.equals(sd.getIsActive())) {
+                  continue;
+                }
+
+                RequestDTO.Signatory us = new RequestDTO.Signatory();
+                us.setFullName(nz(sd.getFullName()));
+                us.setIdNumber(nz(sd.getIdNumber()));
+                us.setInstruction(nz(sd.getInstructions())); //"ADD"/"REMOVE"
+                us.setCapacity(nz(sd.getCapacity()));
+                us.setGroup(nz(sd.getGroupCategory()));
+                sigs.add(us);
+              }
+            }
+            if (sigs.isEmpty()) {
+              sigs.add(createBlankSignatory());
+            }
+            ua.setSignatories(sigs);
+            accs.add(ua);
+          }
+          ui.setAccounts(accs);
+        }
+      }
+    }
+
+    RequestWrapper w = new RequestWrapper();
+    w.setRequest(ui);
+    //Attach LOVs (Instructions)
+    RequestWrapper.LovsDTO lovs = new RequestWrapper.LovsDTO();
+    lovs.setInstructions(fetchLovValues("Dropdown", "Instructions"));
+    w.setLovs(lovs);
+    return w;
+  }
+
+  // For Search Results page (company details + directors + dropdown value)
+  private RequestWrapper buildSearchResultsWrapperFromStaging(Long stagingId, String pdfSessionId) {
+    final String base = "http://localhost:8083";
+    RestTemplate rt = new RestTemplate();
+
+    RequestStagingDTO s =
+        rt.getForObject(base + "/api/request-staging/{id}", RequestStagingDTO.class, stagingId);
+    if (s == null) {
+      s = new RequestStagingDTO();
+    }
+
+    RequestDTO req = new RequestDTO();
+    req.setPdfSessionId(pdfSessionId);
+    req.setStagingId(s.getStagingId());
+    req.setRegistrationNumber(s.getCompanyRegistrationNumber());
+    req.setCompanyName(s.getCompanyName());
+    req.setCompanyAddress(s.getCompanyAddress());
+
+    //  Pre-select dropdown using the code "1|2|3"
+    req.setMandateResolution(mapTypeToCode(s.getRequestType()));
+
+    //  Waiver tools -> documentumTools (plural setter; elements render as <documentumTool>)
+    java.util.List<String> tools = new java.util.ArrayList<>();
+    if (s.getWaiverPermittedTools() != null && !s.getWaiverPermittedTools().isBlank()) {
+      for (String t : s.getWaiverPermittedTools().split(",")) {
+        String tt = (t == null) ? "" : t.trim();
+        if (!tt.isBlank()) {
+          tools.add(tt);
+        }
+      }
+    }
+    req.setDocumentumTools(tools);
+
+    //  Authorities -> Directors using RequestDTO.Director (NOT DirectorDTO)
+    java.util.List<RequestDTO.Director> dirs = new java.util.ArrayList<>();
+    if (s.getAuthorities() != null) {
+      for (RequestStagingDTO.AuthorityDraft a : s.getAuthorities()) {
+        if (a == null || Boolean.FALSE.equals(a.getIsActive())) {
+          continue;
+        }
+        RequestDTO.Director d = new RequestDTO.Director();
+        d.setName(a.getFirstname() == null ? "" : a.getFirstname().trim());
+        d.setSurname(a.getSurname() == null ? "" : a.getSurname().trim());
+        d.setDesignation(a.getDesignation() == null ? "" : a.getDesignation().trim());
+        boolean blank =
+            (d.getName().isBlank() && d.getSurname().isBlank() && d.getDesignation().isBlank());
+        if (!blank) {
+          dirs.add(d);
+        }
+      }
+    }
+    req.setDirectors(dirs);
+
+    // Editable is boolean
+    req.setEditable(true);
+
+    RequestWrapper w = new RequestWrapper();
+    w.setRequest(req);
+    return w;
+  }
+
+  // "Mandate"|"Resolution"|"Mandate and resolution" -> "1"|"2"|"3"
+  private static String unmapRequestTypeToDropdown(String type) {
+    if (type == null) {
+      return null;
+    }
+    switch (type.trim().toLowerCase()) {
+      case "mandate":
+        return "1";
+      case "resolution":
+        return "2";
+      case "mandate and resolution":
+        return "3";
+      default:
+        return null;
+    }
+  }
+
+  // Fallback: reconstruct directors from request params if binder missed them
+  private static List<RequestDTO.Director> parseDirectorsFromParams(Map<String, String[]> params) {
+    // matches: directors[0].name   OR directors[0].name0  (same for surname/designation)
+    java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+        "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$"
+    );
+
+    java.util.Map<Integer, RequestDTO.Director> byIndex = new java.util.HashMap<>();
+
+    params.forEach((k, v) -> {
+      java.util.regex.Matcher m = p.matcher(k);
+      if (!m.matches()) {
+        return;
+      }
+
+      int idx = Integer.parseInt(m.group(1));
+      String field = m.group(2);
+      String value = (v != null && v.length > 0) ? v[0] : null;
+
+      RequestDTO.Director d = byIndex.computeIfAbsent(idx, i -> new RequestDTO.Director());
+      if ("name".equals(field)) {
+        d.setName(value);
+      } else if ("surname".equals(field)) {
+        d.setSurname(value);
+      } else if ("designation".equals(field)) {
+        d.setDesignation(value);
+      }
+    });
+
+    // build ordered list, drop fully blank rows
+    return byIndex.entrySet().stream()
+        .sorted(java.util.Map.Entry.comparingByKey())
+        .map(java.util.Map.Entry::getValue)
+        .filter(d -> d != null && !(isAllBlank(d.getName(), d.getSurname(), d.getDesignation())))
+        .toList();
+  }
+
+
+  // Some schemas use accountNo, some accountNumber – support both
+  private void setAccountNumber(RequestDTO.Account a, String v) {
+    try {
+      a.getClass().getMethod("setAccountNo", String.class).invoke(a, v);
+      return;
+    } catch (Exception ignored) {
+      // intentionally empty
+    }
+    try {
+      a.getClass().getMethod("setAccountNumber", String.class).invoke(a, v);
+    } catch (Exception ignored) {
+      // intentionally empty
+    }
+  }
+
+  private String getAccountNumber(RequestDTO.Account a) {
+    try {
+      return (String) a.getClass().getMethod("getAccountNo").invoke(a);
+    } catch (Exception ignored) {
+      // intentionally empty
+    }
+    try {
+      return (String) a.getClass().getMethod("getAccountNumber").invoke(a);
+    } catch (Exception ignored) {
+      // intentionally empty
+    }
+    return "";
+  }
+
+  // --- factories (RequestDTO.*) ---
+  private RequestDTO.Signatory createBlankSignatory() {
+    RequestDTO.Signatory s = new RequestDTO.Signatory();
+    s.setFullName("");
+    s.setIdNumber("");
+    s.setInstruction("");
+    s.setCapacity("");
+    s.setGroup("");
+    return s;
+  }
+
+  private RequestDTO.Account createBlankAccount() {
+    RequestDTO.Account a = new RequestDTO.Account();
+    a.setAccountName("");
+    setAccountNumber(a, "");
+    a.setSignatories(new java.util.ArrayList<>(java.util.List.of(createBlankSignatory())));
+    return a;
+  }
+
+  private RequestDTO.Director createBlankDirector() {
+    RequestDTO.Director d = new RequestDTO.Director();
+    d.setName("");
+    d.setSurname("");
+    d.setDesignation("");
+    return d;
+  }
+
+  // For multivalued form fields, pick the last non-blank
+  private static String lastNonBlank(HttpServletRequest req, String name) {
+    String[] vals = req.getParameterValues(name);
+    if (vals == null || vals.length == 0) {
+      return null;
+    }
+    String best = null;
+    for (String v : vals) {
+      if (v != null && !v.trim().isEmpty()) {
+        best = v.trim();
+      }
+    }
+    return (best != null) ? best : vals[vals.length - 1];
+  }
+
+
+  // --- parse accounts/signatories posted by the XSL ---
+  private java.util.List<RequestDTO.Account> parseAccountsFromRequest(HttpServletRequest request) {
+    var accNamePat = java.util.regex.Pattern.compile("^accountName_(\\d+)$");
+    var accNoPat = java.util.regex.Pattern.compile("^accountNo_(\\d+)$");
+    var fullNamePat = java.util.regex.Pattern.compile("^fullName_(\\d+)_(\\d+)$");
+    var idNumPat = java.util.regex.Pattern.compile("^idNumber_(\\d+)_(\\d+)$");
+    var instrPat = java.util.regex.Pattern.compile("^instruction_(\\d+)_(\\d+)$");
+    var capacityPat = java.util.regex.Pattern.compile("^capacity_(\\d+)_(\\d+)$");
+    var groupPat = java.util.regex.Pattern.compile("^group_(\\d+)_(\\d+)$");
+
+    java.util.SortedSet<Integer> accountIdxs = new java.util.TreeSet<>();
+    for (String p : request.getParameterMap().keySet()) {
+      if (accNamePat.matcher(p).matches()) {
+        accountIdxs.add(Integer.parseInt(accNamePat.matcher(p).replaceAll("$1")));
+      }
+      if (accNoPat.matcher(p).matches()) {
+        accountIdxs.add(Integer.parseInt(accNoPat.matcher(p).replaceAll("$1")));
+      }
+      var m = fullNamePat.matcher(p);
+      if (m.matches()) {
+        accountIdxs.add(Integer.parseInt(m.group(1)));
+      }
+      m = idNumPat.matcher(p);
+      if (m.matches()) {
+        accountIdxs.add(Integer.parseInt(m.group(1)));
+      }
+      m = instrPat.matcher(p);
+      if (m.matches()) {
+        accountIdxs.add(Integer.parseInt(m.group(1)));
+      }
+      m = capacityPat.matcher(p);
+      if (m.matches()) {
+        accountIdxs.add(Integer.parseInt(m.group(1)));
+      }
+      m = groupPat.matcher(p);
+      if (m.matches()) {
+        accountIdxs.add(Integer.parseInt(m.group(1)));
+      }
+    }
+
+    java.util.List<RequestDTO.Account> out = new java.util.ArrayList<>();
+    for (Integer idx : accountIdxs) {
+      RequestDTO.Account a = new RequestDTO.Account();
+      String nm = lastNonBlank(request, "accountName_" + idx);
+      String no = lastNonBlank(request, "accountNo_" + idx);
+      if (nm != null) {
+        a.setAccountName(nm.trim());
+      }
+      if (no != null) {
+        setAccountNumber(a, no.trim());
+      }
+      a.setSignatories(new java.util.ArrayList<>());
+
+      java.util.SortedSet<Integer> sortedIdx = new java.util.TreeSet<>();
+      for (String paramName : request.getParameterMap().keySet()) {
+        var fullNameMatcher = fullNamePat.matcher(paramName);
+        var idNumMatcher    = idNumPat.matcher(paramName);
+        var instrMatcher    = instrPat.matcher(paramName);
+        var capacityMatcher = capacityPat.matcher(paramName);
+        var groupMatcher    = groupPat.matcher(paramName);
+
+        if (fullNameMatcher.matches() && Integer.parseInt(fullNameMatcher.group(1)) == idx) {
+          sortedIdx.add(Integer.parseInt(fullNameMatcher.group(2)));
+        }
+        if (idNumMatcher.matches() && Integer.parseInt(idNumMatcher.group(1)) == idx) {
+          sortedIdx.add(Integer.parseInt(idNumMatcher.group(2)));
+        }
+        if (instrMatcher.matches() && Integer.parseInt(instrMatcher.group(1)) == idx) {
+          sortedIdx.add(Integer.parseInt(instrMatcher.group(2)));
+        }
+        if (capacityMatcher.matches() && Integer.parseInt(capacityMatcher.group(1)) == idx) {
+          sortedIdx.add(Integer.parseInt(capacityMatcher.group(2)));
+        }
+        if (groupMatcher.matches() && Integer.parseInt(groupMatcher.group(1)) == idx) {
+          sortedIdx.add(Integer.parseInt(groupMatcher.group(2)));
+        }
+      }
+
+      for (Integer s : sortedIdx) {
+        RequestDTO.Signatory sig = new RequestDTO.Signatory();
+        String fn = lastNonBlank(request, "fullName_" + idx + "_" + s);
+        String id = lastNonBlank(request, "idNumber_" + idx + "_" + s);
+        String in = lastNonBlank(request, "instruction_" + idx + "_" + s);
+        String cp = lastNonBlank(request, "capacity_" + idx + "_" + s);
+        String gp = lastNonBlank(request, "group_" + idx + "_" + s);
+        if (fn != null) {
+          sig.setFullName(fn.trim());
+        }
+        if (id != null) {
+          sig.setIdNumber(id.trim());
+        }
+        if (in != null) {
+          sig.setInstruction(in.trim()); // << singular
+        }
+        if (cp != null) {
+          sig.setCapacity(cp.trim());
+        }
+        if (gp != null) {
+          sig.setGroup(gp.trim());       // << group
+        }
+        a.getSignatories().add(sig);
+      }
+
+      if (a.getSignatories().isEmpty()) {
+        a.getSignatories().add(createBlankSignatory());
+      }
+      out.add(a);
+    }
+    return out;
+  }
+
+  private static String resolvePage(HttpServletRequest req, String pageCodeArg) {
+    String page = null;
+
+    // Prefer the last non-blank value from the raw params if duplicates exist
+    String[] arr = req.getParameterValues("pageCode");
+    if (arr != null && arr.length > 0) {
+      for (String v : arr) {
+        if (v != null && !v.isBlank()) {
+          page = v.trim();
+        }
+      }
+    }
+
+    // Fallback to method argument
+    if ((page == null || page.isBlank()) && pageCodeArg != null && !pageCodeArg.isBlank()) {
+      page = pageCodeArg.trim();
+    }
+
+    return (page == null || page.isBlank()) ? "SEARCH_RESULTS" : page;
+  }
+
+
+  // --- merge accounts by position (non-blank only) ---
+  private void mergeAccounts(RequestDTO target, java.util.List<RequestDTO.Account> parsed) {
+    if (parsed == null || parsed.isEmpty()) {
+      return;
+    }
+    if (target.getAccounts() == null) {
+      target.setAccounts(new java.util.ArrayList<>());
+    }
+
+    for (int i = 0; i < parsed.size(); i++) {
+      RequestDTO.Account src = parsed.get(i);
+      while (target.getAccounts().size() <= i) {
+        target.getAccounts().add(createBlankAccount());
+      }
+      RequestDTO.Account dst = target.getAccounts().get(i);
+
+      if (nz(src.getAccountName()).length() > 0) {
+        dst.setAccountName(nz(src.getAccountName()));
+      }
+      String srcNo = getAccountNumber(src);
+      if (nz(srcNo).length() > 0) {
+        setAccountNumber(dst, srcNo);
+      }
+
+      if (src.getSignatories() != null && !src.getSignatories().isEmpty()) {
+        if (dst.getSignatories() == null) {
+          dst.setSignatories(new java.util.ArrayList<>());
+        }
+        while (dst.getSignatories().size() < src.getSignatories().size()) {
+          dst.getSignatories().add(createBlankSignatory());
+        }
+
+        for (int s = 0; s < src.getSignatories().size(); s++) {
+          RequestDTO.Signatory ss = src.getSignatories().get(s);
+          RequestDTO.Signatory dd = dst.getSignatories().get(s);
+          if (nz(ss.getFullName()).length() > 0) {
+            dd.setFullName(nz(ss.getFullName()));
+          }
+          if (nz(ss.getIdNumber()).length() > 0) {
+            dd.setIdNumber(nz(ss.getIdNumber()));
+          }
+          if (nz(ss.getInstruction()).length() > 0) {
+            dd.setInstruction(nz(ss.getInstruction())); // << singular
+          }
+          if (nz(ss.getCapacity()).length() > 0) {
+            dd.setCapacity(nz(ss.getCapacity()));
+          }
+          if (nz(ss.getGroup()).length() > 0) {
+            dd.setGroup(nz(ss.getGroup()));             // << group
+          }
+        }
+      }
+    }
+  }
+
+  // --- directors parse/merge ---
+  private java.util.List<RequestDTO.Director> parseDirectorsFromRequest(
+      HttpServletRequest request) {
+    java.util.regex.Pattern namePat = java.util.regex.Pattern.compile("^directorName_(\\d+)$");
+    java.util.regex.Pattern surPat = java.util.regex.Pattern.compile("^directorSurname_(\\d+)$");
+    java.util.regex.Pattern desPat =
+        java.util.regex.Pattern.compile("^directorDesignation_(\\d+)$");
+    java.util.regex.Pattern insPat =
+        java.util.regex.Pattern.compile("^directorInstruction_(\\d+)$"); // NEW
+
+    java.util.SortedSet<Integer> idxs = new java.util.TreeSet<>();
+    for (String p : request.getParameterMap().keySet()) {
+      java.util.regex.Matcher m1 = namePat.matcher(p);
+      java.util.regex.Matcher m2 = surPat.matcher(p);
+      java.util.regex.Matcher m3 = desPat.matcher(p);
+      java.util.regex.Matcher m4 = insPat.matcher(p); // NEW
+      if (m1.matches()) {
+        idxs.add(Integer.parseInt(m1.group(1)));
+      }
+      if (m2.matches()) {
+        idxs.add(Integer.parseInt(m2.group(1)));
+      }
+      if (m3.matches()) {
+        idxs.add(Integer.parseInt(m3.group(1)));
+      }
+      if (m4.matches()) {
+        idxs.add(Integer.parseInt(m4.group(1))); // NEW
+      }
+    }
+
+    java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
+    for (Integer i : idxs) {
+      RequestDTO.Director d = new RequestDTO.Director();
+      String nm = request.getParameter("directorName_" + i);
+      String sn = request.getParameter("directorSurname_" + i);
+      String dg = request.getParameter("directorDesignation_" + i);
+      String in = request.getParameter("directorInstruction_" + i); // NEW
+      if (nm != null) {
+        d.setName(nm.trim());
+      }
+      if (sn != null) {
+        d.setSurname(sn.trim());
+      }
+      if (dg != null) {
+        d.setDesignation(dg.trim());
+      }
+      if (in != null) {
+        d.setInstruction(in.trim()); // NEW (singular on RequestDTO.Director)
+      }
+      out.add(d);
+    }
+    return out;
+  }
+
+
+  private void mergeDirectorsByPosition(RequestDTO target,
+                                        java.util.List<RequestDTO.Director> parsed) {
+    if (parsed == null || parsed.isEmpty()) {
+      return;
+    }
+    if (target.getDirectors() == null) {
+      target.setDirectors(new java.util.ArrayList<>());
+    }
+    java.util.List<RequestDTO.Director> dst = target.getDirectors();
+    for (int i = 0; i < parsed.size(); i++) {
+      while (dst.size() <= i) {
+        dst.add(createBlankDirector());
+      }
+      RequestDTO.Director s = parsed.get(i);
+      RequestDTO.Director d = dst.get(i);
+      if (nz(s.getName()).length() > 0) {
+        d.setName(nz(s.getName()));
+      }
+      if (nz(s.getSurname()).length() > 0) {
+        d.setSurname(nz(s.getSurname()));
+      }
+      if (nz(s.getDesignation()).length() > 0) {
+        d.setDesignation(nz(s.getDesignation()));
+      }
+      if (nz(s.getInstruction()).length() > 0) {
+        d.setInstruction(nz(s.getInstruction())); // NEW
+      }
+    }
+  }
+
+  private java.util.List<String> fetchLovValues(String type, String subType) {
+    final String base = "http://localhost:8083";
+    RestTemplate rt = new RestTemplate();
+    try {
+      ListOfValuesDTO[] arr = rt.getForObject(
+          base + "/api/lov?type={t}&subType={s}",
+          ListOfValuesDTO[].class,
+          type, subType
+      );
+      java.util.List<String> out = new java.util.ArrayList<>();
+      if (arr != null) {
+        for (var it : arr) {
+          if (it != null && (it.getIsActive() == null || Boolean.TRUE.equals(it.getIsActive()))) {
+            String v = it.getValue();
+            if (v != null && !v.isBlank()) {
+              out.add(v.trim());
+            }
+          }
+        }
+      }
+      // Guaranteed Add/Remove even if DAO returns nothing
+      if (out.isEmpty()) {
+        out = java.util.List.of("Add", "Remove");
+      }
+      return out;
+    } catch (Exception ex) {
+      logger.warn("LOV fetch failed for {}/{}: {}", type, subType, ex.toString());
+      return java.util.List.of("Add", "Remove");
+    }
+  }
+
+  // ===== Allowed sub-statuses & initial mapping =====
+  private static final java.util.Set<String> ALLOWED_SUBSTATUSES = new java.util.HashSet<>(
+      java.util.Arrays.asList(
+          "Hogan Verification Pending",
+          "Windeed Verification Pending",
+          "Hanis Verification Pending",
+          "Admin Approval Pending",
+          "Hogan Update Pending",
+          "Documentum Update Pending"
+      )
+  );
+
+  /**
+   * Pick the very first subStatus right after creation.
+   * If you later want to vary by type ("Mandates"|"Resolutions"|"Both"), branch on the 'type' here.
+   */
+  private static String initialSubStatusForType(String type) {
+    return "Hogan Verification Pending";
+  }
+
+  // ======================= UI -> Backend Submission Mapper =======================
+  private SubmissionPayload buildSubmissionPayload(RequestDTO ui, String requestTypeRaw) {
+    SubmissionPayload out = new SubmissionPayload();
+
+    // --- Company ---
+    SubmissionPayload.Company c = new SubmissionPayload.Company();
+    c.setRegistrationNumber(nz(ui.getRegistrationNumber()));
+    c.setName(nz(ui.getCompanyName()));
+    c.setAddress(nz(ui.getCompanyAddress()));
+    c.setCreator(nz(ui.getLoggedInUsername()));
+    c.setUpdator(nz(ui.getLoggedInUsername()));
+    out.setCompany(c);
+
+    // --- Request (normalize "1|2|3" -> "Mandates|Resolutions|Both") ---
+    String typeNorm = mapRequestType(requestTypeRaw);
+    if (typeNorm == null) {
+      String t = nz(requestTypeRaw).toLowerCase();
+      if (t.contains("both")) {
+        typeNorm = BackendEnums.TYPE_BOTH;
+      } else if (t.contains("resol")) {
+        typeNorm = BackendEnums.TYPE_RESOLUTIONS;
+      } else if (t.contains("mandate")) {
+        typeNorm = BackendEnums.TYPE_MANDATES;
+      } else {
+        typeNorm = BackendEnums.TYPE_MANDATES; // default
+      }
+    }
+
+    // Ensure a non-blank creator (also used for assignedUser)
+    String creator = nz(ui.getLoggedInUsername());
+    if (creator.isBlank()) {
+      creator = nz(ui.getLoggedInEmail());
+    }
+    if (creator.isBlank()) {
+      creator = "UI_USER";
+    }
+
+    SubmissionPayload.Request r = new SubmissionPayload.Request();
+    r.setSla(3);
+
+    // ***** IMPORTANT: exact strings expected by DAO validation *****
+    r.setStatus("In Progress");               // DO NOT use "In - Progress"
+    r.setType(typeNorm);
+
+    // SubStatus: use UI value if already allowed, else choose an initial valid one
+    String uiSub = nz(ui.getSubStatus());
+    String startSub =
+        ALLOWED_SUBSTATUSES.contains(uiSub) ? uiSub : initialSubStatusForType(typeNorm);
+    r.setSubStatus(startSub);
+
+    // Outcome should be null on create; DAO allows null for processOutcome
+    r.setCreator(creator);
+    r.setAssignedUser(creator);
+    out.setRequest(r);
+
+    // --- Accounts + nested signatories ---
+    java.util.List<SubmissionPayload.Account> payloadAccounts = new java.util.ArrayList<>();
+
+    if (ui.getAccounts() != null && !ui.getAccounts().isEmpty()) {
+      for (RequestDTO.Account a : ui.getAccounts()) {
+        if (a == null) {
+          continue;
+        }
+
+        SubmissionPayload.Account pa = new SubmissionPayload.Account();
+        pa.setAccountName(nz(a.getAccountName()));
+        pa.setAccountNumber(nz(getAccountNumber(a)));
+        pa.setCreator(creator);
+        pa.setUpdator(creator);
+
+        java.util.List<SubmissionPayload.Signatory> ps = new java.util.ArrayList<>();
+        if (a.getSignatories() != null) {
+          for (RequestDTO.Signatory s : a.getSignatories()) {
+            if (s == null) {
+              continue;
+            }
+            if (isEmptySignatory(s)) {
+              continue;
+            }
+
+            SubmissionPayload.Signatory ns = new SubmissionPayload.Signatory();
+            ns.setFullName(nz(s.getFullName()));
+            ns.setIdNumber(nz(s.getIdNumber()));
+            ns.setInstructions(normalizeInstruction(nz(s.getInstruction()))); // "Add" | "Remove"
+            ns.setCapacity(nz(s.getCapacity()));
+            ns.setGroupCategory(nz(s.getGroup()));
+            ns.setInstructionsDate(java.time.LocalDateTime.now());
+            ns.setCreator(creator);
+            ns.setUpdator(creator);
+            ps.add(ns);
+          }
+        }
+        pa.setSignatories(ps);
+
+        if (!nz(pa.getAccountName()).isEmpty()
+            || !nz(pa.getAccountNumber()).isEmpty()
+            || (ps != null && !ps.isEmpty())) {
+          payloadAccounts.add(pa);
+        }
+      }
+    }
+
+    // Fallback: legacy flat signatories -> single "Unknown" account
+    if (payloadAccounts.isEmpty() && ui.getSignatories() != null && !ui.getSignatories()
+        .isEmpty()) {
+      SubmissionPayload.Account pa = new SubmissionPayload.Account();
+      pa.setAccountName("Unknown");
+      pa.setAccountNumber("");
+      pa.setCreator(creator);
+      pa.setUpdator(creator);
+
+      java.util.List<SubmissionPayload.Signatory> ps = new java.util.ArrayList<>();
+      for (RequestDTO.Signatory s : ui.getSignatories()) {
+        if (s == null) {
+          continue;
+        }
+        if (isEmptySignatory(s)) {
+          continue;
+        }
+
+        SubmissionPayload.Signatory ns = new SubmissionPayload.Signatory();
+        ns.setFullName(nz(s.getFullName()));
+        ns.setIdNumber(nz(s.getIdNumber()));
+        ns.setInstructions(normalizeInstruction(nz(s.getInstruction())));
+        ns.setCapacity(nz(s.getCapacity()));
+        ns.setGroupCategory(nz(s.getGroup()));
+        ns.setInstructionsDate(java.time.LocalDateTime.now());
+        ns.setCreator(creator);
+        ns.setUpdator(creator);
+        ps.add(ns);
+      }
+      pa.setSignatories(ps);
+      payloadAccounts.add(pa);
+    }
+
+    out.setAccounts(payloadAccounts);
+
+    // --- Authorities (Directors) ---
+    boolean hasDirectorsInput =
+        ui.getDirectors() != null && ui.getDirectors().stream().anyMatch(d ->
+            d != null && !(nz(d.getName()).isEmpty()
+                && nz(d.getSurname()).isEmpty()
+                && nz(d.getDesignation()).isEmpty())
+        );
+
+    boolean includeAuthorities =
+        BackendEnums.TYPE_RESOLUTIONS.equals(typeNorm)
+            || BackendEnums.TYPE_BOTH.equals(typeNorm)
+            || (BackendEnums.TYPE_MANDATES.equals(typeNorm) && hasDirectorsInput);
+
+    java.util.List<SubmissionPayload.Authority> payloadAuthorities = new java.util.ArrayList<>();
+    if (includeAuthorities && ui.getDirectors() != null) {
+      for (RequestDTO.Director d : ui.getDirectors()) {
+        if (d == null) {
+          continue;
+        }
+        boolean allBlank = nz(d.getName()).isEmpty()
+            && nz(d.getSurname()).isEmpty()
+            && nz(d.getDesignation()).isEmpty();
+        if (allBlank) {
+          continue;
+        }
+
+        SubmissionPayload.Authority a = new SubmissionPayload.Authority();
+        a.setFirstname(nz(d.getName()));
+        a.setSurname(nz(d.getSurname()));
+        a.setDesignation(nz(d.getDesignation()));
+        a.setInstructions(normalizeInstruction(nz(d.getInstruction()))); // "Add" | "Remove"
+        a.setCreator(creator);
+        a.setUpdator(creator);
+        payloadAuthorities.add(a);
+      }
+    }
+    out.setAuthorities(payloadAuthorities);
+
+    int accCount = out.getAccounts() == null ? 0 : out.getAccounts().size();
+    int sigCount = out.getAccounts() == null ? 0
+        : out.getAccounts().stream()
+        .mapToInt(a -> a.getSignatories() == null ? 0 : a.getSignatories().size())
+        .sum();
+
+    logger.info(
+        "buildSubmissionPayload -> type={}, status={}, subStatus={}, accounts={}, signatories"
+            + "(total)={}, authorities(directors)={}",
+        typeNorm, r.getStatus(), r.getSubStatus(), accCount, sigCount, payloadAuthorities.size());
+
+    return out;
+  }
+
+  private static final class BackendEnums {
+    static final String TYPE_MANDATES = "Mandates";
+    static final String TYPE_RESOLUTIONS = "Resolutions";
+    static final String TYPE_BOTH = "Both";
+
+    static final String STATUS_DRAFT = "Draft";
+    static final String STATUS_IN_PROGRESS = "In Progress";
+    static final String STATUS_COMPLETED = "Completed";
+    static final String STATUS_ON_HOLD = "On Hold";
+  }
+
+  /**
+   * Map any raw instruction to backend-valid ones ("Add" or "Remove"). Defaults to Add.
+   */
+  private static String normalizeInstruction(String raw) {
+    if (raw == null || raw.trim().isEmpty()) {
+      return "Add";
+    }
+    String t = raw.trim().toLowerCase();
+    return switch (t) {
+      case "add", "a", "+", "new", "create" -> "Add";
+      case "remove", "r", "-", "delete", "del" -> "Remove";
+      default -> "Add"; // be permissive
+    };
+  }
+
+  public final class DisplayIds {
+    private DisplayIds() {
+    }
+
+    public static String format(Long requestId, String type) {
+      if (requestId == null) {
+        return null;
+      }
+      String prefix = "REQ";
+      if (type != null) {
+        String t = type.trim().toUpperCase();
+        if (t.startsWith("MANDATE")) {
+          prefix = "MAN";
+        } else if (t.startsWith("RESOLUTION")) {
+          prefix = "RES";
+        } else if (t.startsWith("BOTH")) {
+          prefix = "MR";
+        }
+      }
+      return prefix + " - " + String.format("%04d", requestId);
+    }
+  }
+
+  // ---- Canonical names used everywhere (MATCH DAO EXACTLY) ----
+  private static final String SS_REJECTED = "Rejected";
+  private static final String SS_HOGAN_VER = "Hogan Verification Pending";
+  private static final String SS_WINDEED_VER = "Windeed Verification Pending";
+  private static final String SS_HANIS_VER = "Hanis Verification Pending";        // single 'n'
+  private static final String SS_ADMIN_APPROVAL = "Admin Approval Pending";            // 'Approval'
+  private static final String SS_HOGAN_UPD = "Hogan Update Pending";
+  private static final String SS_DOCU_UPD = "Documentum Update Pending";
+  private static final String SS_DONE = "Request Updated Successfully";
+
+  // Map any legacy/typo variants to DAO-legal values BEFORE we branch or PUT
+  private static String canonical(String s) {
+    if (s == null) {
+      return "";
+    }
+    String t = s.trim();
+    if (t.isEmpty()) {
+      return t;
+    }
+
+    // fix common legacy spellings
+    if (t.equalsIgnoreCase("Hannis Verification Pending")) {
+      return SS_HANIS_VER;       // double 'n' -> Hanis
+    }
+    if (t.equalsIgnoreCase("Admin Verification Pending")) {
+      return SS_ADMIN_APPROVAL;  // Verification -> Approval
+    }
+    if (t.equalsIgnoreCase("Submitted")) {
+      return SS_HOGAN_VER;       // old starting state
+    }
+    if (t.equalsIgnoreCase("Completed") || t.equalsIgnoreCase("Request Completed")) {
+      return SS_DONE;
+    }
+
+    // normalize case to EXACT DAO strings
+    if (t.equalsIgnoreCase(SS_REJECTED)) {
+      return SS_REJECTED;
+    }
+    if (t.equalsIgnoreCase(SS_HOGAN_VER)) {
+      return SS_HOGAN_VER;
+    }
+    if (t.equalsIgnoreCase(SS_WINDEED_VER)) {
+      return SS_WINDEED_VER;
+    }
+    if (t.equalsIgnoreCase(SS_HANIS_VER)) {
+      return SS_HANIS_VER;
+    }
+    if (t.equalsIgnoreCase(SS_ADMIN_APPROVAL)) {
+      return SS_ADMIN_APPROVAL;
+    }
+    if (t.equalsIgnoreCase(SS_HOGAN_UPD)) {
+      return SS_HOGAN_UPD;
+    }
+    if (t.equalsIgnoreCase(SS_DOCU_UPD)) {
+      return SS_DOCU_UPD;
+    }
+    if (t.equalsIgnoreCase(SS_DONE)) {
+      return SS_DONE;
+    }
+
+    return t; // unknown: leave as-is (validator will 400 if we ever PUT this)
+  }
+
+  /**
+   * Approve path state machine (exact order you specified).
+   */
+  private static String nextSubStatus(String current, boolean approve) {
+    String c = canonical(current);
+    if (approve) {
+      if (SS_HOGAN_VER.equals(c)) {
+        return SS_WINDEED_VER;
+      }
+      if (SS_WINDEED_VER.equals(c)) {
+        return SS_HANIS_VER;
+      }
+      if (SS_HANIS_VER.equals(c)) {
+        return SS_ADMIN_APPROVAL;
+      }
+      if (SS_ADMIN_APPROVAL.equals(c)) {
+        return SS_HOGAN_UPD;
+      }
+      if (SS_HOGAN_UPD.equals(c)) {
+        return SS_DOCU_UPD;
+      }
+      if (SS_DOCU_UPD.equals(c)) {
+        return SS_DONE;                 // final hop
+      }
+      if (SS_DONE.equals(c)) {
+        return SS_DONE;                 // already final
+      }
+      return c; // fallback
+    } else {
+      return SS_REJECTED; // explicit reject state (DAO-legal)
+    }
+  }
+
+  private RequestDTO fetchRequest(Long id) {
+    try {
+      return new RestTemplate()
+          .getForObject("http://localhost:8083/api/request/{id}", RequestDTO.class, id);
+    } catch (Exception ignore) {
+      return null;
+    }
+  }
+
+  private void putRequestUpdate(Long requestId, String subStatusFromForm, boolean approve) {
+    // 1) Preserve status from DAO (fallback to exact string "In Progress")
+    String currentStatus = "In Progress";
+    String currentSub = subStatusFromForm;
+
+    RequestDTO dao = fetchRequest(requestId);
+    if (dao != null) {
+      try {
+        // If your UI DTO has getStatus()/getSubStatus, just call them directly.
+        // If not, keep the defaults; only subStatus must move.
+        String s = (String) RequestDTO.class.getMethod("getStatus").invoke(dao);
+        if (s != null && !s.isBlank()) {
+          currentStatus = s;
+        }
+      } catch (Throwable ignore) {
+        // intentionally empty
+      }
+
+      if (currentSub == null || currentSub.isBlank()) {
+        try {
+          String ss = (String) RequestDTO.class.getMethod("getSubStatus").invoke(dao);
+          if (ss != null) {
+            currentSub = ss;
+          }
+        } catch (Throwable ignore) {
+          // intentionally empty
+        }
+      }
+    }
+
+    // 2) Compute next subStatus via your mapping
+    String nextSub = nextSubStatus(currentSub, approve);
+
+    // 3) PUT minimal body (names must match DAO entity JSON)
+    var body = new java.util.HashMap<String, Object>();
+    body.put("status", currentStatus);                 // unchanged
+    body.put("subStatus", nextSub);                    // advanced
+    body.put("outcome", approve ? "Approve" : "Reject");
+
+    var headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+    new org.springframework.web.client.RestTemplate().exchange(
+        "http://localhost:8083/api/request/{id}",
+        org.springframework.http.HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(body, headers),
+        Void.class,
+        requestId
+    );
+  }
+
+
+  // ======================= HTTP helper: POST to backend /api/submission =======================
+  private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
+      postSnapshotToBackend(SubmissionPayload payload) {
+
+    String url = "http://localhost:8083/api/submission";
+    RestTemplate rt = new RestTemplate();
+
+    org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+    org.springframework.http.HttpEntity<SubmissionPayload> entity =
+        new org.springframework.http.HttpEntity<>(payload, headers);
+
+    ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui
+        .model.dto.MandateResolutionSubmissionResultDTO>
+        resp =
+        rt.postForEntity(
+            url,
+            entity,
+            za.co.rmb.tts.mandates.resolutions.ui
+                .model.dto.MandateResolutionSubmissionResultDTO.class
+        );
+
+    if (!resp.getStatusCode().is2xxSuccessful()) {
+      throw new RuntimeException("Backend /api/submission returned status " + resp.getStatusCode());
+    }
+    return resp.getBody();
+  }
+
+  /**
+   * Mirror of your backend "Result" for convenience (only if you want typed access to response).
+   */
+// ======================= Result DTO (mirror backend) =======================
+  @lombok.Data
+  public static class MandateResolutionSubmissionResultDTO {
+    private Company company;
+    private Request request;
+    private Waiver waiver;
+    private java.util.List<Account> accounts;
+    private java.util.List<Authority> authorities;
+    private java.util.List<Signatory> signatories;
+
+    @lombok.Data
+    public static class Company {
+      Long companyId;
+      String registrationNumber;
+      String name;
+      String address;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
+    }
+
+    @lombok.Data
+    public static class Request {
+      Long requestId;
+      Long companyId;
+      Integer sla;
+      String type;
+      String status;
+      String subStatus;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
+    }
+
+    @lombok.Data
+    public static class Waiver {
+      Long waiverId;
+      Long companyId;
+      String ucn;
+      String permittedTools;
+      java.time.LocalDateTime lastFetched;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
+    }
+
+    @lombok.Data
+    public static class Account {
+      Long accountId;
+      Long companyId;
+      String accountName;
+      String accountNumber;
+      Boolean isActive;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
+    }
+
+    @lombok.Data
+    public static class Authority {
+      Long authorityId;
+      Long companyId;
+      String firstname;
+      String surname;
+      String designation;
+      Boolean isActive;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
+    }
+
+    @lombok.Data
+    public static class Signatory {
+      Long signatoryId;
+      Long companyId;
+      String fullName;
+      String idNumber;
+      String instructions;
+      String capacity;
+      String groupCategory;
+      String creator;
+      String updator;
+      java.time.LocalDateTime created;
+      java.time.LocalDateTime updated;
     }
   }
 
