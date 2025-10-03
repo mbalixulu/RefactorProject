@@ -367,12 +367,13 @@
                                 <comm:value>Please attach the required mandate documents</comm:value>
                             </comm:divElement>
 
+                            <!-- Mandate file upload (AUTO-POSTS on select) -->
                             <comm:divElement
                                     xsi:type="comm:fileUpload"
                                     comm:name="file"
                                     comm:label="Replace authorised signatories"
-                                    comm:fileUploadUrl="app-domain/ui/file-upload"
-                                    comm:fileErrorUrl="app-domain/ui/upload-error"
+                                    comm:fileUploadUrl="app-domain/ui/mandates/attachment/upload"
+                                    comm:fileErrorUrl="app-domain/ui/errorPage"
                                     comm:showInput="true">
                                 <comm:value/>
                             </comm:divElement>

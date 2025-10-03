@@ -24,8 +24,10 @@ public class RequestTableDTO implements Serializable {
   private String status;
   private String subStatus;
   private String created;
+  private String creator;
   private String type;
   private String updated;
+  private String updator;
   private String processId;
   private String assignedUser;
 

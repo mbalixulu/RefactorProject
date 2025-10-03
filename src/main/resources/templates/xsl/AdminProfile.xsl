@@ -6,13 +6,16 @@
             <!--Heading-->
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolutions"/>
 
-            <!--View Switcher for Filtering Tickets-->
+            <!--View Switcher-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
-                <ns1:view ns1:text="On hold" ns1:type="inactive" ns1:id="onHold" ns1:url="app-domain/ui/requestTableOnHold"/>
-                <ns1:view ns1:text="Completed" ns1:type="inactive" ns1:id="completed" ns1:url="app-domain/ui/requestTableCompleted"/>
-                <ns1:view ns1:text="Draft" ns1:type="inactive" ns1:id="draft" ns1:url="app-domain/ui/requestTableDraft"/>
-                <ns1:view ns1:text="Profile" ns1:type="active" ns1:id="profile" ns1:url="app-domain/ui/requestTableProfile"/>
+                <ns1:view ns1:text="Approvals"      ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/adminApproval"/>
+                <ns1:view ns1:text="Breached"       ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/adminBreach"/>
+                <ns1:view ns1:text="All"            ns1:type="inactive" ns1:id="all"             ns1:url="app-domain/ui/adminAll"/>
+                <ns1:view ns1:text="In Progress"    ns1:type="inactive"   ns1:id="pendingRequests" ns1:url="app-domain/ui/adminInProgress"/>
+                <ns1:view ns1:text="On Hold"        ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/adminOnHold"/>
+                <ns1:view ns1:text="Completed"      ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/adminCompleted"/>
+                <ns1:view ns1:text="Draft"          ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/ui/adminDraft"/>
+                <ns1:view ns1:text="Profile"        ns1:type="active" ns1:id="profile"         ns1:url="app-domain/ui/adminProfile"/>
             </symbol>
 
             <symbol xsi:type="ns1:formLayout">

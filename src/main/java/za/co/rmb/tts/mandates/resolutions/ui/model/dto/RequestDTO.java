@@ -24,6 +24,9 @@ public class RequestDTO implements Serializable {
   @XmlElement(name = "companyName")
   private String companyName;
 
+  @XmlElement(name = "sla")
+  private String sla;
+
   @XmlElement(name = "companyAddress")
   private String companyAddress;
 
@@ -60,6 +63,12 @@ public class RequestDTO implements Serializable {
   @XmlElement(name = "subStatus")
   private String subStatus;
 
+  @XmlElement(name = "creator")
+  private String creator;
+
+  @XmlElement(name = "updator")
+  private String updator;
+
   //Captures the dropdown choice ("1"|"2"|"3"), if posted by the widget
   @XmlElement(name = "mandateResolution")
   private String mandateResolution;
@@ -83,22 +92,39 @@ public class RequestDTO implements Serializable {
   private String loggedInUsername;
   private String loggedInEmail;
 
+  // ===== Reassign popup data =====
+
+  //Preselect who it's currently assigned to */
+  @XmlElement(name = "currentAssignedUser")
+  private String currentAssignedUser;
+
+  //Options for the dropdown (username + userRole) */
+  @XmlElementWrapper(name = "userOptions")
+  @XmlElement(name = "userOption")
+  private List<UserOption> userOptions;
+
   // ---------- Nested types ----------
 
   @Data
   @XmlAccessorType(XmlAccessType.FIELD)
   public static class Director {
-    @XmlElement(name = "name")        private String name;
-    @XmlElement(name = "surname")     private String surname;
-    @XmlElement(name = "designation") private String designation;
-    @XmlElement(name = "instruction") private String instruction;
+    @XmlElement(name = "name")
+    private String name;
+    @XmlElement(name = "surname")
+    private String surname;
+    @XmlElement(name = "designation")
+    private String designation;
+    @XmlElement(name = "instruction")
+    private String instruction;
   }
 
   @Data
   @XmlAccessorType(XmlAccessType.FIELD)
   public static class Account {
-    @XmlElement(name = "accountName") private String accountName;
-    @XmlElement(name = "accountNo")   private String accountNo;
+    @XmlElement(name = "accountName")
+    private String accountName;
+    @XmlElement(name = "accountNo")
+    private String accountNo;
 
     @XmlElementWrapper(name = "signatories")
     @XmlElement(name = "signatory")
@@ -108,12 +134,34 @@ public class RequestDTO implements Serializable {
   @Data
   @XmlAccessorType(XmlAccessType.FIELD)
   public static class Signatory {
-    @XmlElement(name = "fullName")    private String fullName;
-    @XmlElement(name = "idNumber")    private String idNumber;
-    @XmlElement(name = "instruction") private String instruction;
+    @XmlElement(name = "fullName")
+    private String fullName;
+    @XmlElement(name = "idNumber")
+    private String idNumber;
+    @XmlElement(name = "instruction")
+    private String instruction;
 
     //Fields captured on Signature Card page
-    @XmlElement(name = "capacity")    private String capacity;
-    @XmlElement(name = "group")       private String group;
+    @XmlElement(name = "capacity")
+    private String capacity;
+    @XmlElement(name = "group")
+    private String group;
+  }
+
+  //Used by the Admin Reassign dropdown
+  @Data
+  @XmlAccessorType(XmlAccessType.FIELD)
+  public static class UserOption {
+    @XmlElement(name = "username")
+    private String username;   //Posted value
+
+    @XmlElement(name = "userRole")
+    private String userRole;   //Label text (E.G: Shown next to username)
+
+    public UserOption() {}
+    public UserOption(String username, String userRole) {
+      this.username = username;
+      this.userRole = userRole;
+    }
   }
 }
