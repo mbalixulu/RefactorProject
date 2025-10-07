@@ -1,7 +1,8 @@
 //Jenkinsfile
 @Library(['jenkins-shared-libraries', 'java-shared-utilities'])_
 
-jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY: "tts-smtwrx-spring-boot-starter",
+jenkinsMultibranchBuildAndDeploy(SONAR_PROJECT_KEY: "tts-smtwrx-mandates-resolutions-ui",
                                  AGENT_LABEL: "mavenJava21",
                                  CONSTANTS_FILE: libraryResource('constants.properties'),
-                                 DEPLOYMENT_PROJECT_NAME: "TTS_Deployments/Spring_Boot_Starter_Deployment")
+                                 DEPLOYMENT_PROJECT_NAME: "TTS_Deployments/TTS_Mandates_Resolutions_UI_Deployment")
+

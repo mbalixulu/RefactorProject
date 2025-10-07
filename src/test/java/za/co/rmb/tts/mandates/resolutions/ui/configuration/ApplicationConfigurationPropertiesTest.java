@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = ApplicationConfigurationProperties.class)
 @ActiveProfiles("local")
 class ApplicationConfigurationPropertiesTest {
 

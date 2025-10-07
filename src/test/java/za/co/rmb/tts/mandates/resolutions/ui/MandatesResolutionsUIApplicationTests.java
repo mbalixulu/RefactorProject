@@ -9,9 +9,9 @@ import za.co.rmb.tts.mandates.resolutions.ui.configuration.ApplicationConfigurat
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = {ApplicationConfigurationProperties.class})
 @ActiveProfiles("local")
-class MandatesResolutionsUITTSApplicationTests {
+class MandatesResolutionsUIApplicationTests {
 
   @Autowired
   private ApplicationConfigurationProperties properties;

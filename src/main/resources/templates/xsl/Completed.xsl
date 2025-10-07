@@ -3,20 +3,15 @@
     <xsl:output method="xml"/>
 
     <xsl:template match="/">
-        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="ticketTable" title="Ticket Table" template="main" layout="" version="1">
-
+        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="ticketTable" title="Ticket Table" template="main" layout="" version="1">
             <!--Heading-->
-            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:type="ns1:subTabGroup"
-                    ns1:subTabGroupHeading="Mandates and resolutions"/>
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolutions"/>
 
             <!--View Switcher-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="active"   ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
+                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
                 <ns1:view ns1:text="On hold"          ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/requestTableOnHold"/>
-                <ns1:view ns1:text="Completed"        ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/requestTableCompleted"/>
+                <ns1:view ns1:text="Completed"        ns1:type="active"   ns1:id="completed"       ns1:url="app-domain/ui/requestTableCompleted"/>
                 <ns1:view ns1:text="Draft"            ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/ui/requestTableDraft"/>
                 <ns1:view ns1:text="Profile"          ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/ui/requestTableProfile"/>
             </symbol>
@@ -29,7 +24,7 @@
                             <xsl:choose>
                                 <xsl:when test="status = 'onhold'">On hold</xsl:when>
                                 <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                <xsl:otherwise>Pending tickets</xsl:otherwise>
+                                <xsl:otherwise>Completed tickets</xsl:otherwise>
                             </xsl:choose>
                         </xsl:attribute>
 
@@ -38,7 +33,7 @@
                                 <xsl:choose>
                                     <xsl:when test="status = 'onhold'">On hold</xsl:when>
                                     <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                    <xsl:otherwise>Pending tickets</xsl:otherwise>
+                                    <xsl:otherwise>Completed tickets</xsl:otherwise>
                                 </xsl:choose>
                             </xsl:attribute>
 
@@ -52,17 +47,17 @@
                             <!--Search-->
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
-                            <!--Columns-->
-                            <ns1:tableColumn ns1:id="requestID"     ns1:heading="Request ID"     ns1:fieldName="requestID"     ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="processId"     ns1:heading="Process ID"     ns1:fieldName="processId"     ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="assignedUser"  ns1:heading="Assigned User"  ns1:fieldName="assignedUser"  ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="sla"           ns1:heading="SLA"            ns1:fieldName="sla"           ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="companyName"   ns1:heading="Company Name"   ns1:fieldName="companyName"   ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="status"        ns1:heading="Status"         ns1:fieldName="status"        ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="subStatus"     ns1:heading="Sub Status"     ns1:fieldName="subStatus"     ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="requestType"   ns1:heading="Request Type"   ns1:fieldName="requestType"   ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="dateCreated"   ns1:heading="Date Created"   ns1:fieldName="dateCreated"   ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="view"          ns1:heading="View"           ns1:fieldName="view"          ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <!--Columns (match Pending)-->
+                            <ns1:tableColumn ns1:id="requestID"    ns1:heading="Request ID"    ns1:fieldName="requestID"    ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="processId"    ns1:heading="Process ID"    ns1:fieldName="processId"    ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="assignedUser" ns1:heading="Assigned User" ns1:fieldName="assignedUser" ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="sla"          ns1:heading="SLA"           ns1:fieldName="sla"          ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="companyName"  ns1:heading="Company Name"  ns1:fieldName="companyName"  ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="status"       ns1:heading="Status"        ns1:fieldName="status"       ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="subStatus"    ns1:heading="Sub Status"    ns1:fieldName="subStatus"    ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="requestType"  ns1:heading="Request Type"  ns1:fieldName="requestType"  ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="dateCreated"  ns1:heading="Date Created"  ns1:fieldName="dateCreated"  ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="view"         ns1:heading="View"          ns1:fieldName="view"         ns1:disableSorting="true" ns1:widthPercent="9"/>
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
@@ -70,7 +65,7 @@
                             <xsl:for-each select="requests/request">
                                 <ns1:row ns1:groupId="rows">
 
-                                    <!-- Request ID (now shows requestIdForDisplay when available) -->
+                                    <!-- Request ID (display id with fallback) -->
                                     <ns1:cell ns1:col_id="requestID">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Request ID">
@@ -88,6 +83,7 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
+                                    <!-- Process ID -->
                                     <ns1:cell ns1:col_id="processId">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Process ID">
@@ -103,7 +99,7 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!--Assigned User -->
+                                    <!-- Assigned User -->
                                     <ns1:cell ns1:col_id="assignedUser">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Assigned User">
@@ -119,10 +115,10 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!-- SLA icon (pending) -->
-                                    <ns1:cell ns1:col_id="sla" ns1:align="left">
+                                    <!-- SLA (success icon looks nice for completed) -->
+                                    <ns1:cell ns1:col_id="sla">
                                         <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:statusIndicator" ns1:type="pending"/>
+                                            <ns1:item xsi:type="ns1:statusIndicator" ns1:type="tick"/>
                                         </ns1:cellItem>
                                     </ns1:cell>
 
@@ -135,7 +131,7 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!-- Status (plain text) -->
+                                    <!-- Status -->
                                     <ns1:cell ns1:col_id="status">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Status">
@@ -153,18 +149,16 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!-- NEW: Request Type -->
+                                    <!-- Request Type (same mapping as Pending) -->
                                     <ns1:cell ns1:col_id="requestType">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Request Type">
                                                 <ns1:value>
                                                     <xsl:choose>
-                                                        <!-- Prefer numeric mandateResolution if present -->
                                                         <xsl:when test="normalize-space(mandateResolution)='1'">Mandate</xsl:when>
                                                         <xsl:when test="normalize-space(mandateResolution)='2'">Resolution</xsl:when>
                                                         <xsl:when test="normalize-space(mandateResolution)='3'">Mandate and resolution</xsl:when>
 
-                                                        <!-- Fallback: textual (requestType|type) -->
                                                         <xsl:when test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'BOTH')">
                                                             Mandate and resolution
                                                         </xsl:when>
@@ -174,8 +168,6 @@
                                                         <xsl:when test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'MANDATE')">
                                                             Mandate
                                                         </xsl:when>
-
-                                                        <!-- Otherwise show a dash -->
                                                         <xsl:otherwise>—</xsl:otherwise>
                                                     </xsl:choose>
                                                 </ns1:value>
@@ -207,15 +199,14 @@
                                     </ns1:cell>
                                 </ns1:row>
                             </xsl:for-each>
+
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
 
-            <!--Footer-->
-            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
         </page>

@@ -6,17 +6,62 @@
 
     <xsl:output method="xml" indent="yes"/>
 
+    <xsl:variable name="LOWER" select="'abcdefghijklmnopqrstuvwxyz'"/>
+    <xsl:variable name="UPPER" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"/>
+
     <xsl:template match="/requestWrapper">
+        <xsl:variable name="SUB"    select="normalize-space(/requestWrapper/request/subStatus)"/>
+        <xsl:variable name="SUB_UP" select="translate($SUB, $LOWER, $UPPER)"/>
+
+        <!-- Primary label -->
+        <xsl:variable name="LAB_SUBMIT">
+            <xsl:choose>
+                <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>
+                <xsl:when test="contains($SUB_UP,'WINDEED VERIFICATION PENDING')">Verify for Windeed</xsl:when>
+                <!-- UI label "Hannis"; DAO is "Hanis" but label is just text -->
+                <xsl:when test="contains($SUB_UP,'HANNIS VERIFICATION PENDING') or contains($SUB_UP,'HANIS VERIFICATION PENDING')">Verify for Hannis</xsl:when>
+                <!-- accept legacy 'Admin Approval Pending' -->
+                <xsl:when test="contains($SUB_UP,'ADMIN VERIFICATION PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">Approve</xsl:when>
+                <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan</xsl:when>
+                <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Updated successfully</xsl:when>
+                <xsl:when test="contains($SUB_UP,'REQUEST UPDATED SUCCESSFULLY')">Updated Successfully</xsl:when>
+                <xsl:otherwise>Approve</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+
+        <!-- Documentum step? then secondary button should be Reject -->
+        <xsl:variable name="IS_DOCU" select="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')"/>
+        <xsl:variable name="SECOND_LABEL">
+            <xsl:choose>
+                <xsl:when test="$IS_DOCU">Reject</xsl:when>
+                <xsl:otherwise>Cancel</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="SECOND_URL">
+            <xsl:choose>
+                <xsl:when test="$IS_DOCU">app-domain/ui/viewRequestReject</xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat('app-domain/ui/viewRequest/', /requestWrapper/request/requestId)"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="SECOND_SUBMIT">
+            <xsl:choose>
+                <xsl:when test="$IS_DOCU">true</xsl:when>
+                <xsl:otherwise>false</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+
         <page xmlns:comm="http://ws.online.fnb.co.za/v1/common/"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="rejectPanel" title="Reject Request" template="main" layout="" version="1">
+              id="approvePanel" title="Approve Request" template="main" layout="" version="1">
 
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:action="app-domain/ui/comment/reject" comm:name="rejectForm">
+                <comm:form comm:action="app-domain/ui/comment/approve" comm:name="approveForm">
 
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading">
-                            <comm:value>Reason for rejection (required)</comm:value>
+                            <comm:value>Add a comment before approval (optional)</comm:value>
                         </comm:symbol>
                     </comm:sections>
 
@@ -58,13 +103,10 @@
 
                                 <comm:boxSymbol xsi:type="comm:commentbox"
                                                 comm:name="commentbox"
-                                                comm:label="Reason"
+                                                comm:label="Comment"
                                                 comm:commentLimit="2000"
-                                                comm:rowsNo="9"
-                                                comm:errorMessage="{/requestWrapper/approveRejectErrorModel/commentbox}">
-                                    <comm:value>
-                                        <xsl:value-of select="/requestWrapper/approveRejectErrorModel/commentboxValue"/>
-                                    </comm:value>
+                                                comm:rowsNo="9">
+                                    <comm:value/>
                                 </comm:boxSymbol>
 
                             </comm:box>
@@ -73,28 +115,27 @@
 
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:button"
-                                     comm:id="submitReject"
+                                     comm:id="submitApprove"
                                      comm:target="main"
-                                     comm:url="app-domain/ui/comment/reject"
-                                     comm:label="Reject"
+                                     comm:url="app-domain/ui/comment/approve"
+                                     comm:label="{$LAB_SUBMIT}"
                                      comm:width="1"
                                      comm:formSubmit="true"
                                      comm:align="right"
                                      comm:type="primary"/>
                         <comm:symbol xsi:type="comm:button"
-                                     comm:id="cancelReject"
+                                     comm:id="secondaryApprove"
                                      comm:target="main"
-                                     comm:url="{concat('app-domain/ui/viewRequest/', /requestWrapper/request/requestId)}"
-                                     comm:label="Cancel"
+                                     comm:url="{$SECOND_URL}"
+                                     comm:label="{$SECOND_LABEL}"
                                      comm:width="1"
-                                     comm:formSubmit="false"
+                                     comm:formSubmit="{$SECOND_SUBMIT}"
                                      comm:align="right"
                                      comm:type="primary"/>
                     </comm:sections>
 
                 </comm:form>
             </symbol>
-
         </page>
     </xsl:template>
 </xsl:stylesheet>
