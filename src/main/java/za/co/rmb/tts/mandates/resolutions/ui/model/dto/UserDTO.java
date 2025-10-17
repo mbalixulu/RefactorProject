@@ -1,8 +1,11 @@
 package za.co.rmb.tts.mandates.resolutions.ui.model.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.*;
 
 @Data
 @NoArgsConstructor
