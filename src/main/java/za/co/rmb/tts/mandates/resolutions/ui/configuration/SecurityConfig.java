@@ -1,5 +1,7 @@
 package za.co.rmb.tts.mandates.resolutions.ui.configuration;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -11,8 +13,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @EnableWebSecurity
 @Configuration
@@ -28,7 +28,7 @@ public class SecurityConfig {
         "http://127.0.0.1:*",
         "http://host.docker.internal:*"
     ));
-    cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"));
+    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
     cfg.setAllowedHeaders(List.of("*"));
     cfg.setAllowCredentials(true);
 

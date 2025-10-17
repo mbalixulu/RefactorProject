@@ -72,7 +72,7 @@ public class MandatesResolutionUIController {
 
   private final XSLTProcessorService xsltProcessor;
 
-  private final Map<String,RequestDTO> pdfExtractionDataCache = new HashMap<>();
+  private final Map<String, RequestDTO> pdfExtractionDataCache = new HashMap<>();
 
   private static final String XML_PAGE_PATH = "/templates/xml/";
   private static final String XSL_PAGE_PATH = "/templates/xsl/";
@@ -97,7 +97,7 @@ public class MandatesResolutionUIController {
 
   //Takes you the Login Page after starting the project (First Page you will see) (OLD)
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayHomePage( ) {
+  public ResponseEntity<String> displayHomePage() {
     String page = xsltProcessor.returnPage(xmlPagePath("LoginPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
@@ -112,6 +112,7 @@ public class MandatesResolutionUIController {
         try {
           session.invalidate();
         } catch (IllegalStateException ignore) {
+          // intentionally empty
         }
       }
       HttpSession newSession = request.getSession(true);
@@ -187,6 +188,7 @@ public class MandatesResolutionUIController {
       try {
         s.invalidate();
       } catch (IllegalStateException ignore) {
+        // intentionally empty
       }
     }
 
@@ -199,7 +201,7 @@ public class MandatesResolutionUIController {
 
   //Admin Approval/Landing Page
   @PostMapping(value = "/adminApproval", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminApproval( ) {
+  public ResponseEntity<String> displayAdminApproval() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -262,14 +264,14 @@ public class MandatesResolutionUIController {
 
   //Admin Breach Page
   @PostMapping(value = "/adminBreach", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminBreach( ) {
+  public ResponseEntity<String> displayAdminBreach() {
     String page = xsltProcessor.generatePage(xslPagePath("AdminBreach"), new RequestWrapper());
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
   //Admin All Page
   @PostMapping(value = "/adminAll", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminAll( ) {
+  public ResponseEntity<String> displayAdminAll() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -327,7 +329,7 @@ public class MandatesResolutionUIController {
 
   //Admin In Progress Page
   @PostMapping(value = "/adminInProgress", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminInProgress( ) {
+  public ResponseEntity<String> displayAdminInProgress() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -388,7 +390,7 @@ public class MandatesResolutionUIController {
 
   //Admin On Hold Page
   @PostMapping(value = "/adminOnHold", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminOnHold( ) {
+  public ResponseEntity<String> displayAdminOnHold() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -443,7 +445,7 @@ public class MandatesResolutionUIController {
 
   //Admin Completed Page
   @PostMapping(value = "/adminCompleted", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminCompleted( ) {
+  public ResponseEntity<String> displayAdminCompleted() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -498,7 +500,7 @@ public class MandatesResolutionUIController {
 
   //Admin Draft Page
   @PostMapping(value = "/adminDraft", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminDraft( ) {
+  public ResponseEntity<String> displayAdminDraft() {
     try {
       final String base = mandatesResolutionsDaoURL;
       final RestTemplate rt = new RestTemplate();
@@ -536,6 +538,7 @@ public class MandatesResolutionUIController {
                   src = rebound;
                 }
               } catch (Exception ignore) {
+                // intentionally empty
               }
 
               try {
@@ -549,9 +552,11 @@ public class MandatesResolutionUIController {
                   }
                 }
               } catch (Exception ignore) {
+                // intentionally empty
               }
             }
           } catch (Exception ignore) {
+            // intentionally empty
           }
         }
 
@@ -634,10 +639,12 @@ public class MandatesResolutionUIController {
 
       // 1) Load submission
       String submissionUrl = mandatesResolutionsDaoURL + "/api/submission/" + requestId;
-      ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO>
+      ResponseEntity<za.co.rmb.tts.mandates.resolutions
+          .ui.model.dto.MandateResolutionSubmissionResultDTO>
           subResp =
           rt.getForEntity(submissionUrl,
-              za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO.class);
+              za.co.rmb.tts.mandates.resolutions
+                  .ui.model.dto.MandateResolutionSubmissionResultDTO.class);
 
       if (!subResp.getStatusCode().is2xxSuccessful() || subResp.getBody() == null) {
         throw new RuntimeException("Failed to fetch submission " + requestId);
@@ -647,11 +654,12 @@ public class MandatesResolutionUIController {
       // 2) Fetch comments (DAO) — newestFirst=true
       String commentsUrl =
           mandatesResolutionsDaoURL + "/api/comment/request/" + requestId + "?newestFirst=true";
-      ResponseEntity<java.util.List<java.util.Map<String,Object>>> commentsResp = rt.exchange(
+      ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
           commentsUrl,
           HttpMethod.GET,
           null,
-          new org.springframework.core.ParameterizedTypeReference<java.util.List<java.util.Map<String,Object>>>() {
+          new org.springframework.core.ParameterizedTypeReference
+              <java.util.List<java.util.Map<String, Object>>>() {
           }
       );
 
@@ -711,10 +719,10 @@ public class MandatesResolutionUIController {
       }
 
       // 3) Helpers
-      java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
-      java.util.function.Function<String,String> keyN =
+      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+      java.util.function.Function<String, String> keyN =
           s -> s == null ? "" : s.trim().toUpperCase();
-      java.util.function.BiFunction<String,String,String> accKey = (num, name) -> {
+      java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
         String n = nz.apply(num);
         if (!n.isEmpty()) {
           return "NUM#" + n;
@@ -723,7 +731,7 @@ public class MandatesResolutionUIController {
       };
 
       // 4) Seed accounts map
-      java.util.Map<String,AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
+      java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
       if (sub.getAccounts() != null) {
         for (var a : sub.getAccounts()) {
           String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
@@ -797,18 +805,23 @@ public class MandatesResolutionUIController {
               submissionHasInstr = true;
             }
 
-            String first = null, last = null, role = null;
+            String first = null;
+            String last = null;
+            String role = null;
             try {
               first = (String) a.getClass().getMethod("getFirstname").invoke(a);
             } catch (Exception ignore) {
+              // intentionally empty
             }
             try {
               last = (String) a.getClass().getMethod("getSurname").invoke(a);
             } catch (Exception ignore) {
+              // intentionally empty
             }
             try {
               role = (String) a.getClass().getMethod("getDesignation").invoke(a);
             } catch (Exception ignore) {
+              // intentionally empty
             }
 
             String instEff = extractInstruction(a);
@@ -833,7 +846,8 @@ public class MandatesResolutionUIController {
             var resp = rt.exchange(
                 url, HttpMethod.GET, null,
                 new org.springframework.core.ParameterizedTypeReference<
-                    java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.AuthorityDTO>>() {
+                    java.util.List<za.co.rmb.tts.mandates.resolutions
+                        .ui.model.dto.AuthorityDTO>>() {
                 }
             );
             var authsApi = (resp.getStatusCode().is2xxSuccessful()) ? resp.getBody() : null;
@@ -857,6 +871,7 @@ public class MandatesResolutionUIController {
               }
             }
           } catch (Exception ignore) {
+            // intentionally empty
           }
         }
 
@@ -867,22 +882,29 @@ public class MandatesResolutionUIController {
                     .invoke(sub.getRequest());
             if (sourceDirs != null) {
               for (Object d : sourceDirs) {
-                String name = null, surname = null, designation = null, instruction = null;
+                String name = null;
+                String surname = null;
+                String designation = null;
+                String instruction = null;
                 try {
                   name = (String) d.getClass().getMethod("getName").invoke(d);
                 } catch (Exception ignore) {
+                  // intentionally empty
                 }
                 try {
                   surname = (String) d.getClass().getMethod("getSurname").invoke(d);
                 } catch (Exception ignore) {
+                  // intentionally empty
                 }
                 try {
                   designation = (String) d.getClass().getMethod("getDesignation").invoke(d);
                 } catch (Exception ignore) {
+                  // intentionally empty
                 }
                 try {
                   instruction = (String) d.getClass().getMethod("getInstruction").invoke(d);
                 } catch (Exception ignore) {
+                  // intentionally empty
                 }
 
                 var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
@@ -898,6 +920,7 @@ public class MandatesResolutionUIController {
               }
             }
           } catch (ReflectiveOperationException ignore) {
+            // intentionally empty
           }
         }
 
@@ -925,9 +948,12 @@ public class MandatesResolutionUIController {
 
     } catch (Exception e) {
       String fallbackError =
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-              "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n" +
-              "    <error>Unable to load request for admin viewing.</error>\n" +
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+              +
+              "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
+              +
+              "    <error>Unable to load request for admin viewing.</error>\n"
+              +
               "</page>\n";
       return ResponseEntity.ok(fallbackError);
     }
@@ -1007,6 +1033,7 @@ public class MandatesResolutionUIController {
           try {
             requestId = Long.valueOf(String.valueOf(v));
           } catch (NumberFormatException ignore) {
+            // intentionally empty
           }
         }
         logger.info("adminReassignSubmit: requestId after session fallback={}", requestId);
@@ -1019,7 +1046,9 @@ public class MandatesResolutionUIController {
             .contentType(MediaType.APPLICATION_XML)
             .body("""
                 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                  <error>Missing requestId on submit. Please reopen the request and try again.</error>
+                  <error>
+                    Missing requestId on submit. Please reopen the request and try again.
+                  </error>
                 </page>
                 """);
       }
@@ -1035,7 +1064,7 @@ public class MandatesResolutionUIController {
       }
 
       //Build JSON payload expected by DAO updateRequest (case-sensitive outcome)
-      var payload = new java.util.LinkedHashMap<String,Object>();
+      var payload = new java.util.LinkedHashMap<String, Object>();
       payload.put("assignedUser", newAssignee);
       payload.put("updator", currentDisplayId(session, servletRequest));
 
@@ -1072,7 +1101,7 @@ public class MandatesResolutionUIController {
 
   //Pending Requests page after logging in
   @PostMapping(value = "/requestTable", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTable( ) {
+  public ResponseEntity<String> displayRequestTable() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -1130,7 +1159,7 @@ public class MandatesResolutionUIController {
 
   //On Hold Tickets Page
   @PostMapping(value = "/requestTableOnHold", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTableOnHold( ) {
+  public ResponseEntity<String> displayRequestTableOnHold() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -1195,7 +1224,7 @@ public class MandatesResolutionUIController {
 
   // Completed Tickets Page
   @PostMapping(value = "/requestTableCompleted", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTableCompleted( ) {
+  public ResponseEntity<String> displayRequestTableCompleted() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
@@ -1263,7 +1292,7 @@ public class MandatesResolutionUIController {
       method = {RequestMethod.GET, RequestMethod.POST},
       produces = MediaType.APPLICATION_XML_VALUE
   )
-  public ResponseEntity<String> displayRequestTableDraft( ) {
+  public ResponseEntity<String> displayRequestTableDraft() {
     final String base = mandatesResolutionsDaoURL;
     final RestTemplate rt = new RestTemplate();
 
@@ -1406,7 +1435,7 @@ public class MandatesResolutionUIController {
 
   @GetMapping(value = "/predictive/companyRegNumbers", produces = MediaType.TEXT_PLAIN_VALUE)
   public ResponseEntity<String> predictiveCompanyRegNumbers(
-      @RequestParam Map<String,String> params
+      @RequestParam Map<String, String> params
   ) {
     //Accept a variety of param names used by different widgets
     String q = null;
@@ -1423,13 +1452,13 @@ public class MandatesResolutionUIController {
     String daoUrl = mandatesResolutionsDaoURL + "/api/company/all";
     org.springframework.web.client.RestTemplate rt =
         new org.springframework.web.client.RestTemplate();
-    List<Map<String,Object>> companies;
+    List<Map<String, Object>> companies;
     try {
       companies = rt.exchange(
           daoUrl,
           HttpMethod.GET,
           null,
-          new org.springframework.core.ParameterizedTypeReference<List<Map<String,Object>>>() {
+          new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {
           }
       ).getBody();
     } catch (Exception e) {
@@ -1442,7 +1471,7 @@ public class MandatesResolutionUIController {
 
     //Extract, normalize and filter by prefix/contains
     List<String> regs = new java.util.ArrayList<>();
-    for (Map<String,Object> row : companies) {
+    for (Map<String, Object> row : companies) {
       Object rn = row.get("registrationNumber");
       if (rn != null) {
         String reg = rn.toString().trim();
@@ -1520,8 +1549,8 @@ public class MandatesResolutionUIController {
       HttpServletRequest request
   ) {
     //Helpers
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
-    java.util.function.Function<String,String> dedupeComma = s -> {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> dedupeComma = s -> {
       String t = nz.apply(s);
       if (t.isEmpty()) {
         return t;
@@ -1567,7 +1596,7 @@ public class MandatesResolutionUIController {
           new org.springframework.web.client.RestTemplate();
       try {
         @SuppressWarnings("unchecked")
-        java.util.Map<String,Object> company = rt.getForObject(url, java.util.Map.class);
+        java.util.Map<String, Object> company = rt.getForObject(url, java.util.Map.class);
         if (company == null) {
           return renderCreateRequestWithInlineNotFound(session, incomingReg);
         }
@@ -1984,7 +2013,7 @@ public class MandatesResolutionUIController {
     dto.setRequestSubStatus("Saved@" + currentPage);
 
     // 5) Parse & merge posted fields
-    Map<String,String[]> params = req.getParameterMap();
+    Map<String, String[]> params = req.getParameterMap();
 
     // 5.1 Company (prefer last non-blank so visible inputs beat any hidden)
     String reg = nz(lastNonBlank(req, "registrationNumber"));
@@ -2056,7 +2085,7 @@ public class MandatesResolutionUIController {
         auths.add(a);
       }
       if (!auths.isEmpty()) {
-        java.util.LinkedHashMap<String,RequestStagingDTO.AuthorityDraft> uniq =
+        java.util.LinkedHashMap<String, RequestStagingDTO.AuthorityDraft> uniq =
             new java.util.LinkedHashMap<>();
         for (RequestStagingDTO.AuthorityDraft a : auths) {
           String key = (
@@ -2207,8 +2236,8 @@ public class MandatesResolutionUIController {
     final String reqSel = normalizeSelCode(requestType);
     final long MAX_FILE_BYTES = 10L * 1024 * 1024; // 10MB
 
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
-    java.util.function.Function<String,String> dedupeComma = s -> {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> dedupeComma = s -> {
       String t = nz.apply(s);
       if (t.isEmpty()) {
         return t;
@@ -2310,7 +2339,8 @@ public class MandatesResolutionUIController {
           if (!postedPath.isBlank()) {
             logger.info(
                 "nextStep: non-multipart detected; only path seen ({}). File should be uploaded "
- + "via <comm:fileUpload fileUploadUrl='/app-domain/ui/mandates/attachment/upload"
+                +
+                    "via <comm:fileUpload fileUploadUrl='/app-domain/ui/mandates/attachment/upload"
                 + "'>.",
                 postedPath);
           }
@@ -2602,7 +2632,10 @@ public class MandatesResolutionUIController {
         case "1" -> confirmationCheck = request.getParameter("confirmationCheckMandate");
         case "2" -> confirmationCheck = request.getParameter("confirmationCheckResolution");
         case "3" -> confirmationCheck = request.getParameter("confirmationCheckMandateResolution");
-        default -> { /* no-op */ }
+        default ->
+          {
+            /* no-op */
+          }
       }
     }
     if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
@@ -2948,7 +2981,7 @@ public class MandatesResolutionUIController {
       HttpServletRequest request,
       HttpSession session
   ) {
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
     RequestDTO dto =
@@ -3071,7 +3104,7 @@ public class MandatesResolutionUIController {
 
   //Success Pages
   @PostMapping(value = "/mandatesSuccess", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayMandatesSuccess( ) {
+  public ResponseEntity<String> displayMandatesSuccess() {
     String page = xsltProcessor.returnPage(xmlPagePath("MandatesSuccessPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
@@ -3081,7 +3114,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> handleMandatesSubmit(HttpServletRequest request,
                                                      HttpSession session) {
     System.out.println("Submitting Mandates (FINAL)...");
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     try {
       // Load UI state
@@ -3203,7 +3236,7 @@ public class MandatesResolutionUIController {
 
         for (SessionFile sf : files) {
           try {
-            java.util.Map<String,Object> meta = new java.util.LinkedHashMap<>();
+            java.util.Map<String, Object> meta = new java.util.LinkedHashMap<>();
             meta.put("name", sf.name);
             meta.put("type", sf.contentType);
             meta.put("tags", "MR");
@@ -3215,14 +3248,14 @@ public class MandatesResolutionUIController {
                 new org.springframework.http.client.MultipartBodyBuilder();
             mbb.part("file", new org.springframework.core.io.ByteArrayResource(sf.bytes) {
                   @Override
-                  public String getFilename( ) {
+                  public String getFilename() {
                     return sf.name;
                   }
                 })
                 .contentType(org.springframework.http.MediaType.parseMediaType(sf.contentType));
             mbb.part("meta", meta, org.springframework.http.MediaType.APPLICATION_JSON);
 
-            org.springframework.util.MultiValueMap<String,org.springframework.http.HttpEntity<?>>
+            org.springframework.util.MultiValueMap<String, org.springframework.http.HttpEntity<?>>
                 body = mbb.build();
             org.springframework.http.HttpHeaders headers =
                 new org.springframework.http.HttpHeaders();
@@ -3425,7 +3458,7 @@ public class MandatesResolutionUIController {
   }
 
   @PostMapping(value = "/resolutionsSuccess", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayResolutionSuccess( ) {
+  public ResponseEntity<String> displayResolutionSuccess() {
     String page = xsltProcessor.returnPage(xmlPagePath("ResolutionSuccessPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
@@ -3435,7 +3468,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> displayResolutionSubmit(HttpServletRequest request,
                                                         HttpSession session) {
     System.out.println("Submitting Resolution (FINAL)...");
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     try {
       String pdfSessionId = (String) session.getAttribute("pdfSessionId");
@@ -3628,7 +3661,7 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/mandatesResolutionsSignatureCard", produces =
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> mrSigCardPost(HttpServletRequest request, HttpSession session) {
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
     RequestDTO dto =
@@ -3748,7 +3781,7 @@ public class MandatesResolutionUIController {
       @RequestParam(required = false) Integer removeDirectorAt,
       HttpSession session
   ) {
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
     RequestDTO dto =
@@ -3841,7 +3874,7 @@ public class MandatesResolutionUIController {
 
   //SUCCESS
   @PostMapping(value = "/mandatesResolutionsSuccess", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayMandatesResolutionsSuccess( ) {
+  public ResponseEntity<String> displayMandatesResolutionsSuccess() {
     String page = xsltProcessor.returnPage(xmlPagePath("MandatesResolutionsSuccess"));
     return ResponseEntity.ok(page);
   }
@@ -3851,7 +3884,7 @@ public class MandatesResolutionUIController {
   // ======================= MANDATES & RESOLUTIONS SUBMIT =======================
   @PostMapping(value = "/mandatesResolutionsSubmit", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> mrSubmit(HttpServletRequest request, HttpSession session) {
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     try {
       String pdfSessionId = (String) session.getAttribute("pdfSessionId");
@@ -3949,13 +3982,13 @@ public class MandatesResolutionUIController {
 // ===================== VIEW REQUEST + APPROVE/REJECT COMMENT FLOW =====================
 
   @PostMapping(value = "/viewRequestSuccess", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayViewRequestSuccess( ) {
+  public ResponseEntity<String> displayViewRequestSuccess() {
     String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
   @PostMapping(value = "/viewRequestSuccessRejectPage", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayviewRequestSuccessRejectPage( ) {
+  public ResponseEntity<String> displayviewRequestSuccessRejectPage() {
     String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
@@ -4067,7 +4100,7 @@ public class MandatesResolutionUIController {
       // 1) Save REJECT comment (internal)
       String creator = (servletRequest.getUserPrincipal() != null)
           ? servletRequest.getUserPrincipal().getName() : "ui";
-      var payload = new java.util.HashMap<String,Object>();
+      var payload = new java.util.HashMap<String, Object>();
       payload.put("requestId", requestId);
       payload.put("commentText", commentText.trim());
       payload.put("isInternal", Boolean.TRUE);
@@ -4077,7 +4110,7 @@ public class MandatesResolutionUIController {
           Object.class);
 
       // 2) PUT: Completed + Rejected + processOutcome=Reject (triggers DAO -> reject-path)
-      var update = new java.util.HashMap<String,Object>();
+      var update = new java.util.HashMap<String, Object>();
       update.put("status", "Completed");      // exact
       update.put("subStatus", SS_REJECTED);   // "Rejected"
       update.put("processOutcome", "Reject"); // IMPORTANT
@@ -4173,7 +4206,7 @@ public class MandatesResolutionUIController {
 
       // 1) Optional APPROVE comment (external)
       if (commentText != null && !commentText.trim().isEmpty()) {
-        var payload = new java.util.HashMap<String,Object>();
+        var payload = new java.util.HashMap<String, Object>();
         payload.put("requestId", requestId);
         payload.put("commentText", commentText.trim());
         payload.put("isInternal", Boolean.FALSE);
@@ -4214,7 +4247,7 @@ public class MandatesResolutionUIController {
       String newStatus = next.equals(SS_DONE) ? "Completed" : "In Progress";
 
       // 3) Update request (+ outcome=Approve to advance Camunda)
-      var update = new java.util.HashMap<String,Object>();
+      var update = new java.util.HashMap<String, Object>();
       update.put("status", newStatus);
       update.put("subStatus", next);
       update.put("processOutcome", "Approve");   // DAO field name
@@ -4288,12 +4321,12 @@ public class MandatesResolutionUIController {
       // 2) Fetch comments (DAO) — newestFirst=true
       String commentsUrl = mandatesResolutionsDaoURL
           + "/api/comment/request/" + requestId + "?newestFirst=true";
-      ResponseEntity<java.util.List<java.util.Map<String,Object>>> commentsResp = rt.exchange(
+      ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
           commentsUrl,
           HttpMethod.GET,
           null,
           new org.springframework.core.ParameterizedTypeReference
-              <java.util.List<java.util.Map<String,Object>>>() {
+              <java.util.List<java.util.Map<String, Object>>>() {
           }
       );
 
@@ -4381,10 +4414,10 @@ public class MandatesResolutionUIController {
           approvedRows.size(), rejectedRows.size());
 
       // 3) Helpers
-      java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
-      java.util.function.Function<String,String> keyN =
+      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+      java.util.function.Function<String, String> keyN =
           s -> s == null ? "" : s.trim().toUpperCase();
-      java.util.function.BiFunction<String,String,String> accKey = (num, name) -> {
+      java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
         String n = nz.apply(num);
         if (!n.isEmpty()) {
           return "NUM#" + n;
@@ -4393,7 +4426,7 @@ public class MandatesResolutionUIController {
       };
 
       // 4) Seed accounts map
-      java.util.Map<String,AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
+      java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
       if (sub.getAccounts() != null) {
         for (var a : sub.getAccounts()) {
           String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
@@ -4801,35 +4834,40 @@ public class MandatesResolutionUIController {
     String xsl;
 
     switch (page) {
-      case "SEARCH_RESULTS" -> {
-        w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-        xsl = "SearchResults";
-      }
-      case "DIRECTORS_DETAILS" -> {
-        w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-        xsl = "MandatesResolutionsDirectorsDetails";
-      }
+      case "SEARCH_RESULTS" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "SearchResults";
+        }
+      case "DIRECTORS_DETAILS" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "MandatesResolutionsDirectorsDetails";
+        }
       // Treat RESOLUTION_AUTOFILL like the directors/search path
-      case "RESOLUTION_AUTOFILL" -> {
-        w = buildSearchResultsWrapperFromStaging(id, pdfSessionId); // includes directors + tools
-        xsl = "ResolutionAutoFill";
-      }
+      case "RESOLUTION_AUTOFILL" ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId); // includes directors + tools
+          xsl = "ResolutionAutoFill";
+        }
       case "MANDATES_AUTOFILL",
            "ACC_DETAILS",
            "MANDATES_SIGNATURE_CARD",
-           "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> {
-        w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
-        xsl = switch (page) {
-          case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
-          case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
-          case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
-          default -> "MandatesAutoFill";
-        };
-      }
-      default -> {
-        w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-        xsl = "SearchResults";
-      }
+           "MANDATES_RESOLUTIONS_SIGNATURE_CARD" ->
+        {
+          w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
+          xsl = switch (page) {
+            case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
+            case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
+            case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
+            default -> "MandatesAutoFill";
+          };
+        }
+      default ->
+        {
+          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
+          xsl = "SearchResults";
+        }
     }
 
     //  Seed dropdown selection (numeric "1|2|3") into the wrapper for XSLT
@@ -5169,7 +5207,7 @@ public class MandatesResolutionUIController {
                                                 HttpServletRequest request) {
     try {
       //Parse form
-      Map<String,String[]> params = request.getParameterMap();
+      Map<String, String[]> params = request.getParameterMap();
 
       //Collect 1-based account indices present in the form
       java.util.regex.Pattern accIdxPat =
@@ -5187,7 +5225,7 @@ public class MandatesResolutionUIController {
         String accountId;  //may be null for new rows
         String accountName;
         String accountNo;
-        java.util.List<Map<String,Object>> signatories = new java.util.ArrayList<>();
+        java.util.List<Map<String, Object>> signatories = new java.util.ArrayList<>();
       }
 
       java.util.List<FormAcc> formAccounts = new java.util.ArrayList<>();
@@ -5223,7 +5261,7 @@ public class MandatesResolutionUIController {
             continue;
           }
 
-          Map<String,Object> s = new java.util.LinkedHashMap<>();
+          Map<String, Object> s = new java.util.LinkedHashMap<>();
           s.put("fullName", nz(fullName));
           s.put("idNumber", nz(idNumber));
           s.put("capacity", nz(capacity));
@@ -5253,7 +5291,7 @@ public class MandatesResolutionUIController {
             "<page><error>Unable to save: submission not found.</error></page>");
       }
       Long companyId = sub.getCompany().getCompanyId();
-      java.util.Map<Long,MandateResolutionSubmissionResultDTO.Account> existingById =
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Account> existingById =
           new java.util.HashMap<>();
       if (sub.getAccounts() != null) {
         for (MandateResolutionSubmissionResultDTO.Account a : sub.getAccounts()) {
@@ -5270,14 +5308,14 @@ public class MandatesResolutionUIController {
 
       //Upserts
       for (FormAcc fa : formAccounts) {
-        Map<String,Object> dto = new java.util.LinkedHashMap<>();
+        Map<String, Object> dto = new java.util.LinkedHashMap<>();
         dto.put("companyId", companyId);
         dto.put("accountName", nz(fa.accountName));
         dto.put("accountNumber", nz(fa.accountNo));
         dto.put("isActive", Boolean.TRUE);
         dto.put("signatories", fa.signatories);
 
-        HttpEntity<Map<String,Object>> entity = new HttpEntity<>(dto, headers);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(dto, headers);
 
         if (fa.accountId != null && !fa.accountId.isBlank()) {
           Long accountId = Long.valueOf(fa.accountId);
@@ -5335,7 +5373,7 @@ public class MandatesResolutionUIController {
       }
 
       // 2) Build existing authorities map (by id) to detect deletes
-      java.util.Map<Long,MandateResolutionSubmissionResultDTO.Authority> existingAuthById =
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Authority> existingAuthById =
           new java.util.HashMap<>();
       if (sub.getAuthorities() != null) {
         for (MandateResolutionSubmissionResultDTO.Authority a : sub.getAuthorities()) {
@@ -5349,14 +5387,14 @@ public class MandatesResolutionUIController {
 
       // 3) Upserts (PUT for existing id, POST for new)
       for (FormDir d : formDirs) {
-        Map<String,Object> payload = new java.util.LinkedHashMap<>();
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
         payload.put("companyId", companyId);
         payload.put("firstname", nz(d.firstName));
         payload.put("surname", nz(d.surname));
         payload.put("designation", nz(d.designation));
         payload.put("isActive", Boolean.TRUE);
 
-        HttpEntity<Map<String,Object>> entity = new HttpEntity<>(payload, headers);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
         if (d.id != null && !d.id.isBlank()) {
           Long id = Long.valueOf(d.id);
@@ -5491,7 +5529,7 @@ public class MandatesResolutionUIController {
    * Error handler for BiFrost if upload fails.
    */
   @PostMapping("/upload-error")
-  public ResponseEntity<String> uploadError( ) {
+  public ResponseEntity<String> uploadError() {
     System.out.println(">>> [upload-error] File upload failed <<<");
     return ResponseEntity.ok("<page><error>Upload error</error></page>");
   }
@@ -5577,9 +5615,9 @@ public class MandatesResolutionUIController {
     var sub = subResp.getBody();
 
     //Helpers
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
-    java.util.function.Function<String,String> keyN = s -> s == null ? "" : s.trim().toUpperCase();
-    java.util.function.BiFunction<String,String,String> accKey = (num, name) -> {
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> keyN = s -> s == null ? "" : s.trim().toUpperCase();
+    java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
       String n = nz.apply(num);
       if (!n.isEmpty()) {
         return "NUM#" + n;
@@ -5588,7 +5626,7 @@ public class MandatesResolutionUIController {
     };
 
     //2) Seed accounts (keep order)
-    java.util.Map<String,AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
+    java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
     if (sub.getAccounts() != null) {
       for (var a : sub.getAccounts()) {
         String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
@@ -5772,12 +5810,14 @@ public class MandatesResolutionUIController {
     switch ((t == null ? "" : t.toUpperCase(Locale.ROOT))) {
       case "MANDATES" -> dto.setAuthorities(null);  // keep only Mandates
       case "RESOLUTIONS" -> dto.setAccounts(null);     // keep only Resolutions
-      case "BOTH" -> {
+      case "BOTH" ->
+        {
         /* leave both lists as-is */
-      }
-      default -> {
+        }
+      default ->
+        {
         /* no-op or log/throw for unknown type */
-      }
+        }
     }
   }
 
@@ -5836,7 +5876,7 @@ public class MandatesResolutionUIController {
     }
 
     if (node.isObject()) {
-      java.util.Iterator<java.util.Map.Entry<String,com.fasterxml.jackson.databind.JsonNode>> it =
+      java.util.Iterator<java.util.Map.Entry<String, com.fasterxml.jackson.databind.JsonNode>> it =
           node.fields();
       while (it.hasNext()) {
         var e = it.next();
@@ -5994,14 +6034,14 @@ public class MandatesResolutionUIController {
   }
 
   private static void updateSignatoriesFromParams(RequestStagingDTO dto,
-                                                  java.util.Map<String,String[]> p) {
+                                                  java.util.Map<String, String[]> p) {
   }
 
   private static void updateSignatureCardExtras(RequestStagingDTO dto,
-                                                java.util.Map<String,String[]> p) {
+                                                java.util.Map<String, String[]> p) {
   }
 
-  private static void updateUploadedDocs(RequestStagingDTO dto, java.util.Map<String,String[]> p) {
+  private static void updateUploadedDocs(RequestStagingDTO dto, java.util.Map<String, String[]> p) {
   }
 
 
@@ -6172,11 +6212,11 @@ public class MandatesResolutionUIController {
       RestTemplate restTemplate = new RestTemplate();
       String workflowUrl = "http://localhost:8082/workflow/start";
 
-      Map<String,Object> variables = new HashMap<>();
+      Map<String, Object> variables = new HashMap<>();
       variables.put("companyId", companyId);
       variables.put("submittedBy", submittedBy);
 
-      Map<String,Object> requestBody = new HashMap<>();
+      Map<String, Object> requestBody = new HashMap<>();
       requestBody.put("key", "mandatesResolutionsService");
       requestBody.put("data", variables);
 
@@ -6202,7 +6242,7 @@ public class MandatesResolutionUIController {
     return (s == null) ? "" : s.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
   }
 
-  private static String getParam(Map<String,String[]> params, String key) {
+  private static String getParam(Map<String, String[]> params, String key) {
     String[] v = params.get(key);
     return (v != null && v.length > 0) ? v[0] : null;
   }
@@ -6441,10 +6481,10 @@ public class MandatesResolutionUIController {
    * Accepts directors[i].name|surname|designation OR directors[i].name0/surname0/designation0
    */
   private static java.util.List<RequestDTO.Director> parseDirectorsFromParamsSuffix(
-      Map<String,String[]> params) {
+      Map<String, String[]> params) {
     java.util.regex.Pattern p = java.util.regex.Pattern.compile(
         "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$");
-    java.util.Map<Integer,RequestDTO.Director> byIdx = new java.util.TreeMap<>();
+    java.util.Map<Integer, RequestDTO.Director> byIdx = new java.util.TreeMap<>();
     params.forEach((key, values) -> {
       if (values == null || values.length == 0) {
         return;
@@ -6464,9 +6504,10 @@ public class MandatesResolutionUIController {
         case "name" -> d.setName(v);
         case "surname" -> d.setSurname(v);
         case "designation" -> d.setDesignation(v);
-        default -> {
+        default ->
+          {
           /* no-op */
-        } // keep if your Checkstyle requires a default
+          } // keep if your Checkstyle requires a default
       }
     });
     java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
@@ -6487,9 +6528,9 @@ public class MandatesResolutionUIController {
    * Parse directors from raw params across all page variants.
    */
   private static java.util.List<RequestDTO.Director> parseDirectorsFromParamsGeneric(
-      Map<String,String[]> params) {
+      Map<String, String[]> params) {
     // Helpers
-    java.util.function.Function<String[],String> lastNonBlank = arr -> {
+    java.util.function.Function<String[], String> lastNonBlank = arr -> {
       if (arr == null || arr.length == 0) {
         return null;
       }
@@ -6502,7 +6543,7 @@ public class MandatesResolutionUIController {
       String tail = arr[arr.length - 1];
       return tail == null ? null : tail.trim();
     };
-    java.util.function.Function<String,String> nz = s -> s == null ? "" : s.trim();
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     // Patterns:
     // A) directors[0].name  (optionally directors[0].name0)
@@ -6514,7 +6555,7 @@ public class MandatesResolutionUIController {
         "^director(Name|Surname|Designation)_(\\d+)$"
     );
 
-    java.util.Map<Integer,RequestDTO.Director> byIndex = new java.util.TreeMap<>(); // keep order
+    java.util.Map<Integer, RequestDTO.Director> byIndex = new java.util.TreeMap<>(); // keep order
 
     for (var e : params.entrySet()) {
       String key = e.getKey();
@@ -6534,9 +6575,10 @@ public class MandatesResolutionUIController {
           case "name" -> d.setName(nz.apply(val));
           case "surname" -> d.setSurname(nz.apply(val));
           case "designation" -> d.setDesignation(nz.apply(val));
-          default -> {
+          default ->
+            {
             /* intentionally ignore unknown fields */
-          }
+            }
         }
         continue;
       }
@@ -6552,9 +6594,10 @@ public class MandatesResolutionUIController {
           case "Name" -> d.setName(nz.apply(val));
           case "Surname" -> d.setSurname(nz.apply(val));
           case "Designation" -> d.setDesignation(nz.apply(val));
-          default -> {
+          default ->
+            {
             /* intentionally ignore unknown fields */
-          }
+            }
         }
       }
     }
@@ -6580,9 +6623,9 @@ public class MandatesResolutionUIController {
    * Collect any shape of documentumTools params into a clean, distinct list.
    */
   private static java.util.List<String> parseDocumentumToolsFromParams(
-      java.util.Map<String,String[]> params) {
+      java.util.Map<String, String[]> params) {
     java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-    for (java.util.Map.Entry<String,String[]> e : params.entrySet()) {
+    for (java.util.Map.Entry<String, String[]> e : params.entrySet()) {
       String key = e.getKey();
       if (key == null) {
         continue;
@@ -6690,10 +6733,10 @@ public class MandatesResolutionUIController {
 
   // Parse accounts & nested signatories posted by any of the XSL pages
   private List<RequestStagingDTO.AccountDraft> parseAccountsFromParams(
-      Map<String,String[]> params) {
+      Map<String, String[]> params) {
 
     // pick the last non-blank value (mirrors how browsers may post duplicates)
-    final java.util.function.Function<String[],String> pick = arr -> {
+    final java.util.function.Function<String[], String> pick = arr -> {
       if (arr == null || arr.length == 0) {
         return "";
       }
@@ -6722,10 +6765,10 @@ public class MandatesResolutionUIController {
     final Pattern groupPat = Pattern.compile("^group_(\\d+)_(\\d+)$");
 
     // Keep natural order by account index, and signatory index
-    Map<Integer,RequestStagingDTO.AccountDraft> accountsByIdx = new TreeMap<>();
-    Map<Integer,Map<Integer,RequestStagingDTO.SignatoryDraft>> signsByAcc = new HashMap<>();
+    Map<Integer, RequestStagingDTO.AccountDraft> accountsByIdx = new TreeMap<>();
+    Map<Integer, Map<Integer, RequestStagingDTO.SignatoryDraft>> signsByAcc = new HashMap<>();
 
-    for (Map.Entry<String,String[]> e : params.entrySet()) {
+    for (Map.Entry<String, String[]> e : params.entrySet()) {
       String key = e.getKey();
       String val = pick.apply(e.getValue());
       Matcher m;
@@ -6844,7 +6887,7 @@ public class MandatesResolutionUIController {
     }
 
     // Attach non-empty signatories to each account (and prune empty rows)
-    for (Map.Entry<Integer,Map<Integer,RequestStagingDTO.SignatoryDraft>> accEntry :
+    for (Map.Entry<Integer, Map<Integer, RequestStagingDTO.SignatoryDraft>> accEntry :
         signsByAcc.entrySet()) {
       int i = accEntry.getKey();
       RequestStagingDTO.AccountDraft acc =
@@ -7123,13 +7166,13 @@ public class MandatesResolutionUIController {
   }
 
   // Fallback: reconstruct directors from request params if binder missed them
-  private static List<RequestDTO.Director> parseDirectorsFromParams(Map<String,String[]> params) {
+  private static List<RequestDTO.Director> parseDirectorsFromParams(Map<String, String[]> params) {
     // matches: directors[0].name   OR directors[0].name0  (same for surname/designation)
     java.util.regex.Pattern p = java.util.regex.Pattern.compile(
         "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$"
     );
 
-    java.util.Map<Integer,RequestDTO.Director> byIndex = new java.util.HashMap<>();
+    java.util.Map<Integer, RequestDTO.Director> byIndex = new java.util.HashMap<>();
 
     params.forEach((k, v) -> {
       java.util.regex.Matcher m = p.matcher(k);
@@ -7190,7 +7233,7 @@ public class MandatesResolutionUIController {
   }
 
   // --- factories (RequestDTO.*) ---
-  private RequestDTO.Signatory createBlankSignatory( ) {
+  private RequestDTO.Signatory createBlankSignatory() {
     RequestDTO.Signatory s = new RequestDTO.Signatory();
     s.setFullName("");
     s.setIdNumber("");
@@ -7200,7 +7243,7 @@ public class MandatesResolutionUIController {
     return s;
   }
 
-  private RequestDTO.Account createBlankAccount( ) {
+  private RequestDTO.Account createBlankAccount() {
     RequestDTO.Account a = new RequestDTO.Account();
     a.setAccountName("");
     setAccountNumber(a, "");
@@ -7208,7 +7251,7 @@ public class MandatesResolutionUIController {
     return a;
   }
 
-  private RequestDTO.Director createBlankDirector( ) {
+  private RequestDTO.Director createBlankDirector() {
     RequestDTO.Director d = new RequestDTO.Director();
     d.setName("");
     d.setSurname("");
@@ -7777,7 +7820,7 @@ public class MandatesResolutionUIController {
     String existingSubStatus = reqDto.getSubStatus();
 
     //Utility: build a minimal payload map
-    java.util.Map<String,Object> minimal = new java.util.HashMap<>();
+    java.util.Map<String, Object> minimal = new java.util.HashMap<>();
     minimal.put("requestId", requestId);
     minimal.put("status", newStatus);
     //Only include subStatus if the backend already has a value we received
@@ -7852,7 +7895,7 @@ public class MandatesResolutionUIController {
   }
 
   public final class DisplayIds {
-    private DisplayIds( ) {
+    private DisplayIds() {
     }
 
     public static String format(Long requestId, String type) {
@@ -8013,7 +8056,7 @@ public class MandatesResolutionUIController {
     String nextSub = nextSubStatus(currentSub, approve);
 
     // 3) PUT minimal body (names must match DAO entity JSON)
-    var body = new java.util.HashMap<String,Object>();
+    var body = new java.util.HashMap<String, Object>();
     body.put("status", currentStatus);                 // unchanged
     body.put("subStatus", nextSub);                    // advanced
     body.put("outcome", approve ? "Approve" : "Reject");
@@ -8033,7 +8076,7 @@ public class MandatesResolutionUIController {
 
   // ======================= HTTP helper: POST to backend /api/submission =======================
   private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
-  postSnapshotToBackend(SubmissionPayload payload) {
+      postSnapshotToBackend(SubmissionPayload payload) {
 
     String url = mandatesResolutionsDaoURL + "/api/submission";
     RestTemplate rt = new RestTemplate();
@@ -8085,19 +8128,19 @@ public class MandatesResolutionUIController {
       this.bytes = bytes;
     }
 
-    public String getName( ) {
+    public String getName() {
       return name;
     }
 
-    public String getContentType( ) {
+    public String getContentType() {
       return contentType;
     }
 
-    public long getSize( ) {
+    public long getSize() {
       return size;
     }
 
-    public byte[] getBytes( ) {
+    public byte[] getBytes() {
       return bytes;
     }
   }
@@ -8108,8 +8151,10 @@ public class MandatesResolutionUIController {
               id="" heading=" " template="error" version="1">
           <error xsi:type="validationError">
             <code>0</code>
-            <message>""" + message + "</message>\n" +
-        "</error>\n" +
+            <message>""" + message + "</message>\n"
+        +
+        "</error>\n"
+        +
         "</page>";
   }
 
@@ -8154,7 +8199,7 @@ public class MandatesResolutionUIController {
     for (SessionFile sf : files) {
       try {
         // Build "meta" JSON inline (matches TTS DocumentUploadRequest)
-        var meta = new java.util.LinkedHashMap<String,Object>();
+        var meta = new java.util.LinkedHashMap<String, Object>();
         meta.put("name", sf.name);
         meta.put("type", sf.contentType);
         meta.put("tags", "MR");
@@ -8165,13 +8210,13 @@ public class MandatesResolutionUIController {
         MultipartBodyBuilder mbb = new MultipartBodyBuilder();
         mbb.part("file", new ByteArrayResource(sf.bytes) {
           @Override
-          public String getFilename( ) {
+          public String getFilename() {
             return sf.name;
           }
         }).contentType(MediaType.parseMediaType(sf.contentType));
         mbb.part("meta", meta, MediaType.APPLICATION_JSON);
 
-        MultiValueMap<String,HttpEntity<?>> body = mbb.build();
+        MultiValueMap<String, HttpEntity<?>> body = mbb.build();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 

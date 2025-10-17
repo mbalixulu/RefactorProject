@@ -51,8 +51,12 @@ public class UserDTO {
 
   //(Old convenience; safe to keep or remove)
   public String getUiUserId() {
-    if (username != null && !username.isBlank()) return username;
-    if (employeeNumber != null && !employeeNumber.isBlank()) return employeeNumber;
+    if (username != null && !username.isBlank()) {
+      return username;
+    }
+    if (employeeNumber != null && !employeeNumber.isBlank()) {
+      return employeeNumber;
+    }
     return null;
   }
 }

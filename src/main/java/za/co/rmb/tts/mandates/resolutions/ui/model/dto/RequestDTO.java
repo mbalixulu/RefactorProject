@@ -159,6 +159,7 @@ public class RequestDTO implements Serializable {
     private String userRole;   //Label text (E.G: Shown next to username)
 
     public UserOption() {}
+
     public UserOption(String username, String userRole) {
       this.username = username;
       this.userRole = userRole;
