@@ -127,7 +127,7 @@
                                     <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='created']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created By" ns1:headingColor="ghostmedium">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date By" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='creator']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
                                 </ns1:boxSymbol>
@@ -765,9 +765,16 @@
             <xsl:variable name="STATUS_UP" select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
             <xsl:variable name="BACK_URL">
                 <xsl:choose>
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/ui/requestTableCompleted</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/ui/requestTableOnHold</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">app-domain/ui/requestTable</xsl:when>
+                    <!-- sub-status specific bucket -->
+                    <xsl:when test="contains($SUB_UP,'ADMIN APPROVAL PENDING')">app-domain/ui/adminApproval</xsl:when>
+
+                    <!-- status buckets -->
+                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/ui/adminCompleted</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/ui/adminOnHold</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'BREACH') or contains($STATUS_UP,'BREACHED')">app-domain/ui/adminBreach</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')">app-domain/ui/adminInProgress</xsl:when>
+                    <!-- default -->
+                    <xsl:otherwise>app-domain/ui/adminAll</xsl:otherwise>
                 </xsl:choose>
             </xsl:variable>
 
@@ -796,10 +803,10 @@
             </xsl:variable>
 
 
-            <!-- ===== Footer ===== -->
+            <!--===== Footer (Admin) =====-->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <xsl:choose>
-                    <!--Completed: only Back -->
+                    <!-- Completed: only Back -->
                     <xsl:when test="contains($STATUS_UP,'COMPLETED')">
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"
@@ -808,21 +815,25 @@
 
                     <!-- Otherwise -->
                     <xsl:otherwise>
+                        <ns1:baseButton ns1:id="reassignBtn"
+                                        ns1:url="app-domain/ui/adminReassign"
+                                        ns1:target="panel" ns1:formSubmit="false" ns1:label="Re Assign"/>
+
                         <ns1:baseButton ns1:id="editBtn"
                                         ns1:url="{concat('app-domain/ui/editRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
 
-                        <!--Only shows the Hold button if the status isn't on "On Hold"-->
+                        <!-- Only show Hold when status is NOT 'On Hold' -->
                         <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
                             <ns1:baseButton ns1:id="hold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
+                                            ns1:url="{concat('app-domain/ui/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
                         </xsl:if>
 
-                        <!--Only shows the Un Hold button if the status is "On Hold"-->
+                        <!-- Only show UnHold when status IS 'On Hold' -->
                         <xsl:if test="contains($STATUS_UP,'ON HOLD')">
                             <ns1:baseButton ns1:id="unHold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"
+                                            ns1:url="{concat('app-domain/ui/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="UnHold"/>
                         </xsl:if>
 

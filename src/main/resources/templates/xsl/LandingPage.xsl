@@ -14,7 +14,7 @@
 
             <!--View Switcher-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="active"   ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
+                <ns1:view ns1:text="In Progress requests" ns1:type="active"   ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
                 <ns1:view ns1:text="On hold"          ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/requestTableOnHold"/>
                 <ns1:view ns1:text="Completed"        ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/requestTableCompleted"/>
                 <ns1:view ns1:text="Draft"            ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/ui/requestTableDraft"/>
@@ -29,16 +29,17 @@
                             <xsl:choose>
                                 <xsl:when test="status = 'onhold'">On hold</xsl:when>
                                 <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                <xsl:otherwise>Pending tickets</xsl:otherwise>
+                                <xsl:otherwise>In Progress tickets</xsl:otherwise>
                             </xsl:choose>
                         </xsl:attribute>
 
+                        <!--Table Starts here-->
                         <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable" ns1:headingColor="primary" ns1:showTotal="true">
                             <xsl:attribute name="ns1:heading">
                                 <xsl:choose>
                                     <xsl:when test="status = 'onhold'">On hold</xsl:when>
                                     <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                    <xsl:otherwise>Pending tickets</xsl:otherwise>
+                                    <xsl:otherwise>In Progress tickets</xsl:otherwise>
                                 </xsl:choose>
                             </xsl:attribute>
 
@@ -120,9 +121,11 @@
                                     </ns1:cell>
 
                                     <!-- SLA icon (pending) -->
-                                    <ns1:cell ns1:col_id="sla" ns1:align="left">
+                                    <ns1:cell ns1:col_id="sla">
                                         <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:statusIndicator" ns1:type="pending"/>
+                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
+                                                <ns1:value><xsl:value-of select="sla"/></ns1:value>
+                                            </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
 
@@ -216,7 +219,7 @@
             <!--Footer-->
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                     xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui" ns1:label="Log out" ns1:formSubmit="true"/>
+                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui/logout" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
         </page>
     </xsl:template>

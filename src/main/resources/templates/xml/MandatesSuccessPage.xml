@@ -7,7 +7,12 @@
                     <ns1:value/>
                 </ns1:symbol>
                 <!--Check mark picture-->
-                <ns1:symbol xsi:type="ns1:imagelink" ns1:id="" ns1:lazy="false" ns1:url="/_assets/images/mm/fnb/15/pc/illustrations/tick.results.illustration.svg" ns1:selected="false" ns1:align="center" ns1:illustration="true" ns1:badgeUrl="" ns1:badgeAlign="right" ns1:textUpper="" ns1:textMiddle="" ns1:textLower="" ns1:type="card" ns1:height="75" ns1:width="75" ns1:sizeMetric="px"/>
+                <ns1:symbol xsi:type="ns1:imagelink"
+                            ns1:id="" ns1:lazy="false"
+                            ns1:url="/_assets/images/mm/fnb/15/pc/illustrations/tick.results.illustration.svg"
+                            ns1:selected="false" ns1:align="center" ns1:illustration="true" ns1:badgeUrl=""
+                            ns1:badgeAlign="right" ns1:textUpper="" ns1:textMiddle="" ns1:textLower="" ns1:type="card"
+                            ns1:height="75" ns1:width="75" ns1:sizeMetric="px"/>
             </ns1:sections>
             <!--Paragraph-->
             <ns1:sections ns1:id="" ns1:align="right" ns1:width="half" ns1:tooltip="" ns1:label="" ns1:symbol-type="">

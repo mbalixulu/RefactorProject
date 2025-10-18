@@ -3,16 +3,19 @@
     <xsl:output method="xml"/>
     <xsl:template match="/requests">
         <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="ticketTable" title="Ticket Table" template="main" layout="" version="1">
+              id="adminDraftTable" title="Admin Draft Table" template="main" layout="" version="1">
 
             <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolutions"/>
 
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
-                <ns1:view ns1:text="On hold"            ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/requestTableOnHold"/>
-                <ns1:view ns1:text="Completed"          ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/requestTableCompleted"/>
-                <ns1:view ns1:text="Draft"              ns1:type="active"   ns1:id="draft"           ns1:url="app-domain/ui/requestTableDraft"/>
-                <ns1:view ns1:text="Profile"            ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/ui/requestTableProfile"/>
+                <ns1:view ns1:text="Approvals"      ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/adminApproval"/>
+                <ns1:view ns1:text="Breached"       ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/adminBreach"/>
+                <ns1:view ns1:text="All"            ns1:type="inactive" ns1:id="all"             ns1:url="app-domain/ui/adminAll"/>
+                <ns1:view ns1:text="In Progress"    ns1:type="inactive"   ns1:id="pendingRequests" ns1:url="app-domain/ui/adminInProgress"/>
+                <ns1:view ns1:text="On Hold"        ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/adminOnHold"/>
+                <ns1:view ns1:text="Completed"      ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/adminCompleted"/>
+                <ns1:view ns1:text="Draft"          ns1:type="active" ns1:id="draft"           ns1:url="app-domain/ui/adminDraft"/>
+                <ns1:view ns1:text="Profile"        ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/ui/adminProfile"/>
             </symbol>
 
             <symbol xsi:type="ns1:formLayout">
@@ -40,7 +43,7 @@
                             <ns1:tableColumn ns1:id="status"           ns1:heading="Status"             ns1:fieldName="status"           ns1:disableSorting="true" ns1:widthPercent="12"/>
                             <ns1:tableColumn ns1:id="subStatus"        ns1:heading="Sub Status"         ns1:fieldName="subStatus"        ns1:disableSorting="true" ns1:widthPercent="12"/>
                             <ns1:tableColumn ns1:id="type"      ns1:heading="Request Type"       ns1:fieldName="type"             ns1:disableSorting="true" ns1:widthPercent="12"/>
-                            <ns1:tableColumn ns1:id="created"      ns1:heading="Date Created"       ns1:fieldName="created"          ns1:disableSorting="true" ns1:widthPercent="10"/>
+                            <ns1:tableColumn ns1:id="created"      ns1:heading="Date"       ns1:fieldName="created"          ns1:disableSorting="true" ns1:widthPercent="10"/>
                             <ns1:tableColumn ns1:id="viewBtn"          ns1:heading="View"               ns1:fieldName="viewBtn"          ns1:disableSorting="true" ns1:widthPercent="8"/>
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>

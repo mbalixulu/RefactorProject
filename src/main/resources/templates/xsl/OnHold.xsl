@@ -116,9 +116,11 @@
                                     </ns1:cell>
 
                                     <!-- SLA (warning icon for on-hold) -->
-                                    <ns1:cell ns1:col_id="sla" ns1:align="left">
+                                    <ns1:cell ns1:col_id="sla">
                                         <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:statusIndicator" ns1:type="warning"/>
+                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
+                                                <ns1:value><xsl:value-of select="sla"/></ns1:value>
+                                            </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
 
@@ -207,7 +209,7 @@
             </symbol>
 
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui" ns1:label="Log out" ns1:formSubmit="true"/>
+                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui/logout" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
         </page>
     </xsl:template>
