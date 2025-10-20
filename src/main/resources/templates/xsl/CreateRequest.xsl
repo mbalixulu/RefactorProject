@@ -18,7 +18,7 @@
             <symbol xsi:type="comm:subTabGroup" comm:subTabGroupHeading="Mandates and resolutions"/>
 
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:action="app-domain/ui/searchCompanyDetails" comm:name="predictiveForm">
+                <comm:form comm:action="app-domain/mandates-and-resolutions/searchCompanyDetails" comm:name="predictiveForm">
 
                     <!-- Hidden origin flag so server can tell this POST came from CreateRequest -->
                     <comm:sections comm:align="left" comm:width="full">
@@ -35,7 +35,7 @@
                                 <comm:boxSymbol xsi:type="comm:boxSplit" comm:width="50">
                                     <comm:boxSplitSymbol xsi:type="comm:input"
                                                          comm:predictive="true"
-                                                         comm:predictiveTextNav="app-domain/ui/predictive/companyRegNumbers"
+                                                         comm:predictiveTextNav="app-domain/mandates-and-resolutions/predictive/companyRegNumbers"
                                                          comm:name="companyRegNumber"
                                                          comm:label="Company Registration Number"
                                                          comm:inputType="text">
@@ -56,7 +56,7 @@
                                 <comm:boxSymbol xsi:type="comm:button"
                                                 comm:id="searchSpacer"
                                                 comm:target="main"
-                                                comm:url="app-domain/ui/searchCompanyDetails"
+                                                comm:url="app-domain/mandates-and-resolutions/searchCompanyDetails"
                                                 comm:label="Spacer"
                                                 comm:width="3"
                                                 comm:formSubmit="true"
@@ -66,7 +66,7 @@
                                 <comm:boxSymbol xsi:type="comm:button"
                                                 comm:id="searchBtn"
                                                 comm:target="main"
-                                                comm:url="app-domain/ui/searchCompanyDetails"
+                                                comm:url="app-domain/mandates-and-resolutions/searchCompanyDetails"
                                                 comm:label="Search"
                                                 comm:width="3"
                                                 comm:formSubmit="true"
@@ -77,7 +77,7 @@
                                     <comm:boxSymbol xsi:type="comm:button"
                                                     comm:id="createRequestBtn"
                                                     comm:target="main"
-                                                    comm:url="{concat('app-domain/ui/searchResults?registrationNumber=', normalize-space(/requestWrapper/request/registrationNumber))}"
+                                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchResults?registrationNumber=', normalize-space(/requestWrapper/request/registrationNumber))}"
                                                     comm:label="Create Request"
                                                     comm:width="3"
                                                     comm:formSubmit="false"
@@ -94,7 +94,7 @@
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left" comm:buttonAlign="right">
                 <comm:baseButton comm:id="cancel"
                                  comm:type="action"
-                                 comm:url="app-domain/ui/requestTable"
+                                 comm:url="app-domain/mandates-and-resolutions/requestTable"
                                  comm:target="main"
                                  comm:formSubmit="true"
                                  comm:label="Cancel"/>

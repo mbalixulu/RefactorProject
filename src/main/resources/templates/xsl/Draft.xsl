@@ -8,15 +8,15 @@
             <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolutions"/>
 
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
-                <ns1:view ns1:text="On hold"            ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/requestTableOnHold"/>
-                <ns1:view ns1:text="Completed"          ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/requestTableCompleted"/>
-                <ns1:view ns1:text="Draft"              ns1:type="active"   ns1:id="draft"           ns1:url="app-domain/ui/requestTableDraft"/>
-                <ns1:view ns1:text="Profile"            ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/ui/requestTableProfile"/>
+                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/requestTable"/>
+                <ns1:view ns1:text="On hold"            ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/requestTableOnHold"/>
+                <ns1:view ns1:text="Completed"          ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/mandates-and-resolutions/requestTableCompleted"/>
+                <ns1:view ns1:text="Draft"              ns1:type="active"   ns1:id="draft"           ns1:url="app-domain/mandates-and-resolutions/requestTableDraft"/>
+                <ns1:view ns1:text="Profile"            ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>
             </symbol>
 
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui" ns1:name="fetchTicketForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions" ns1:name="fetchTicketForm">
                     <ns1:sections ns1:id="tableSection" ns1:align="center" ns1:width="full">
                         <xsl:attribute name="ns1:label">Draft requests</xsl:attribute>
 
@@ -25,10 +25,10 @@
 
                             <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main" ns1:id="createRequestbtn"
                                            ns1:label="Create Request" ns1:tooltip="true" ns1:tip="tip"
-                                           ns1:url="app-domain/ui/createRequest" ns1:formName="ticketForm">
+                                           ns1:url="app-domain/mandates-and-resolutions/createRequest" ns1:formName="ticketForm">
                                 <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="createRequestbtn">
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem" ns1:target="main"
-                                                           ns1:label="Create Request" ns1:url="app-domain/ui/createRequest"/>
+                                                           ns1:label="Create Request" ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
                                 </ns1:imageButtonOptions>
                             </ns1:addButton>
 
@@ -111,7 +111,7 @@
                                                       ns1:id="{concat('viewDraftBtn_', requestId)}"
                                                       ns1:type="action"
                                                       ns1:width="2"
-                                                      ns1:url="{concat('app-domain/ui/draft/view?id=', requestId)}"
+                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/draft/view?id=', requestId)}"
                                                       ns1:target="main"
                                                       ns1:formSubmit="false"
                                                       ns1:label="View"/>
@@ -127,7 +127,7 @@
             </symbol>
 
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui/logout" ns1:label="Log out" ns1:formSubmit="true"/>
+                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/mandates-and-resolutions/logout" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
         </page>
     </xsl:template>

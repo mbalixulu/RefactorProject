@@ -14,19 +14,19 @@
 
             <!--View Switcher-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Approvals"      ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/adminApproval"/>
-                <ns1:view ns1:text="Breached"       ns1:type="active" ns1:id="onHold"          ns1:url="app-domain/ui/adminBreach"/>
-                <ns1:view ns1:text="All"            ns1:type="inactive" ns1:id="all"             ns1:url="app-domain/ui/adminAll"/>
-                <ns1:view ns1:text="In Progress"    ns1:type="inactive"   ns1:id="pendingRequests" ns1:url="app-domain/ui/adminInProgress"/>
-                <ns1:view ns1:text="On Hold"        ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/ui/adminOnHold"/>
-                <ns1:view ns1:text="Completed"      ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/ui/adminCompleted"/>
-                <ns1:view ns1:text="Draft"          ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/ui/adminDraft"/>
-                <ns1:view ns1:text="Profile"        ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/ui/adminProfile"/>
+                <ns1:view ns1:text="Approvals"      ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/adminApproval"/>
+                <ns1:view ns1:text="Breached"       ns1:type="active" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/adminBreach"/>
+                <ns1:view ns1:text="All"            ns1:type="inactive" ns1:id="all"             ns1:url="app-domain/mandates-and-resolutions/adminAll"/>
+                <ns1:view ns1:text="In Progress"    ns1:type="inactive"   ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/adminInProgress"/>
+                <ns1:view ns1:text="On Hold"        ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/adminOnHold"/>
+                <ns1:view ns1:text="Completed"      ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/mandates-and-resolutions/adminCompleted"/>
+                <ns1:view ns1:text="Draft"          ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/mandates-and-resolutions/adminDraft"/>
+                <ns1:view ns1:text="Profile"        ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/adminProfile"/>
             </symbol>
 
             <!--Table-->
             <symbol xsi:type="ns1:formLayout" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                <ns1:form ns1:action="app-domain/ui" ns1:name="fetchTicketForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions" ns1:name="fetchTicketForm">
                     <ns1:sections ns1:id="tableSection" ns1:align="center" ns1:width="full" ns1:tooltip="">
                         <xsl:attribute name="ns1:label">
                             <xsl:choose>
@@ -52,17 +52,17 @@
                                            ns1:label="Actions"
                                            ns1:tooltip="true"
                                            ns1:tip="tip"
-                                           ns1:url="app-domain/ui/createRequest"
+                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"
                                            ns1:formName="ticketForm">
                                 <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="tableActionsList">
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
                                                            ns1:label="Create Request"
                                                            ns1:target="main"
-                                                           ns1:url="app-domain/ui/createRequest"/>
+                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
                                                            ns1:label="Export CSV"
-                                                           ns1:target="download"
-                                                           ns1:url="app-domain/ui/exportTickets?format=csv"/>
+                                                           ns1:target="main"
+                                                           ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
                                 </ns1:imageButtonOptions>
                             </ns1:addButton>
 
@@ -216,7 +216,7 @@
                                                       ns1:id="{concat('viewBtn_', requestId)}"
                                                       ns1:type="action"
                                                       ns1:width="2"
-                                                      ns1:url="{concat('app-domain/ui/adminView/', requestId)}"
+                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', requestId)}"
                                                       ns1:target="main"
                                                       ns1:formSubmit="false"
                                                       ns1:label="View"/>
@@ -233,7 +233,7 @@
             <!--Footer-->
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                     xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui/logout" ns1:label="Log out" ns1:formSubmit="true"/>
+                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/mandates-and-resolutions/logout" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
         </page>
     </xsl:template>

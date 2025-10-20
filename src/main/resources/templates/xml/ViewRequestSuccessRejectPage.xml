@@ -25,6 +25,6 @@
         </ns1:form>
     </symbol>
     <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-        <ns1:baseButton ns1:id="finishBtn" ns1:url="app-domain/ui/requestTable" ns1:target="main" ns1:formSubmit="false" ns1:label="Finish"/>
+        <ns1:baseButton ns1:id="finishBtn" ns1:url="app-domain/mandates-and-resolutions/requestTable" ns1:target="main" ns1:formSubmit="false" ns1:label="Finish"/>
     </symbol>
 </page>

@@ -19,7 +19,7 @@
 
             <!-- Form -->
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui/mandatesFill" ns1:name="salesForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions/mandatesFill" ns1:name="salesForm">
 
                     <!-- Heading -->
                     <ns1:sections ns1:align="left" ns1:width="full">
@@ -147,7 +147,7 @@
                                                                   ns1:label="Add a signatory"
                                                                   ns1:tip="Add a signatory"
                                                                   ns1:url="{concat(
-                                              'app-domain/ui/mandatesFill?accountCount=',
+                                              'app-domain/mandates-and-resolutions/mandatesFill?accountCount=',
                                               count(/requestWrapper/request/accounts/account),
                                               '&amp;addSignatoryAt=', $pos,
                                               '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId
@@ -244,7 +244,7 @@
                                                                   ns1:target="main"
                                                                   ns1:width="2"
                                                                   ns1:url="{concat(
-                                        'app-domain/ui/mandatesFill?accountCount=',
+                                        'app-domain/mandates-and-resolutions/mandatesFill?accountCount=',
                                         count(/requestWrapper/request/accounts/account),
                                         '&amp;removeSignatoryAt=', $pos, '_', $signPos,
                                         '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId
@@ -302,7 +302,7 @@
                                                                   ns1:target="main"
                                                                   ns1:width="2"
                                                                   ns1:url="{concat(
-                                                                    'app-domain/ui/mandatesFill?accountCount=',
+                                                                    'app-domain/mandates-and-resolutions/mandatesFill?accountCount=',
                                                                     count(/requestWrapper/request/accounts/account),
                                                                     '&amp;removeSignatoryAt=', $pos, '_', 1,
                                                                     '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId
@@ -324,7 +324,7 @@
                                                    ns1:formSubmit="true"
                                                    ns1:type="primary"
                                                    ns1:url="{concat(
-                                   'app-domain/ui/mandatesFill?accountCount=',
+                                   'app-domain/mandates-and-resolutions/mandatesFill?accountCount=',
                                    count(/requestWrapper/request/accounts/account) - 1,
                                    '&amp;removeAccountAt=', $pos,
                                    '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId
@@ -341,14 +341,14 @@
             <!-- Footer -->
             <symbol xsi:type="ns1:footer" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="backBtn"
-                                ns1:url="{concat('app-domain/ui/nextStep?back=1&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/nextStep?back=1&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
                                 ns1:label="Back"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
 
                 <ns1:baseButton ns1:id="addAccountBtn"
                                 ns1:url="{concat(
-                          'app-domain/ui/mandatesFill?accountCount=',
+                          'app-domain/mandates-and-resolutions/mandatesFill?accountCount=',
                           count(/requestWrapper/request/accounts/account) + 1,
                           '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId
                         )}"
@@ -357,14 +357,14 @@
                                 ns1:target="main"/>
 
                 <ns1:baseButton ns1:id="save"
-                                ns1:url="app-domain/ui/draft/save"
+                                ns1:url="app-domain/mandates-and-resolutions/draft/save"
                                 ns1:label="Save"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
 
                 <!-- Clicking Proceed posts to /mandatesSignatureCard where we validate and either stay here with errors or forward -->
                 <ns1:baseButton ns1:id="proceed"
-                                ns1:url="app-domain/ui/mandatesSignatureCard"
+                                ns1:url="app-domain/mandates-and-resolutions/mandatesSignatureCard"
                                 ns1:label="Proceed"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>

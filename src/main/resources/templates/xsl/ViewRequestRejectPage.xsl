@@ -12,7 +12,7 @@
               id="rejectPanel" title="Reject Request" template="main" layout="" version="1">
 
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:action="app-domain/ui/comment/reject" comm:name="rejectForm">
+                <comm:form comm:action="app-domain/mandates-and-resolutions/comment/reject" comm:name="rejectForm">
 
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading">
@@ -75,7 +75,7 @@
                         <comm:symbol xsi:type="comm:button"
                                      comm:id="submitReject"
                                      comm:target="main"
-                                     comm:url="app-domain/ui/comment/reject"
+                                     comm:url="app-domain/mandates-and-resolutions/comment/reject"
                                      comm:label="Reject"
                                      comm:width="1"
                                      comm:formSubmit="true"
@@ -84,7 +84,7 @@
                         <comm:symbol xsi:type="comm:button"
                                      comm:id="cancelReject"
                                      comm:target="main"
-                                     comm:url="{concat('app-domain/ui/viewRequest/', /requestWrapper/request/requestId)}"
+                                     comm:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)}"
                                      comm:label="Cancel"
                                      comm:width="1"
                                      comm:formSubmit="false"

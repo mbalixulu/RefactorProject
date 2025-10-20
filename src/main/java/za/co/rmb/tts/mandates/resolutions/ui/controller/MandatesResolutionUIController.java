@@ -41,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -52,7 +51,6 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
-import za.co.rmb.tts.mandates.resolutions.ui.model.dto.LoginDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
@@ -67,7 +65,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel
 import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
 
 @RestController
-@RequestMapping("/ui")
+@RequestMapping("/mandates-and-resolutions")
 public class MandatesResolutionUIController {
 
   private final XSLTProcessorService xsltProcessor;
@@ -93,17 +91,10 @@ public class MandatesResolutionUIController {
     this.xsltProcessor = xsltProcessor;
   }
 
-  // ============= LOGIN =============
+  // ============= Landing Page =============
 
-  //Takes you the Login Page after starting the project (First Page you will see) (OLD)
+  //Landing page for when the user is logged in
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayHomePage() {
-    String page = xsltProcessor.returnPage(xmlPagePath("LoginPage"));
-    return new ResponseEntity<>(page, HttpStatus.OK);
-  }
-
-  //Landing page for whe user is logged in
-  @PostMapping(value = "/mandateResolutionsLanding", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> mandateResolutionsLanding(HttpServletRequest request,
                                                           HttpSession session) {
     try {
@@ -167,9 +158,9 @@ public class MandatesResolutionUIController {
       logger.info("Landing role resolved to: '{}'", roleUp);
 
       if (roleUp.contains("ADMIN")) {
-        return displayAdminApproval();   //Renders app-domain/ui/adminApproval
+        return displayAdminApproval();   //Renders app-domain/mandates-and-resolutions/adminApproval
       } else {
-        return displayRequestTable();    //Renders app-domain/ui/requestTable
+        return displayRequestTable();    //Renders app-domain/mandates-and-resolutions/requestTable
       }
 
     } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
@@ -1404,6 +1395,13 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
+  // ============= Export as CSV =============
+  @PostMapping(value = "/exportCSV", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayExportCSV() {
+    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), new RequestWrapper());
+    return new ResponseEntity<>(page, HttpStatus.OK);
+  }
+
   // ============= CREATION PAGES =============
 
   //Create a request page
@@ -1513,10 +1511,10 @@ public class MandatesResolutionUIController {
     RequestDTO dto = (sid != null) ? pdfExtractionDataCache.get(sid) : null;
     if (dto == null) {
       dto = new RequestDTO();
-      dto.setRegistrationNumber(nz(reg)); //so Create Request path still pre-populates reg
+      dto.setRegistrationNumber(nz(reg)); //Create Request path still pre-populates reg
     }
 
-    ensureAtLeastOneDirector(dto); // <- guarantees one empty row so inputs render
+    ensureAtLeastOneDirector(dto); //Guarantees one empty row so inputs render
 
     if (sid == null || sid.isBlank()) {
       sid = java.util.UUID.randomUUID().toString();
@@ -1649,7 +1647,7 @@ public class MandatesResolutionUIController {
       }
     }
 
-    //From here on, use the (possibly rotated) session id
+    //From here on, use the session id
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
 
     //Merge posted company fields (non-blank only)
@@ -2340,7 +2338,8 @@ public class MandatesResolutionUIController {
             logger.info(
                 "nextStep: non-multipart detected; only path seen ({}). File should be uploaded "
                 +
-                    "via <comm:fileUpload fileUploadUrl='/app-domain/ui/mandates/attachment/upload"
+                    "via <comm:fileUpload fileUploadUrl='/app-domain"
+                    + "/mandates-and-resolutions/mandates/attachment/upload"
                 + "'>.",
                 postedPath);
           }
@@ -4629,7 +4628,7 @@ public class MandatesResolutionUIController {
                   dd.setName(nz.apply(a.getFirstname()));
                   dd.setSurname(nz.apply(a.getSurname()));
                   dd.setDesignation(nz.apply(a.getDesignation()));
-                  dd.setInstruction(instEff);   // 👈 ensure set
+                  dd.setInstruction(instEff);
 
                   if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
                       .isEmpty())) {
@@ -5191,7 +5190,7 @@ public class MandatesResolutionUIController {
       String errorPage = renderSimpleErrorPage(
           "Remove Account",
           "Unable to remove account section.",
-          "app-domain/ui/editRequest/" + requestId
+          "app-domain/mandates-and-resolutions/editRequest/" + requestId
       );
       return ResponseEntity.ok(errorPage);
     }
@@ -5532,48 +5531,6 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> uploadError() {
     System.out.println(">>> [upload-error] File upload failed <<<");
     return ResponseEntity.ok("<page><error>Upload error</error></page>");
-  }
-
-  //(OLD)
-  @PostMapping(value = "/validateLogin", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> validateLogin(
-      @RequestParam("userName") String userName,
-      @RequestParam("passKey") String passKey,
-      HttpSession session
-  ) {
-    try {
-      if (userName == null || userName.isBlank() || passKey == null || passKey.isBlank()) {
-        String errorPage = generateErrorPage("Username and password are required.");
-        return ResponseEntity.ok(errorPage);
-      }
-
-      String backendUrl = mandatesResolutionsDaoURL + "/api/login/unmasked/" + userName;
-      RestTemplate restTemplate = new RestTemplate();
-
-      ResponseEntity<LoginDTO> response = restTemplate.exchange(
-          backendUrl, HttpMethod.GET, null, LoginDTO.class
-      );
-
-      if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-        LoginDTO loginUser = response.getBody();
-
-        if (passKey.equals(loginUser.getPassKey())) {
-          //Store user in session (doesn't keep the password)
-          loginUser.setPassKey(null);
-          session.setAttribute("currentUser", loginUser);
-
-          //Returns to request table landing page
-          return displayRequestTable();
-        }
-      }
-      return ResponseEntity.ok(generateErrorPage("Incorrect username or password."));
-    } catch (HttpClientErrorException.NotFound e) {
-      return ResponseEntity.ok(generateErrorPage("Incorrect username or password."));
-    } catch (Exception e) {
-      e.printStackTrace();
-      return ResponseEntity.ok(
-          generateErrorPage("Login service unavailable, please try again later."));
-    }
   }
 
   private String generateErrorPage(String message) {
