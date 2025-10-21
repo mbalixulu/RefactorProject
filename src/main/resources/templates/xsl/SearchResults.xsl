@@ -42,7 +42,7 @@
 
             <!--Box Symbols-->
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:name="searchResults" comm:action="app-domain/ui/nextStep">
+                <comm:form comm:name="searchResults" comm:action="app-domain/mandates-and-resolutions/nextStep">
                     <comm:sections comm:width="full">
 
                         <!-- Persist Waiver Tools only when not editable -->
@@ -159,7 +159,7 @@
                                                 comm:id="addToolBtn"
                                                 comm:label="Add Waiver Tool"
                                                 comm:target="main"
-                                                comm:url="{concat('app-domain/ui/searchCompanyDetails?companyRegNumber=',
+                                                comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
                                                   /requestWrapper/request/registrationNumber,
                                                   '&amp;toolCount=',
                                                   count(/requestWrapper/request/documentumTool) + 1,
@@ -242,7 +242,7 @@
                                                        comm:tip="Click to add a new director"
                                                        comm:target="main"
                                                        comm:url="{concat(
-                                                     'app-domain/ui/searchCompanyDetails?',
+                                                     'app-domain/mandates-and-resolutions/searchCompanyDetails?',
                                                      'pdfSessionId=', /requestWrapper/request/pdfSessionId,
                                                      '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
                                                      '&amp;directorCount=', count(/requestWrapper/request/directors/director) + 1,
@@ -316,7 +316,7 @@
                                                        comm:id="{concat('removeDirectorBtn_', position())}"
                                                        comm:type="paper"
                                                        comm:width="2"
-                                                       comm:url="{concat('app-domain/ui/searchCompanyDetails?companyRegNumber=',
+                                                       comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
                                                    /requestWrapper/request/registrationNumber,
                                                    '&amp;removeDirectorAt=', position(),
                                                    '&amp;directorCount=', count(/requestWrapper/request/directors/director),
@@ -372,8 +372,8 @@
                                     xsi:type="comm:fileUpload"
                                     comm:name="file"
                                     comm:label="Replace authorised signatories"
-                                    comm:fileUploadUrl="app-domain/ui/mandates/attachment/upload"
-                                    comm:fileErrorUrl="app-domain/ui/errorPage"
+                                    comm:fileUploadUrl="app-domain/mandates-and-resolutions/mandates/attachment/upload"
+                                    comm:fileErrorUrl="app-domain/mandates-and-resolutions/errorPage"
                                     comm:showInput="true">
                                 <comm:value/>
                             </comm:divElement>
@@ -407,7 +407,7 @@
                                     xsi:type="comm:button"
                                     comm:id="mandatesProceedBtn"
                                     comm:target="main"
-                                    comm:url="app-domain/ui/proceedPdfExtraction"
+                                    comm:url="app-domain/mandates-and-resolutions/proceedPdfExtraction"
                                     comm:label="Upload Document"
                                     comm:width="3"
                                     comm:formSubmit="true"
@@ -417,7 +417,7 @@
                                     xsi:type="comm:button"
                                     comm:id="addRequiredResolutionDoc"
                                     comm:target="main"
-                                    comm:url="{concat('app-domain/ui/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
+                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
                                     comm:label="Add Required Document"
                                     comm:width="3"
                                     comm:formSubmit="false"
@@ -482,7 +482,7 @@
                                     xsi:type="comm:button"
                                     comm:id="addRequiredResolutionDoc"
                                     comm:target="main"
-                                    comm:url="{concat('app-domain/ui/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
+                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
                                     comm:label="Add Required Document"
                                     comm:width="3"
                                     comm:formSubmit="false"
@@ -565,7 +565,7 @@
                                     xsi:type="comm:button"
                                     comm:id="addRequiredManResDoc"
                                     comm:target="main"
-                                    comm:url="{concat('app-domain/ui/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
+                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
                                     comm:label="Add Required Document"
                                     comm:width="3"
                                     comm:formSubmit="false"
@@ -620,13 +620,13 @@
 
             <!--Footer-->
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="comm:footer" comm:text="" comm:textAlign="left" comm:buttonAlign="right">
-                <comm:baseButton comm:id="proceed" comm:target="main" comm:url="app-domain/ui/nextStep" comm:label="Proceed" comm:formSubmit="true"/>
+                <comm:baseButton comm:id="proceed" comm:target="main" comm:url="app-domain/mandates-and-resolutions/nextStep" comm:label="Proceed" comm:formSubmit="true"/>
                 <comm:baseButton comm:id="save"
                                  comm:target="main"
-                                 comm:url="app-domain/ui/draft/save"
+                                 comm:url="app-domain/mandates-and-resolutions/draft/save"
                                  comm:label="Save"
                                  comm:formSubmit="true"/>
-                <comm:baseButton comm:id="backSearch" comm:target="main" comm:url="app-domain/ui/createRequest" comm:label="Back" comm:formSubmit="true"/>
+                <comm:baseButton comm:id="backSearch" comm:target="main" comm:url="app-domain/mandates-and-resolutions/createRequest" comm:label="Back" comm:formSubmit="true"/>
             </symbol>
 
         </page>

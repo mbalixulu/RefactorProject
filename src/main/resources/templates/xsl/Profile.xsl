@@ -8,15 +8,15 @@
 
             <!--View Switcher for Filtering Tickets-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/ui/requestTable"/>
-                <ns1:view ns1:text="On hold" ns1:type="inactive" ns1:id="onHold" ns1:url="app-domain/ui/requestTableOnHold"/>
-                <ns1:view ns1:text="Completed" ns1:type="inactive" ns1:id="completed" ns1:url="app-domain/ui/requestTableCompleted"/>
-                <ns1:view ns1:text="Draft" ns1:type="inactive" ns1:id="draft" ns1:url="app-domain/ui/requestTableDraft"/>
-                <ns1:view ns1:text="Profile" ns1:type="active" ns1:id="profile" ns1:url="app-domain/ui/requestTableProfile"/>
+                <ns1:view ns1:text="Pending requests" ns1:type="inactive" ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/requestTable"/>
+                <ns1:view ns1:text="On hold" ns1:type="inactive" ns1:id="onHold" ns1:url="app-domain/mandates-and-resolutions/requestTableOnHold"/>
+                <ns1:view ns1:text="Completed" ns1:type="inactive" ns1:id="completed" ns1:url="app-domain/mandates-and-resolutions/requestTableCompleted"/>
+                <ns1:view ns1:text="Draft" ns1:type="inactive" ns1:id="draft" ns1:url="app-domain/mandates-and-resolutions/requestTableDraft"/>
+                <ns1:view ns1:text="Profile" ns1:type="active" ns1:id="profile" ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>
             </symbol>
 
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui/requestTableProfile" ns1:name="salesForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions/requestTableProfile" ns1:name="salesForm">
                     <ns1:sections ns1:width="full">
                         <ns1:symbol xsi:type="ns1:boxContainer">
                             <ns1:box xsi:type="ns1:box">
@@ -62,7 +62,7 @@
             </symbol>
 
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/ui/logout" ns1:label="Log out" ns1:formSubmit="true"/>
+                <ns1:baseButton ns1:id="logout" ns1:target="main" ns1:url="app-domain/mandates-and-resolutions/logout" ns1:label="Log out" ns1:formSubmit="true"/>
             </symbol>
 
         </page>

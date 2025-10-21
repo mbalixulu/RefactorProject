@@ -17,7 +17,7 @@
             <symbol xsi:type="comm:formLayout">
                 <!--Form posts to submit endpoint; hidden field carries requestId-->
                 <comm:form
-                        comm:action="app-domain/ui/adminReassignSubmit"
+                        comm:action="app-domain/mandates-and-resolutions/adminReassignSubmit"
                         comm:name="reassignForm">
 
                     <!--Hidden requestId-->
@@ -71,7 +71,7 @@
                         <!--Submit updates the request and takes you back to the admin view request page-->
                         <comm:symbol
                                 xsi:type="comm:button"
-                                comm:url="app-domain/ui/adminReassignSubmit"
+                                comm:url="app-domain/mandates-and-resolutions/adminReassignSubmit"
                                 comm:target="main"
                                 comm:label="Reassign"
                                 comm:width="1"
@@ -81,7 +81,7 @@
                         <!--Cancel: navigate back to the exact request -->
                         <comm:symbol
                                 xsi:type="comm:button"
-                                comm:url="{concat('app-domain/ui/adminView/', /requestWrapper/request/requestId)}"
+                                comm:url="{concat('app-domain/mandates-and-resolutions/adminView/', /requestWrapper/request/requestId)}"
                                 comm:target="main"
                                 comm:label="Cancel"
                                 comm:width="1"

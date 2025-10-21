@@ -39,9 +39,9 @@
         </xsl:variable>
         <xsl:variable name="SECOND_URL">
             <xsl:choose>
-                <xsl:when test="$IS_DOCU">app-domain/ui/viewRequestReject</xsl:when>
+                <xsl:when test="$IS_DOCU">app-domain/mandates-and-resolutions/viewRequestReject</xsl:when>
                 <xsl:otherwise>
-                    <xsl:value-of select="concat('app-domain/ui/viewRequest/', /requestWrapper/request/requestId)"/>
+                    <xsl:value-of select="concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)"/>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
@@ -57,7 +57,7 @@
               id="approvePanel" title="Approve Request" template="main" layout="" version="1">
 
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:action="app-domain/ui/comment/approve" comm:name="approveForm">
+                <comm:form comm:action="app-domain/mandates-and-resolutions/comment/approve" comm:name="approveForm">
 
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading">
@@ -117,7 +117,7 @@
                         <comm:symbol xsi:type="comm:button"
                                      comm:id="submitApprove"
                                      comm:target="main"
-                                     comm:url="app-domain/ui/comment/approve"
+                                     comm:url="app-domain/mandates-and-resolutions/comment/approve"
                                      comm:label="{$LAB_SUBMIT}"
                                      comm:width="1"
                                      comm:formSubmit="true"

@@ -246,7 +246,7 @@
                                                                               ns1:label="Add a signatory"
                                                                               ns1:tip="Add a signatory"
                                                                               ns1:url="{concat(
-                                                    'app-domain/ui/editRequestAddSignatory/',
+                                                    'app-domain/mandates-and-resolutions/editRequestAddSignatory/',
                                                     $REQ/*[local-name()='requestId'],
                                                     '?addSignatoryAt=',
                                                     $aPos
@@ -336,7 +336,7 @@
                                                                                       ns1:target="main"
                                                                                       ns1:width="2"
                                                                                       ns1:url="{concat(
-                                                  'app-domain/ui/editRequestRemoveSignatory/',
+                                                  'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',
                                                   $REQ/*[local-name()='requestId'],
                                                   '?removeSignatoryAt=',
                                                   $aPos, '_', $sPos
@@ -402,7 +402,7 @@
                                                                                   ns1:label="Add a signatory"
                                                                                   ns1:tip="Add a signatory"
                                                                                   ns1:url="{concat(
-                                                    'app-domain/ui/editRequestAddSignatory/',
+                                                    'app-domain/mandates-and-resolutions/editRequestAddSignatory/',
                                                     $REQ/*[local-name()='requestId'],
                                                     '?addSignatoryAt=',
                                                     $aPos
@@ -490,7 +490,7 @@
                                                                                   ns1:target="main"
                                                                                   ns1:width="2"
                                                                                   ns1:url="{concat(
-                                                'app-domain/ui/editRequestRemoveSignatory/',
+                                                'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',
                                                 $REQ/*[local-name()='requestId'],
                                                 '?removeSignatoryAt=',
                                                 $aPos, '_', $sPos
@@ -553,7 +553,7 @@
                                                                   ns1:label="Add a director"
                                                                   ns1:tip="Add a director"
                                                                   ns1:url="{concat(
-                                              'app-domain/ui/editRequestAddDirector/',
+                                              'app-domain/mandates-and-resolutions/editRequestAddDirector/',
                                               $REQ/*[local-name()='requestId']
                                             )}"/>
                                         </ns1:rowGroup>
@@ -624,7 +624,7 @@
                                                                           ns1:target="main"
                                                                           ns1:width="2"
                                                                           ns1:url="{concat(
-                                            'app-domain/ui/editRequestRemoveDirector/',
+                                            'app-domain/mandates-and-resolutions/editRequestRemoveDirector/',
                                             $REQ/*[local-name()='requestId'],
                                             '?removeDirectorAt=',
                                             $i
@@ -675,19 +675,19 @@
             <!-- footer -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="addAccountBtnFooter"
-                                ns1:url="{concat('app-domain/ui/editRequestAddAccount/', $REQ/*[local-name()='requestId'])}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/editRequestAddAccount/', $REQ/*[local-name()='requestId'])}"
                                 ns1:label="Add Account"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
 
                 <ns1:baseButton ns1:id="back"
-                                ns1:url="app-domain/ui/requestTable"
+                                ns1:url="app-domain/mandates-and-resolutions/requestTable"
                                 ns1:target="main"
                                 ns1:formSubmit="false"
                                 ns1:label="Back"/>
 
                 <ns1:baseButton ns1:id="save"
-                                ns1:url="{concat('app-domain/ui/editRequestSave/', $REQ/*[local-name()='requestId'])}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/editRequestSave/', $REQ/*[local-name()='requestId'])}"
                                 ns1:target="main"
                                 ns1:formSubmit="true"
                                 ns1:label="Save"/>

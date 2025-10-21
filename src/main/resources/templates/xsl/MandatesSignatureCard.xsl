@@ -20,7 +20,7 @@
             <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates"/>
 
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui/mandatesSubmit" ns1:name="salesForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions/mandatesSubmit" ns1:name="salesForm">
 
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:textHeading">
@@ -270,17 +270,17 @@
             <!-- Footer -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="backBtn"
-                                ns1:url="{concat('app-domain/ui/mandatesFill?pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/mandatesFill?pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
                                 ns1:target="main"
                                 ns1:formSubmit="false"
                                 ns1:label="Back"/>
                 <ns1:baseButton ns1:id="save"
-                                ns1:url="app-domain/ui/draft/save"
+                                ns1:url="app-domain/mandates-and-resolutions/draft/save"
                                 ns1:label="Save"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
                 <ns1:baseButton ns1:id="submitBtn"
-                                ns1:url="app-domain/ui/mandatesSubmit"
+                                ns1:url="app-domain/mandates-and-resolutions/mandatesSubmit"
                                 ns1:target="main"
                                 ns1:formSubmit="true"
                                 ns1:label="Submit"/>

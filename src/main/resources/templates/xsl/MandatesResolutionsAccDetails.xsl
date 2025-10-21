@@ -17,7 +17,7 @@
             <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and Resolutions"/>
 
             <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="app-domain/ui" ns1:name="salesForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions" ns1:name="salesForm">
 
                     <!-- Heading -->
                     <ns1:sections ns1:align="left" ns1:width="full">
@@ -145,7 +145,7 @@
                                                                   ns1:label="Add a signatory"
                                                                   ns1:tip="Add a signatory"
                                                                   ns1:url="{concat(
-                                              'app-domain/ui/mandatesResolutionsAccDetails?accountCount=',
+                                              'app-domain/mandates-and-resolutions/mandatesResolutionsAccDetails?accountCount=',
                                               count(/requestWrapper/request/accounts/account),
                                               '&amp;addSignatoryAt=', $pos,
                                               '&amp;pdfSessionId=',
@@ -241,7 +241,7 @@
                                                                   ns1:target="main"
                                                                   ns1:width="2"
                                                                   ns1:url="{concat(
-                                        'app-domain/ui/mandatesResolutionsAccDetails?accountCount=',
+                                        'app-domain/mandates-and-resolutions/mandatesResolutionsAccDetails?accountCount=',
                                         count(/requestWrapper/request/accounts/account),
                                         '&amp;removeSignatoryAt=', $pos, '_', $signPos,
                                         '&amp;pdfSessionId=',
@@ -303,7 +303,7 @@
                                                                   ns1:target="main"
                                                                   ns1:width="2"
                                                                   ns1:url="{concat(
-                                                                    'app-domain/ui/mandatesResolutionsAccDetails?accountCount=',
+                                                                    'app-domain/mandates-and-resolutions/mandatesResolutionsAccDetails?accountCount=',
                                                                     count(/requestWrapper/request/accounts/account),
                                                                     '&amp;removeSignatoryAt=', $pos, '_', 1,
                                                                     '&amp;pdfSessionId=',
@@ -326,7 +326,7 @@
                                                    ns1:formSubmit="false"
                                                    ns1:type="primary"
                                                    ns1:url="{concat(
-                                   'app-domain/ui/mandatesResolutionsAccDetails?accountCount=',
+                                   'app-domain/mandates-and-resolutions/mandatesResolutionsAccDetails?accountCount=',
                                    count(/requestWrapper/request/accounts/account) - 1,
                                    '&amp;removeAccountAt=', $pos,
                                    '&amp;pdfSessionId=',
@@ -342,23 +342,23 @@
             <!-- Footer -->
             <symbol xsi:type="ns1:footer" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="backBtn"
-                                ns1:url="{concat('app-domain/ui/nextStep?back=1&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/nextStep?back=1&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId)}"
                                 ns1:label="Back" ns1:formSubmit="true" ns1:target="main"/>
                 <ns1:baseButton ns1:id="addAccountBtn"
                                 ns1:url="{concat(
-                          'app-domain/ui/mandatesResolutionsAccDetails?accountCount=',
+                          'app-domain/mandates-and-resolutions/mandatesResolutionsAccDetails?accountCount=',
                           count(/requestWrapper/request/accounts/account) + 1,
                           '&amp;pdfSessionId=',
                           /requestWrapper/request/pdfSessionId
                         )}"
                                 ns1:label="Add Account" ns1:formSubmit="true" ns1:target="main"/>
                 <ns1:baseButton ns1:id="save"
-                                ns1:url="app-domain/ui/draft/save"
+                                ns1:url="app-domain/mandates-and-resolutions/draft/save"
                                 ns1:label="Save"
                                 ns1:formSubmit="true"
                                 ns1:target="main"/>
                 <ns1:baseButton ns1:id="proceed"
-                                ns1:url="app-domain/ui/mandatesResolutionsSignatureCard"
+                                ns1:url="app-domain/mandates-and-resolutions/mandatesResolutionsSignatureCard"
                                 ns1:label="Proceed" ns1:formSubmit="true" ns1:target="main"/>
             </symbol>
         </page>

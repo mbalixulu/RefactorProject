@@ -765,12 +765,11 @@
             <xsl:variable name="STATUS_UP" select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
             <xsl:variable name="BACK_URL">
                 <xsl:choose>
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/ui/requestTableCompleted</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/ui/requestTableOnHold</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">app-domain/ui/requestTable</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/mandates-and-resolutions/requestTableCompleted</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/mandates-and-resolutions/requestTableOnHold</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">app-domain/mandates-and-resolutions/requestTable</xsl:when>
                 </xsl:choose>
             </xsl:variable>
-
 
             <!-- If you want to gate by status=In Progress, set this and AND it into the whens -->
             <!-- <xsl:variable name="IS_INPROGRESS" select="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')"/> -->
@@ -809,28 +808,28 @@
                     <!-- Otherwise -->
                     <xsl:otherwise>
                         <ns1:baseButton ns1:id="editBtn"
-                                        ns1:url="{concat('app-domain/ui/editRequest/', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
 
                         <!--Only shows the Hold button if the status isn't on "On Hold"-->
                         <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
                             <ns1:baseButton ns1:id="hold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
+                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
                         </xsl:if>
 
                         <!--Only shows the Un Hold button if the status is "On Hold"-->
                         <xsl:if test="contains($STATUS_UP,'ON HOLD')">
                             <ns1:baseButton ns1:id="unHold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"
+                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="UnHold"/>
                         </xsl:if>
 
                         <ns1:baseButton ns1:id="approve"
-                                        ns1:url="{concat('app-domain/ui/viewRequestApprovePage?requestId=', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestApprovePage?requestId=', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_APPROVE}"/>
                         <ns1:baseButton ns1:id="reject"
-                                        ns1:url="{concat('app-domain/ui/viewRequestReject?requestId=', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestReject?requestId=', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_REJECT}"/>
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"

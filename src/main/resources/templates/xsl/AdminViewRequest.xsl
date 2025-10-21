@@ -766,15 +766,15 @@
             <xsl:variable name="BACK_URL">
                 <xsl:choose>
                     <!-- sub-status specific bucket -->
-                    <xsl:when test="contains($SUB_UP,'ADMIN APPROVAL PENDING')">app-domain/ui/adminApproval</xsl:when>
+                    <xsl:when test="contains($SUB_UP,'ADMIN APPROVAL PENDING')">app-domain/mandates-and-resolutions/adminApproval</xsl:when>
 
                     <!-- status buckets -->
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/ui/adminCompleted</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/ui/adminOnHold</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'BREACH') or contains($STATUS_UP,'BREACHED')">app-domain/ui/adminBreach</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')">app-domain/ui/adminInProgress</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/mandates-and-resolutions/adminCompleted</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/mandates-and-resolutions/adminOnHold</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'BREACH') or contains($STATUS_UP,'BREACHED')">app-domain/mandates-and-resolutions/adminBreach</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')">app-domain/mandates-and-resolutions/adminInProgress</xsl:when>
                     <!-- default -->
-                    <xsl:otherwise>app-domain/ui/adminAll</xsl:otherwise>
+                    <xsl:otherwise>app-domain/mandates-and-resolutions/adminAll</xsl:otherwise>
                 </xsl:choose>
             </xsl:variable>
 
@@ -816,32 +816,32 @@
                     <!-- Otherwise -->
                     <xsl:otherwise>
                         <ns1:baseButton ns1:id="reassignBtn"
-                                        ns1:url="app-domain/ui/adminReassign"
+                                        ns1:url="app-domain/mandates-and-resolutions/adminReassign"
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="Re Assign"/>
 
                         <ns1:baseButton ns1:id="editBtn"
-                                        ns1:url="{concat('app-domain/ui/editRequest/', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
 
                         <!-- Only show Hold when status is NOT 'On Hold' -->
                         <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
                             <ns1:baseButton ns1:id="hold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
+                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
                         </xsl:if>
 
                         <!-- Only show UnHold when status IS 'On Hold' -->
                         <xsl:if test="contains($STATUS_UP,'ON HOLD')">
                             <ns1:baseButton ns1:id="unHold"
-                                            ns1:url="{concat('app-domain/ui/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
+                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'], '&amp;origin=admin')}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="UnHold"/>
                         </xsl:if>
 
                         <ns1:baseButton ns1:id="approve"
-                                        ns1:url="{concat('app-domain/ui/viewRequestApprovePage?requestId=', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestApprovePage?requestId=', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_APPROVE}"/>
                         <ns1:baseButton ns1:id="reject"
-                                        ns1:url="{concat('app-domain/ui/viewRequestReject?requestId=', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestReject?requestId=', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_REJECT}"/>
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"
