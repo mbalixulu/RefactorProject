@@ -768,6 +768,8 @@
                     <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/mandates-and-resolutions/requestTableCompleted</xsl:when>
                     <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/mandates-and-resolutions/requestTableOnHold</xsl:when>
                     <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">app-domain/mandates-and-resolutions/requestTable</xsl:when>
+                    <!-- default safety: go back to pending table -->
+                    <xsl:otherwise>app-domain/mandates-and-resolutions/requestTable</xsl:otherwise>
                 </xsl:choose>
             </xsl:variable>
 
@@ -798,27 +800,34 @@
             <!-- ===== Footer ===== -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <xsl:choose>
-                    <!--Completed: only Back -->
+                    <!-- Completed: only Back -->
                     <xsl:when test="contains($STATUS_UP,'COMPLETED')">
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"
                                         ns1:formSubmit="false" ns1:label="Back"/>
                     </xsl:when>
 
-                    <!-- Otherwise -->
+                    <!-- Admin Approval Pending (match on either status OR subStatus): only Back -->
+                    <xsl:when test="contains($STATUS_UP,'ADMIN APPROVAL PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">
+                        <ns1:baseButton ns1:id="back"
+                                        ns1:url="{$BACK_URL}" ns1:target="main"
+                                        ns1:formSubmit="false" ns1:label="Back"/>
+                    </xsl:when>
+
+                    <!-- Otherwise: show full set -->
                     <xsl:otherwise>
                         <ns1:baseButton ns1:id="editBtn"
                                         ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
 
-                        <!--Only shows the Hold button if the status isn't on "On Hold"-->
+                        <!-- Hold appears only when not On Hold -->
                         <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
                             <ns1:baseButton ns1:id="hold"
                                             ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
                         </xsl:if>
 
-                        <!--Only shows the Un Hold button if the status is "On Hold"-->
+                        <!-- UnHold appears only when On Hold -->
                         <xsl:if test="contains($STATUS_UP,'ON HOLD')">
                             <ns1:baseButton ns1:id="unHold"
                                             ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"

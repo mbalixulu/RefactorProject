@@ -81,7 +81,7 @@
                     comm:text="" comm:textAlign="left" comm:buttonAlign="right">
 
                 <comm:baseButton comm:id="back" comm:target="main"
-                                 comm:url="app-domain/mandates-and-resolutions/"
+                                 comm:url="app-domain/mandates-and-resolutions/adminAll"
                                  comm:label="Back" comm:formSubmit="false"/>
 
                 <comm:baseButton comm:id="export" comm:target="main"

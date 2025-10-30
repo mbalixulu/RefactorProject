@@ -127,7 +127,7 @@
                                     <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='created']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date By" ns1:headingColor="ghostmedium">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created By" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='creator']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
                                 </ns1:boxSymbol>

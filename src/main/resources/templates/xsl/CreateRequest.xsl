@@ -92,13 +92,15 @@
 
             <!-- Footer -->
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left" comm:buttonAlign="right">
-                <comm:baseButton comm:id="cancel"
-                                 comm:type="action"
-                                 comm:url="app-domain/mandates-and-resolutions/requestTable"
-                                 comm:target="main"
-                                 comm:formSubmit="true"
-                                 comm:label="Cancel"/>
+                <comm:baseButton
+                        comm:id="cancel"
+                        comm:type="action"
+                        comm:url="app-domain/mandates-and-resolutions/cancelCreateRequest"
+                        comm:target="main"
+                        comm:formSubmit="false"
+                        comm:label="Cancel"/>
             </symbol>
+
 
         </page>
     </xsl:template>

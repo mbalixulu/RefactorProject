@@ -78,17 +78,32 @@
                         <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="headerBox">
                             <ns1:box xsi:type="ns1:box">
                                 <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="requestID" ns1:label="Request ID" ns1:inputType="text">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='requestId']"/></ns1:value>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Request ID" ns1:headingColor="ghostmedium">
+                                        <ns1:value>
+                                            <xsl:choose>
+                                                <xsl:when test="string-length(normalize-space($REQ/*[local-name()='requestIdForDisplay'])) &gt; 0">
+                                                    <xsl:value-of select="$REQ/*[local-name()='requestIdForDisplay']"/>
+                                                </xsl:when>
+                                                <xsl:otherwise>
+                                                    <xsl:value-of select="$REQ/*[local-name()='requestId']"/>
+                                                </xsl:otherwise>
+                                            </xsl:choose>
+                                        </ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="requestType" ns1:label="Request Type" ns1:inputType="text">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Process ID" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='processId']"/></ns1:value>
+                                    </ns1:boxSplitSymbol>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Request Type" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='type']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="subStatus" ns1:label="Sub Status" ns1:inputType="text">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Status" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='status']"/></ns1:value>
+                                    </ns1:boxSplitSymbol>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Sub Status" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='subStatus']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="lastModified" ns1:label="Last Modified" ns1:inputType="text">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='updated']"/></ns1:value>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Assigned User" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='assignedUser']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
 
                                     <xsl:if test="string-length(normalize-space($REQ/*[local-name()='rejectComment'])) &gt; 0">
@@ -99,17 +114,23 @@
                                 </ns1:boxSymbol>
 
                                 <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="companyName" ns1:label="Company Name" ns1:inputType="text">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Company Name" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='companyName']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="status" ns1:label="Status" ns1:inputType="text">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='status']"/></ns1:value>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="SLA (days)" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='sla']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="createdDate" ns1:label="Created Date" ns1:inputType="text">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Last Modified Date" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='updated']"/></ns1:value>
+                                    </ns1:boxSplitSymbol>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Last Modified By" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='updator']"/></ns1:value>
+                                    </ns1:boxSplitSymbol>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='created']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:input" ns1:name="sla" ns1:label="SLA (days)" ns1:inputType="text">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='sla']"/></ns1:value>
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created By" ns1:headingColor="ghostmedium">
+                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='creator']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
 
                                     <xsl:if test="string-length(normalize-space($REQ/*[local-name()='rejectComment'])) = 0 and string-length(normalize-space($REQ/*[local-name()='approveComment'])) &gt; 0">

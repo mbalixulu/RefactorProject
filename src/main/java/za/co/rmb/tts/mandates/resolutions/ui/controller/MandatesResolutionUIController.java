@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,6 +17,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
@@ -160,7 +160,7 @@ public class MandatesResolutionUIController {
       if (roleUp.contains("ADMIN")) {
         return displayAdminApproval();   //Renders app-domain/mandates-and-resolutions/adminApproval
       } else {
-        return displayRequestTable();    //Renders app-domain/mandates-and-resolutions/requestTable
+        return goToDisplayRequestTable(); //Renders app-domain/mandates-and-resolutions/requestTable
       }
 
     } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
@@ -197,42 +197,44 @@ public class MandatesResolutionUIController {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response = restTemplate.getForEntity(
-          backendUrl,
-          RequestTableDTO[].class
-      );
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0]; //No requests in DB
       }
 
-      //Only requests where subStatus == "Admin Approval Pending"
-      List<RequestTableDTO> pendingAdminApprovals = Arrays.stream(response.getBody())
+      List<RequestTableDTO> pendingAdminApprovals = java.util.Arrays.stream(all)
           .filter(r -> {
             String ss = r.getSubStatus();
             return ss != null && "Admin Approval Pending".equalsIgnoreCase(ss.trim());
           })
-          .peek(request -> {
+          .peek(r -> {
             try {
-              String companyUrl = mandatesResolutionsDaoURL + "/api/company/"
-                  + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-
-              if (companyResponse.getStatusCode().is2xxSuccessful()
-                  && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
-              } else {
-                request.setCompanyName("Unknown");
-              }
+              r.setCompanyName(
+                  companyResponse.getStatusCode().is2xxSuccessful()
+                      && companyResponse.getBody() != null
+                      ? companyResponse.getBody().getName()
+                      : "Unknown"
+              );
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
-          //Newest first if needed
-          .sorted(Comparator.comparing(RequestTableDTO::getCreated).reversed())
+          //Newest first
+          .sorted(java.util.Comparator.comparing(
+              (RequestTableDTO r) -> java.util.Optional.ofNullable(r.getCreated()).orElse(""),
+              java.util.Comparator.naturalOrder()
+          ).reversed())
           .toList();
 
       RequestTableWrapper wrapper = new RequestTableWrapper();
@@ -261,44 +263,102 @@ public class MandatesResolutionUIController {
   }
 
   //Admin All Page
-  @PostMapping(value = "/adminAll", produces = MediaType.APPLICATION_XML_VALUE)
+  @RequestMapping(value = "/adminAll", method = {RequestMethod.GET, RequestMethod.POST}, produces
+      = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminAll() {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response = restTemplate.getForEntity(
-          backendUrl,
-          RequestTableDTO[].class
-      );
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> allRequests = Arrays.stream(response.getBody())
-          .peek(request -> {
-            try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
-              ResponseEntity<CompanyDTO> companyResponse =
-                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+      //Parse created  supports local_date_time
+      java.util.function.ToLongFunction<String> toEpochMillis = s -> {
+        if (s == null) {
+          return Long.MIN_VALUE;
+        }
+        String t = s.trim();
+        if (t.isEmpty()) {
+          return Long.MIN_VALUE;
+        }
+        try {
+          java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(
+              t, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+          return ldt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        } catch (Exception ignore) {
+          //Intentionally ignore parse errors; use sentinel
+        }
+        try {
+          return java.time.Instant.parse(t).toEpochMilli();
+        } catch (Exception ignore) {
+          //Intetionally empty
+        }
+        try {
+          return Long.parseLong(t);
+        } catch (Exception ignore) {
+          //Intetionally empty
+        }
+        return Long.MIN_VALUE;
+      };
 
-              if (companyResponse.getStatusCode().is2xxSuccessful()
-                  && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
-              } else {
-                request.setCompanyName("Unknown");
-              }
-            } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
-            }
-          })
-          //Newest first if needed
-//          .sorted(Comparator.comparing(RequestTableDTO::getCreated).reversed())
-          .toList();
+      java.util.List<RequestTableDTO> allRequests =
+          new java.util.ArrayList<>(java.util.Arrays.asList(all));
+
+      // Enrich company + compute display id using your helper
+      for (RequestTableDTO r : allRequests) {
+        try {
+          String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
+          ResponseEntity<CompanyDTO> companyResponse =
+              restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+          r.setCompanyName(
+              companyResponse.getStatusCode().is2xxSuccessful() && companyResponse.getBody() != null
+                  ? companyResponse.getBody().getName()
+                  : "Unknown"
+          );
+        } catch (Exception ex) {
+          logger.error("Error fetching company name for companyId {}: {}",
+              r.getCompanyId(), ex.getMessage());
+          r.setCompanyName("Unknown");
+        }
+
+        String typeLabel = r.getType() == null ? null : r.getType().trim();
+        String formatted = DisplayIds.format(r.getRequestId(), typeLabel);
+        r.setRequestIdForDisplay(formatted != null
+            ? formatted
+            : (r.getRequestId() == null ? "—" : "REQ - "
+            +
+            String.format("%04d", r.getRequestId())));
+      }
+
+      // Sort: created DESC, then numeric requestId DESC
+      allRequests.sort(
+          java.util.Comparator
+              .comparingLong((RequestTableDTO r) -> toEpochMillis.applyAsLong(r.getCreated()))
+              .reversed()
+              .thenComparing(
+                  java.util.Comparator.comparing(
+                      RequestTableDTO::getRequestId,
+                      java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                  ).reversed()
+              )
+      );
+
+      if (logger.isDebugEnabled()) {
+        for (int i = 0; i < Math.min(5, allRequests.size()); i++) {
+          RequestTableDTO r = allRequests.get(i);
+          logger.debug("adminAll[{}]: created={}, requestId={}, displayId={}",
+              i, r.getCreated(), r.getRequestId(), r.getRequestIdForDisplay());
+        }
+      }
 
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(allRequests);
@@ -318,6 +378,7 @@ public class MandatesResolutionUIController {
     }
   }
 
+
   //Admin In Progress Page
   @PostMapping(value = "/adminInProgress", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminInProgress() {
@@ -325,40 +386,37 @@ public class MandatesResolutionUIController {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response = restTemplate.getForEntity(
-          backendUrl,
-          RequestTableDTO[].class
-      );
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
       }
 
-      // Only status = "In Progress"
-      List<RequestTableDTO> inProgress = Arrays.stream(response.getBody())
+      List<RequestTableDTO> inProgress = java.util.Arrays.stream(all)
           .filter(
               r -> r.getStatus() != null && "In Progress".equalsIgnoreCase(r.getStatus().trim()))
-          .peek(request -> {
+          .peek(r -> {
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-
-              if (companyResponse.getStatusCode().is2xxSuccessful()
-                  && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
-              } else {
-                request.setCompanyName("Unknown");
-              }
+              r.setCompanyName(
+                  companyResponse.getStatusCode().is2xxSuccessful()
+                      && companyResponse.getBody() != null
+                      ? companyResponse.getBody().getName()
+                      : "Unknown"
+              );
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
-          // Optional: newest first
-          // .sorted(Comparator.comparing(RequestTableDTO::getCreated).reversed())
           .toList();
 
       RequestTableWrapper wrapper = new RequestTableWrapper();
@@ -386,34 +444,36 @@ public class MandatesResolutionUIController {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response =
-          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> onHold = Arrays.stream(response.getBody())
+      List<RequestTableDTO> onHold = java.util.Arrays.stream(all)
           .filter(r -> r.getStatus() != null && "On Hold".equalsIgnoreCase(r.getStatus().trim()))
-          .peek(request -> {
+          .peek(r -> {
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-              if (companyResponse.getStatusCode().is2xxSuccessful()
-                  && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
-              } else {
-                request.setCompanyName("Unknown");
-              }
+              r.setCompanyName(
+                  companyResponse.getStatusCode().is2xxSuccessful()
+                      && companyResponse.getBody() != null
+                      ? companyResponse.getBody().getName()
+                      : "Unknown"
+              );
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
-          // .sorted(Comparator.comparing(RequestTableDTO::getCreated).reversed())
           .toList();
 
       RequestTableWrapper wrapper = new RequestTableWrapper();
@@ -441,34 +501,36 @@ public class MandatesResolutionUIController {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response =
-          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> completed = Arrays.stream(response.getBody())
+      List<RequestTableDTO> completed = java.util.Arrays.stream(all)
           .filter(r -> r.getStatus() != null && "Completed".equalsIgnoreCase(r.getStatus().trim()))
-          .peek(request -> {
+          .peek(r -> {
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-              if (companyResponse.getStatusCode().is2xxSuccessful()
-                  && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
-              } else {
-                request.setCompanyName("Unknown");
-              }
+              r.setCompanyName(
+                  companyResponse.getStatusCode().is2xxSuccessful()
+                      && companyResponse.getBody() != null
+                      ? companyResponse.getBody().getName()
+                      : "Unknown"
+              );
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
-          // .sorted(Comparator.comparing(RequestTableDTO::getCreated).reversed())
           .toList();
 
       RequestTableWrapper wrapper = new RequestTableWrapper();
@@ -513,10 +575,10 @@ public class MandatesResolutionUIController {
       for (RequestStagingDTO d : list) {
         RequestStagingDTO src = d;
 
-        // 1)Default binding first
+        //1)Default binding first
         String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
 
-        // 2)If blank, fetch raw JSON and try rebind / find created-like field
+        // )If blank, fetch raw JSON and try rebind / find created-like field
         if (createdStr.isBlank()) {
           try {
             ResponseEntity<String> resp =
@@ -589,7 +651,7 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminProfile", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminProfile(HttpSession session,
                                                     HttpServletRequest request) {
-    // Pull user from session
+    //Pull user from session
     za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO user =
         (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO) session.getAttribute(
             "currentUser");
@@ -628,7 +690,7 @@ public class MandatesResolutionUIController {
 
       String displayName = currentDisplayId(session, servletRequest);
 
-      // 1) Load submission
+      //1) Load submission
       String submissionUrl = mandatesResolutionsDaoURL + "/api/submission/" + requestId;
       ResponseEntity<za.co.rmb.tts.mandates.resolutions
           .ui.model.dto.MandateResolutionSubmissionResultDTO>
@@ -642,7 +704,7 @@ public class MandatesResolutionUIController {
       }
       var sub = subResp.getBody();
 
-      // 2) Fetch comments (DAO) — newestFirst=true
+      //2) Fetch comments (DAO) — newestFirst=true
       String commentsUrl =
           mandatesResolutionsDaoURL + "/api/comment/request/" + requestId + "?newestFirst=true";
       ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
@@ -709,7 +771,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      // 3) Helpers
+      //3) Helpers
       java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
       java.util.function.Function<String, String> keyN =
           s -> s == null ? "" : s.trim().toUpperCase();
@@ -721,7 +783,7 @@ public class MandatesResolutionUIController {
         return "NAME#" + keyN.apply(name);
       };
 
-      // 4) Seed accounts map
+      //4) Seed accounts map
       java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
       if (sub.getAccounts() != null) {
         for (var a : sub.getAccounts()) {
@@ -750,7 +812,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      // 5) Build wrapper for XSL
+      //5) Build wrapper for XSL
       RequestTableDTO view = new RequestTableDTO();
       if (sub.getRequest() != null) {
         view.setRequestId(sub.getRequest().getRequestId());
@@ -782,7 +844,7 @@ public class MandatesResolutionUIController {
         }
         view.setUpdator(updator);
 
-        // Directors from submission / fallbacks (same pattern)
+        //Directors from submission / fallbacks
         var dirs =
             new java.util.ArrayList<za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO>();
         boolean submissionHasInstr = false;
@@ -977,7 +1039,7 @@ public class MandatesResolutionUIController {
       }
       model.setUserOptions(options);
 
-      //3) Wrap + render
+      //3)Wrap + render
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(model);
 
@@ -1030,7 +1092,7 @@ public class MandatesResolutionUIController {
         logger.info("adminReassignSubmit: requestId after session fallback={}", requestId);
       }
 
-      //Validate required fields and return a proper XML page (prevents generic "No data returned")
+      //Validate required fields and return a page
       if (requestId == null) {
         logger.warn("adminReassignSubmit: requestId is NULL");
         return ResponseEntity.ok()
@@ -1058,6 +1120,7 @@ public class MandatesResolutionUIController {
       var payload = new java.util.LinkedHashMap<String, Object>();
       payload.put("assignedUser", newAssignee);
       payload.put("updator", currentDisplayId(session, servletRequest));
+      payload.put("processOutcome", "ReAssign");
 
       //Headers
       org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
@@ -1092,40 +1155,54 @@ public class MandatesResolutionUIController {
 
   //Pending Requests page after logging in
   @PostMapping(value = "/requestTable", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTable() {
+  public ResponseEntity<String> displayRequestTable(HttpSession session,
+                                                    HttpServletRequest request) {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response = restTemplate.getForEntity(
-          backendUrl,
-          RequestTableDTO[].class
-      );
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
 
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+        //If DAO returns 2xx but body is null, treat as empty
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        //DAO uses 404 to mean "no requests" so treat as empty list
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> inProgress = Arrays.stream(response.getBody())
-          .filter(request -> "In Progress".equalsIgnoreCase(request.getStatus()))
-          .peek(request -> {
-            // Company Name enrichment (unchanged)
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      List<RequestTableDTO> inProgress = java.util.Arrays.stream(all)
+          .filter(r -> "In Progress".equalsIgnoreCase(r.getStatus()))
+          //Show all if admin else only rows the user created
+          .filter(r -> admin || (
+              r.getCreator() != null
+                  && !r.getCreator().trim().isEmpty()
+                  && r.getCreator().trim().equalsIgnoreCase(me)
+          ))
+          .peek(r -> {
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
 
               if (companyResponse.getStatusCode().is2xxSuccessful()
                   && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
+                r.setCompanyName(companyResponse.getBody().getName());
               } else {
-                request.setCompanyName("Unknown");
+                r.setCompanyName("Unknown");
               }
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
           .toList();
@@ -1150,45 +1227,56 @@ public class MandatesResolutionUIController {
 
   //On Hold Tickets Page
   @PostMapping(value = "/requestTableOnHold", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTableOnHold() {
+  public ResponseEntity<String> displayRequestTableOnHold(HttpSession session,
+                                                          HttpServletRequest request) {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response =
-          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        //DAO uses 404 to mean "no requests"
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> onHoldRequests = Arrays.stream(response.getBody())
-          .filter(request -> "On Hold".equalsIgnoreCase(request.getStatus()))
-          .peek(request -> {
-            // Ensure display id is always present
-            if (request.getRequestIdForDisplay() == null || request.getRequestIdForDisplay()
-                .isBlank()) {
-              request.setRequestIdForDisplay(
-                  request.getRequestId() == null ? "" : String.valueOf(request.getRequestId())
-              );
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      List<RequestTableDTO> onHoldRequests = java.util.Arrays.stream(all)
+          .filter(r -> "On Hold".equalsIgnoreCase(r.getStatus()))
+          //Show all if admin, else only rows the user created
+          .filter(r -> admin || (
+              r.getCreator() != null
+                  && !r.getCreator().trim().isEmpty()
+                  && r.getCreator().trim().equalsIgnoreCase(me)
+          ))
+          .peek(r -> {
+            //Ensure display id present
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
+              r.setRequestIdForDisplay(
+                  r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
-            // Company Name enrichment
+            //Company enrichment
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-
               if (companyResponse.getStatusCode().is2xxSuccessful()
                   && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
+                r.setCompanyName(companyResponse.getBody().getName());
               } else {
-                request.setCompanyName("Unknown");
+                r.setCompanyName("Unknown");
               }
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
           .toList();
@@ -1196,7 +1284,7 @@ public class MandatesResolutionUIController {
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(onHoldRequests);
 
-      logger.info("Fetched {} on-hold requests", onHoldRequests.size());
+      logger.info("Fetched {} on-hold requests (post-filter)", onHoldRequests.size());
 
       String page = xsltProcessor.generatePage(xslPagePath("OnHold"), wrapper);
       return ResponseEntity.ok(page);
@@ -1213,47 +1301,58 @@ public class MandatesResolutionUIController {
     }
   }
 
-  // Completed Tickets Page
+  //Completed Request Page
   @PostMapping(value = "/requestTableCompleted", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayRequestTableCompleted() {
+  public ResponseEntity<String> displayRequestTableCompleted(HttpSession session,
+                                                             HttpServletRequest request) {
     try {
       RestTemplate restTemplate = new RestTemplate();
       String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
 
-      ResponseEntity<RequestTableDTO[]> response =
-          restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
-
-      if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-        throw new RuntimeException("Failed to fetch requests from backend.");
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        //DAO uses 404 to mean "no requests"
+        all = new RequestTableDTO[0];
       }
 
-      List<RequestTableDTO> completedRequests = Arrays.stream(response.getBody())
-          .filter(request -> "completed".equalsIgnoreCase(request.getStatus()))
-          .peek(request -> {
-            // Ensure display id is always present
-            if (request.getRequestIdForDisplay() == null || request.getRequestIdForDisplay()
-                .isBlank()) {
-              request.setRequestIdForDisplay(
-                  request.getRequestId() == null ? "" : String.valueOf(request.getRequestId())
-              );
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      List<RequestTableDTO> completedRequests = java.util.Arrays.stream(all)
+          .filter(r -> "Completed".equalsIgnoreCase(r.getStatus()))
+          //Show all if admin, else only rows the user created
+          .filter(r -> admin || (
+              r.getCreator() != null
+                  && !r.getCreator().trim().isEmpty()
+                  && r.getCreator().trim().equalsIgnoreCase(me)
+          ))
+          .peek(r -> {
+            //Ensure display id present
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
+              r.setRequestIdForDisplay(
+                  r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
-            // Company Name enrichment
+            //Company enrichment
             try {
-              String companyUrl =
-                  mandatesResolutionsDaoURL + "/api/company/" + request.getCompanyId();
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-
               if (companyResponse.getStatusCode().is2xxSuccessful()
                   && companyResponse.getBody() != null) {
-                request.setCompanyName(companyResponse.getBody().getName());
+                r.setCompanyName(companyResponse.getBody().getName());
               } else {
-                request.setCompanyName("Unknown");
+                r.setCompanyName("Unknown");
               }
             } catch (Exception ex) {
-              logger.error("Error fetching company name for companyId {}: {}",
-                  request.getCompanyId(), ex.getMessage());
-              request.setCompanyName("Unknown");
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
             }
           })
           .toList();
@@ -1261,7 +1360,7 @@ public class MandatesResolutionUIController {
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(completedRequests);
 
-      logger.info("Fetched {} completed requests", completedRequests.size());
+      logger.info("Fetched {} completed requests (post-filter)", completedRequests.size());
 
       String page = xsltProcessor.generatePage(xslPagePath("Completed"), wrapper);
       return ResponseEntity.ok(page);
@@ -1304,10 +1403,10 @@ public class MandatesResolutionUIController {
     for (RequestStagingDTO d : list) {
       RequestStagingDTO src = d;
 
-      // 1) Try default binding first
+      //1) Try default binding first
       String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
 
-      // 2) If still blank, fetch raw JSON and search for a created-like field
+      //2) If still blank, fetch raw JSON and search for a created-like field
       if (createdStr.isBlank()) {
         try {
           ResponseEntity<String> resp =
@@ -1317,7 +1416,7 @@ public class MandatesResolutionUIController {
             // DEBUG (uncomment once to verify what DAO returns)
             // logger.info("Draft {} raw JSON: {}", d.getStagingId(), body);
 
-            // a) Try re-bind with our ObjectMapper (handles java-time)
+            //a) Try re-bind with our ObjectMapper (handles java-time)
             try {
               RequestStagingDTO rebound = OM.readValue(body, RequestStagingDTO.class);
               if (rebound != null) {
@@ -1327,7 +1426,7 @@ public class MandatesResolutionUIController {
               // intentionally empty
             }
 
-            // b) Tree-scan for any case/shape of "created"
+            //b) Tree-scan for any case/shape of "created"
             try {
               com.fasterxml.jackson.databind.JsonNode root = OM.readTree(body);
               String raw = findCreatedAnyCase(root);
@@ -1336,7 +1435,7 @@ public class MandatesResolutionUIController {
                 if (isAllDigits(raw)) {
                   createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
                 } else {
-                  createdStr = tryFormatIso(raw, FMT); // returns raw text if parse fails
+                  createdStr = tryFormatIso(raw, FMT); //returns raw text if parse fails
                 }
               }
             } catch (Exception ignore) {
@@ -1374,7 +1473,7 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/requestTableProfile", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayRequestTableProfile(HttpSession session,
                                                            HttpServletRequest request) {
-    // Pull user from session
+    //Pull user from session
     za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO user =
         (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO)
             session.getAttribute("currentUser");
@@ -1420,7 +1519,7 @@ public class MandatesResolutionUIController {
     String freshId = java.util.UUID.randomUUID().toString();
     session.setAttribute("pdfSessionId", freshId);
 
-    //(Optional) if you want the new id visible to the page immediately:
+    //Id visible to the page
     RequestDTO dto = new RequestDTO();
     dto.setPdfSessionId(freshId);
 
@@ -1429,6 +1528,25 @@ public class MandatesResolutionUIController {
 
     String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
     return ResponseEntity.ok(page);
+  }
+
+  //Cancel from Create Request (ADMIN vs USER)
+  @PostMapping(
+      value = "/cancelCreateRequest",
+      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+  )
+  public ResponseEntity<String> cancelCreateRequest(HttpSession session) {
+    UserDTO user = (UserDTO) session.getAttribute("currentUser");
+    String role = (user != null && user.getUserRole() != null)
+        ? user.getUserRole().trim().toUpperCase()
+        : "";
+
+    //Same routing as landing:
+    if (role.contains("ADMIN")) {
+      return displayAdminApproval(); //renders app-domain/mandates-and-resolutions/adminApproval
+    } else {
+      return goToDisplayRequestTable(); //renders app-domain/mandates-and-resolutions/requestTable
+    }
   }
 
   @GetMapping(value = "/predictive/companyRegNumbers", produces = MediaType.TEXT_PLAIN_VALUE)
@@ -1501,39 +1619,70 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> displaySearchResults(
       @RequestParam(value = "registrationNumber", required = false) String reg,
       @RequestParam(value = "pdfSessionId", required = false) String pdfSessionId,
-      HttpSession session
+      HttpSession session,
+      HttpServletRequest request
   ) {
-    //pick up existing session id or make a new one
-    String sid = nz(pdfSessionId).isEmpty()
-        ? (String) session.getAttribute("pdfSessionId")
-        : pdfSessionId;
+    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
-    RequestDTO dto = (sid != null) ? pdfExtractionDataCache.get(sid) : null;
-    if (dto == null) {
-      dto = new RequestDTO();
-      dto.setRegistrationNumber(nz(reg)); //Create Request path still pre-populates reg
+    //1) Prefer the current submission (POSTed form field from CreateRequest)
+    String posted = nz.apply(request.getParameter("companyRegNumber"));
+    boolean hasPostedParam = request.getParameterMap().containsKey("companyRegNumber");
+
+    //2) Next, consider the querystring value (GET /searchResults?registrationNumber=...)
+    String queryReg = nz.apply(reg);
+
+    // 3) Finally, consider what's already in the session DTO (user might be returning)
+    String existingSid = (pdfSessionId != null && !pdfSessionId.isBlank())
+        ? pdfSessionId
+        : (String) session.getAttribute("pdfSessionId");
+    RequestDTO existingDto = (existingSid != null) ? pdfExtractionDataCache.get(existingSid) : null;
+    String regFromSession = (existingDto != null && existingDto.getRegistrationNumber() != null)
+        ? existingDto.getRegistrationNumber().trim()
+        : "";
+
+    // 4) REQUIRED rule:
+    //    - If the user actively posted the field and it's blank -> block (ignore session).
+    //    - Else if no field was posted AND both query param and session are empty -> block.
+    if ((hasPostedParam && posted.isEmpty())
+        || (!hasPostedParam && queryReg.isEmpty() && regFromSession.isEmpty())) {
+      return renderCreateRequestWithInline(session, "", "This field is required.", "REQUIRED");
     }
 
-    ensureAtLeastOneDirector(dto); //Guarantees one empty row so inputs render
+    // 5) Choose effective registration number: POST > query > session
+    String effectiveReg = !posted.isEmpty()
+        ? posted
+        : (!queryReg.isEmpty() ? queryReg : regFromSession);
 
+    // 6) Acquire or create session id
+    String sid = nz.apply(pdfSessionId).isEmpty()
+        ? (String) session.getAttribute("pdfSessionId")
+        : pdfSessionId;
     if (sid == null || sid.isBlank()) {
       sid = java.util.UUID.randomUUID().toString();
       session.setAttribute("pdfSessionId", sid);
     }
+
+    // 7) Load or create DTO, set the reg, and ensure the page is renderable
+    RequestDTO dto = pdfExtractionDataCache.get(sid);
+    if (dto == null) {
+      dto = new RequestDTO();
+    }
+    dto.setRegistrationNumber(effectiveReg);
+    ensureAtLeastOneDirector(dto); // Guarantees one empty row so inputs render
     dto.setPdfSessionId(sid);
     dto.setEditable(true);
 
-    // persist back to cache + session
+    // 8) Persist back to cache + session
     pdfExtractionDataCache.put(sid, dto);
     session.setAttribute("requestData", dto);
 
+    // 9) Render SearchResults page
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
   }
 
-  //Creates the whole searchResults.xsl page
   @PostMapping(value = "/searchCompanyDetails", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> fetchMergedDetails(
       @ModelAttribute RequestDTO requestDto,
@@ -1546,8 +1695,9 @@ public class MandatesResolutionUIController {
       HttpSession session,
       HttpServletRequest request
   ) {
-    //Helpers
+    // -------- Helpers --------
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+
     java.util.function.Function<String, String> dedupeComma = s -> {
       String t = nz.apply(s);
       if (t.isEmpty()) {
@@ -1566,7 +1716,12 @@ public class MandatesResolutionUIController {
       return String.join(", ", set);
     };
 
-    // Work out the incoming registration number (from model or param)
+    java.util.function.Function<String, String> normReg = s -> {
+      String t = nz.apply(s);
+      return t.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+    };
+
+    // -------- Work out incoming reg + origin (CreateRequest vs others) --------
     String incomingReg = nz.apply(requestDto != null ? requestDto.getRegistrationNumber() : null);
     if (incomingReg.isBlank()) {
       incomingReg = nz.apply(registrationNumber);
@@ -1580,44 +1735,46 @@ public class MandatesResolutionUIController {
     String daoName = null;
     String daoAddr = null;
 
-    // If the post is from CreateRequest and a reg was typed, try DAO lookup.
-    // On "not found" -> re-render CreateRequest with inline message so the "Create Request"
-    // button shows.
+    // If CreateRequest search and a reg was typed,
+    // try DAO; on "not found" -> re-render CreateRequest
     if (fromCreateSearch && !incomingReg.isBlank()) {
       String url = org.springframework.web.util.UriComponentsBuilder
           .fromHttpUrl(mandatesResolutionsDaoURL)
           .pathSegment("api", "company", "registration")
-          .queryParam("registrationNumber", incomingReg) // UriComponentsBuilder handles encoding
+          .queryParam("registrationNumber", incomingReg)
           .toUriString();
 
-      org.springframework.web.client.RestTemplate rt =
-          new org.springframework.web.client.RestTemplate();
+      org.springframework.web.client.RestTemplate rt = new
+          org.springframework.web.client.RestTemplate();
       try {
         @SuppressWarnings("unchecked")
         java.util.Map<String, Object> company = rt.getForObject(url, java.util.Map.class);
         if (company == null) {
-          return renderCreateRequestWithInlineNotFound(session, incomingReg);
+          return renderCreateRequestWithInline(session, incomingReg,
+              "Company Registration Number not found.", "NOT_FOUND");
         }
         Object n = company.get("name");
         Object a = company.get("address");
         daoName = n == null ? "" : n.toString().trim();
         daoAddr = a == null ? "" : a.toString().trim();
       } catch (org.springframework.web.client.HttpStatusCodeException ex) {
-        return renderCreateRequestWithInlineNotFound(session, incomingReg);
+        return renderCreateRequestWithInline(session, incomingReg,
+            "Company Registration Number not found.", "NOT_FOUND");
       } catch (Exception ex) {
-        return renderCreateRequestWithInlineNotFound(session, incomingReg);
+        return renderCreateRequestWithInline(session, incomingReg,
+            "Company Registration Number not found.", "NOT_FOUND");
       }
     }
 
-    // Load current DTO (if any) using current session id
+    // -------- Load current DTO via session id (may rotate if reg changed) --------
     String currentSessionId = (String) session.getAttribute("pdfSessionId");
-    RequestDTO dto =
-        (currentSessionId != null) ? pdfExtractionDataCache.get(currentSessionId) : null;
+    RequestDTO dto = (currentSessionId != null)
+        ?
+        pdfExtractionDataCache.get(currentSessionId) : null;
     String currentReg = (dto != null) ? nz.apply(dto.getRegistrationNumber()) : "";
 
-    // If the user typed a different reg number, rotate to a NEW pdfSessionId + fresh DTO
-    boolean regChanged =
-        (!incomingReg.isBlank() && !normReg(incomingReg).equals(normReg(currentReg)));
+    boolean regChanged = (!incomingReg.isBlank()
+        && !normReg.apply(incomingReg).equals(normReg.apply(currentReg)));
     if (regChanged) {
       String newId = java.util.UUID.randomUUID().toString();
       session.setAttribute("pdfSessionId", newId);
@@ -1627,7 +1784,6 @@ public class MandatesResolutionUIController {
       dto.setDirectors(new java.util.ArrayList<>());
       dto.setDocumentumTools(new java.util.ArrayList<>());
       dto.setResolutionDocs(new java.util.ArrayList<>());
-
     } else {
       if (dto == null) {
         dto = new RequestDTO();
@@ -1647,10 +1803,9 @@ public class MandatesResolutionUIController {
       }
     }
 
-    //From here on, use the session id
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
 
-    //Merge posted company fields (non-blank only)
+    // -------- Merge company fields from model (non-blank only) --------
     if (requestDto != null) {
       String nm = dedupeComma.apply(requestDto.getCompanyName());
       if (!nm.isBlank()) {
@@ -1662,14 +1817,14 @@ public class MandatesResolutionUIController {
         dto.setCompanyAddress(addr);
       }
 
-      //Only set registrationNumber from model if not blank AND not contradicting a rotated value
       String regModel = nz.apply(requestDto.getRegistrationNumber());
-      if (!regModel.isBlank() && normReg(regModel).equals(normReg(dto.getRegistrationNumber()))) {
+      if (!regModel.isBlank()
+          && normReg.apply(regModel).equals(normReg.apply(dto.getRegistrationNumber()))) {
         dto.setRegistrationNumber(regModel);
       }
     }
 
-    //If we came from CreateRequest and DAO returned name/address, prefer those
+    // Prefer DAO name/address if we came from CreateRequest search and DAO returned values
     if (fromCreateSearch) {
       if (daoName != null && !daoName.isBlank()) {
         dto.setCompanyName(daoName);
@@ -1679,32 +1834,101 @@ public class MandatesResolutionUIController {
       }
     }
 
-    //Directors: safe add/remove/pad without wiping data
+    // -------- MERGE: Tools from @ModelAttribute or raw request params --------
+    {
+      java.util.List<String> mergedTools = new java.util.ArrayList<>();
+
+      if (requestDto != null && requestDto.getDocumentumTools() != null) {
+        for (String t : requestDto.getDocumentumTools()) {
+          mergedTools.add(nz.apply(t));
+        }
+      } else {
+        for (int i = 0; ; i++) {
+          String v = request.getParameter("documentumTools[" + i + "]");
+          if (v == null) {
+            break;
+          }
+          mergedTools.add(nz.apply(v));
+        }
+      }
+
+      if (!mergedTools.isEmpty()) {
+        if (dto.getDocumentumTools() == null) {
+          dto.setDocumentumTools(new java.util.ArrayList<>());
+        }
+        //Expand dto list to match mergedTools size
+        while (dto.getDocumentumTools().size() < mergedTools.size()) {
+          dto.getDocumentumTools().add("");
+        }
+        for (int i = 0; i < mergedTools.size(); i++) {
+          String v = mergedTools.get(i);
+          //Only overwrite when v is non-blank
+          if (!v.isBlank()) {
+            dto.getDocumentumTools().set(i, v);
+          }
+        }
+      }
+    }
+
+    // -------- MERGE: Directors from @ModelAttribute or raw request params --------
+    {
+      java.util.List<RequestDTO.Director> incoming = null;
+
+      if (requestDto != null && requestDto.getDirectors() != null
+          && !requestDto.getDirectors().isEmpty()) {
+        incoming = requestDto.getDirectors();
+      } else {
+        java.util.List<RequestDTO.Director> built = new java.util.ArrayList<>();
+        for (int i = 0; ; i++) {
+          String n = request.getParameter("directors[" + i + "].name");
+          String s = request.getParameter("directors[" + i + "].surname");
+          String d = request.getParameter("directors[" + i + "].designation");
+          if (n == null && s == null && d == null) {
+            break;
+          }
+          RequestDTO.Director rd = new RequestDTO.Director();
+          rd.setName(nz.apply(n));
+          rd.setSurname(nz.apply(s));
+          rd.setDesignation(nz.apply(d));
+          built.add(rd);
+        }
+        if (!built.isEmpty()) {
+          incoming = built;
+        }
+      }
+
+      if (incoming != null && !incoming.isEmpty()) {
+        if (dto.getDirectors() == null) {
+          dto.setDirectors(new java.util.ArrayList<>());
+        }
+        while (dto.getDirectors().size() < incoming.size()) {
+          dto.getDirectors().add(new RequestDTO.Director());
+        }
+        for (int i = 0; i < incoming.size(); i++) {
+          var in = incoming.get(i);
+          var ex = dto.getDirectors().get(i);
+          if (in.getName() != null && !in.getName().isBlank()) {
+            ex.setName(in.getName().trim());
+          }
+          if (in.getSurname() != null && !in.getSurname().isBlank()) {
+            ex.setSurname(in.getSurname().trim());
+          }
+          if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
+            ex.setDesignation(in.getDesignation().trim());
+          }
+        }
+      }
+
+      if (dto.getDirectors() == null || dto.getDirectors().isEmpty()) {
+        dto.setDirectors(new java.util.ArrayList<>());
+        dto.getDirectors().add(new RequestDTO.Director());
+      }
+    }
+
+    // -------- Handle remove / counts (after merge so values persist) --------
     java.util.List<RequestDTO.Director> directors = dto.getDirectors();
     if (directors.isEmpty()) {
       directors.add(new RequestDTO.Director());
-    }
-
-    //If model-bound directors arrived, merge by index (non-blank only)
-    if (requestDto != null && requestDto.getDirectors() != null && !requestDto.getDirectors()
-        .isEmpty()) {
-      java.util.List<RequestDTO.Director> incoming = requestDto.getDirectors();
-      while (directors.size() < incoming.size()) {
-        directors.add(new RequestDTO.Director());
-      }
-      for (int i = 0; i < incoming.size(); i++) {
-        RequestDTO.Director in = incoming.get(i);
-        RequestDTO.Director ex = directors.get(i);
-        if (in.getName() != null && !in.getName().isBlank()) {
-          ex.setName(in.getName().trim());
-        }
-        if (in.getSurname() != null && !in.getSurname().isBlank()) {
-          ex.setSurname(in.getSurname().trim());
-        }
-        if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
-          ex.setDesignation(in.getDesignation().trim());
-        }
-      }
     }
 
     boolean removing =
@@ -1721,23 +1945,31 @@ public class MandatesResolutionUIController {
     }
     dto.setDirectors(directors);
 
-    //Tools / Resolution docs (counts only pad lists; values come from model when posted)
-    if (toolCount != null && toolCount > dto.getDocumentumTools().size()) {
-      for (int i = dto.getDocumentumTools().size(); i < toolCount; i++) {
+    if (toolCount != null) {
+      if (dto.getDocumentumTools() == null) {
+        dto.setDocumentumTools(new java.util.ArrayList<>());
+      }
+      while (dto.getDocumentumTools().size() < toolCount) {
         dto.getDocumentumTools().add("");
       }
     }
-    if (resolutionDocCount != null && resolutionDocCount > dto.getResolutionDocs().size()) {
-      for (int i = dto.getResolutionDocs().size(); i < resolutionDocCount; i++) {
+
+    if (resolutionDocCount != null && resolutionDocCount > 0) {
+      if (dto.getResolutionDocs() == null) {
+        dto.setResolutionDocs(new java.util.ArrayList<>());
+      }
+      while (dto.getResolutionDocs().size() < resolutionDocCount) {
         dto.getResolutionDocs().add("");
       }
     }
 
-    //Persist + render
+    // -------- Persist + render --------
     dto.setPdfSessionId(pdfSessionId);
     dto.setEditable(true);
 
-    pdfExtractionDataCache.put(pdfSessionId, dto);
+    if (pdfSessionId != null) {
+      pdfExtractionDataCache.put(pdfSessionId, dto);
+    }
     session.setAttribute("requestData", dto);
 
     RequestWrapper wrapper = new RequestWrapper();
@@ -1747,30 +1979,77 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  @GetMapping(value = "/searchCompanyDetails", produces = {MediaType.APPLICATION_XML_VALUE,
-      MediaType.TEXT_XML_VALUE})
+  @GetMapping(
+      value = "/searchCompanyDetails",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE }
+  )
   public ResponseEntity<String> searchCompanyDetailsGet(
-      @RequestParam(value = "directorCount", required = false) Integer directorCount,
-      @RequestParam(value = "removeDirectorAt", required = false) Integer removeDirectorAt,
-      @RequestParam(value = "toolCount", required = false) Integer toolCount,
-      @RequestParam(value = "resolutionDocCount", required = false) Integer resolutionDocCount,
-      HttpSession session
+      @RequestParam(value = "pdfSessionId", required = false) String pdfSessionIdParam,
+      @RequestParam(value = "companyRegNumber", required = false) String registrationNumber,
+      HttpSession session,
+      HttpServletRequest request
   ) {
-    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
+    // --- helpers
+    java.util.function.Function<String, Integer> intOrNull = s -> {
+      try {
+        return (s == null || s.isBlank()) ? null : Integer.valueOf(s.trim());
+      } catch (Exception ignore) {
+        return null;
+      }
+    };
+
+    Integer directorCount     = intOrNull.apply(request.getParameter("directorCount"));
+    Integer removeDirectorAt  = intOrNull.apply(request.getParameter("removeDirectorAt"));
+    Integer toolCount         = intOrNull.apply(request.getParameter("toolCount"));
+    Integer resolutionDocCount = intOrNull.apply(request.getParameter("resolutionDocCount"));
+
+    // 1) Resolve pdfSessionId (prefer query, then session)
+    String pdfSessionId = (pdfSessionIdParam != null && !pdfSessionIdParam.isBlank())
+        ? pdfSessionIdParam.trim()
+        : (String) session.getAttribute("pdfSessionId");
     if (pdfSessionId == null || pdfSessionId.isBlank()) {
       pdfSessionId = java.util.UUID.randomUUID().toString();
-      session.setAttribute("pdfSessionId", pdfSessionId);
+    }
+    session.setAttribute("pdfSessionId", pdfSessionId);
+
+    // 2) Load DTO (cache → session → new)
+    RequestDTO dto = pdfExtractionDataCache.get(pdfSessionId);
+    if (dto == null) {
+      Object rd = session.getAttribute("requestData");
+      dto = (rd instanceof RequestDTO) ? (RequestDTO) rd : new RequestDTO();
     }
 
-    RequestDTO dto = pdfExtractionDataCache.getOrDefault(pdfSessionId, new RequestDTO());
+    // 3) Ensure base state (don’t wipe existing values)
     dto.setPdfSessionId(pdfSessionId);
     dto.setEditable(true);
-    ensureLists(dto);
-    ensureAtLeastOneDirector(dto);
 
-    // apply optional modifiers
+    if (dto.getDirectors() == null) {
+      dto.setDirectors(new java.util.ArrayList<>());
+    }
+    if (dto.getDocumentumTools() == null) {
+      dto.setDocumentumTools(new java.util.ArrayList<>());
+    }
+    if (dto.getResolutionDocs() == null) {
+      dto.setResolutionDocs(new java.util.ArrayList<>());
+    }
+
+    if (registrationNumber != null && !registrationNumber.isBlank()) {
+      if (dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank()) {
+        dto.setRegistrationNumber(registrationNumber.trim());
+      }
+    }
+
+    // 4) Apply requested mutations without clearing existing values
     java.util.List<RequestDTO.Director> directors = dto.getDirectors();
-    if (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size()) {
+    if (directors.isEmpty()) {
+      directors.add(new RequestDTO.Director());
+    }
+
+    if (removeDirectorAt != null
+        &&
+        removeDirectorAt >= 1
+        &&
+        removeDirectorAt <= directors.size()) {
       directors.remove(removeDirectorAt - 1);
       if (directors.isEmpty()) {
         directors.add(new RequestDTO.Director());
@@ -1780,17 +2059,21 @@ public class MandatesResolutionUIController {
         directors.add(new RequestDTO.Director());
       }
     }
+    dto.setDirectors(directors);
+
     if (toolCount != null && toolCount > dto.getDocumentumTools().size()) {
       for (int i = dto.getDocumentumTools().size(); i < toolCount; i++) {
         dto.getDocumentumTools().add("");
       }
     }
+
     if (resolutionDocCount != null && resolutionDocCount > dto.getResolutionDocs().size()) {
       for (int i = dto.getResolutionDocs().size(); i < resolutionDocCount; i++) {
         dto.getResolutionDocs().add("");
       }
     }
 
+    // 5) Persist + render
     pdfExtractionDataCache.put(pdfSessionId, dto);
     session.setAttribute("requestData", dto);
 
@@ -1798,6 +2081,28 @@ public class MandatesResolutionUIController {
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
+  }
+
+  private ResponseEntity<String> renderCreateRequestWithInline(
+      HttpSession session, String registrationNumber, String message, String code
+  ) {
+    RequestDTO dto = new RequestDTO();
+    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
+    dto.setErrorMessage(message);
+    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  //Convenience overload so callers don't have to supply a code every time
+  private ResponseEntity<String> renderCreateRequestWithInline(
+      HttpSession session,
+      String registrationNumber,
+      String message
+  ) {
+    return renderCreateRequestWithInline(session, registrationNumber, message, null);
   }
 
   // ========== SAVE DRAFT FROM SEARCH RESULTS ==========
@@ -1960,20 +2265,20 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "pageCode", required = false) String pageCode,
       HttpServletRequest req
   ) {
-    // 1) Inspect posted params
+    //1) Inspect posted params
     req.getParameterMap().forEach((k, v) ->
         logger.debug("[/draft/save] {} = {}", k, java.util.Arrays.toString(v)));
 
     final String base = mandatesResolutionsDaoURL;
     final RestTemplate rt = new RestTemplate();
 
-    // 2) Resolve pageCode
+    //2) Resolve pageCode
     logger.info("[/draft/save] posted pageCode = {}", first(req.getParameterMap().get("pageCode")));
     String resolved = resolvePage(req, pageCode);
     String currentPage = normalizePageCode(resolved);
     RequestStagingDTO existing = null;
 
-    // 3) Load existing draft if any
+    //3) Load existing draft if any
     Long stagingIdFromForm = form.getStagingId();
     if (stagingIdFromForm == null) {
       String rawId = first(req.getParameterMap().get("stagingId"));
@@ -2004,16 +2309,16 @@ public class MandatesResolutionUIController {
     }
     logger.info("[/draft/save] RESOLVED pageCode = {}", currentPage);
 
-    // 4) Start from existing (or new)
+    //4) Start from existing (or new)
     RequestStagingDTO dto = (existing != null) ? existing : new RequestStagingDTO();
     dto.setStagingId(stagingIdFromForm);
     dto.setRequestStatus("Draft");
     dto.setRequestSubStatus("Saved@" + currentPage);
 
-    // 5) Parse & merge posted fields
+    //5) Parse & merge posted fields
     Map<String, String[]> params = req.getParameterMap();
 
-    // 5.1 Company (prefer last non-blank so visible inputs beat any hidden)
+    //5.1 Company (prefer last non-blank so visible inputs beat any hidden)
     String reg = nz(lastNonBlank(req, "registrationNumber"));
     String name = dedupeComma(nz(lastNonBlank(req, "companyName")));
     String addr = dedupeComma(nz(lastNonBlank(req, "companyAddress")));
@@ -2027,10 +2332,10 @@ public class MandatesResolutionUIController {
       dto.setCompanyAddress(addr);
     }
 
-    // 5.2 Request type — prefer the LAST non-blank value (dropdown beats hidden)
+    //5.2 Request type — prefer the LAST non-blank value (dropdown beats hidden)
     String mr = nz(lastNonBlank(req, "mandateResolution"));        // dropdown
     if (mr.isBlank()) {
-      mr = nz(lastNonBlank(req, "mandateResolutionCode")); // hidden (renamed)
+      mr = nz(lastNonBlank(req, "mandateResolutionCode")); // hidden
     }
     if (mr.isBlank()) {
       mr = nz(lastNonBlank(req, "requestType"));
@@ -2042,7 +2347,7 @@ public class MandatesResolutionUIController {
       dto.setRequestType(mapRequestType(mr));
     }
 
-    // 5.3 Waiver tools
+    //5.3 Waiver tools
     java.util.List<String> tools = parseDocumentumToolsFromParams(params);
     if (tools.isEmpty()) {
       String raw = nz(first(params.get("waiverPermittedTools")));
@@ -2063,7 +2368,7 @@ public class MandatesResolutionUIController {
       dto.setWaiverPermittedTools(String.join(", ", set));
     }
 
-    // 5.4 Directors -> Authorities
+    //5.4 Directors -> Authorities
     java.util.List<RequestDTO.Director> directors = parseDirectorsFromParamsGeneric(params);
     if (directors.isEmpty()) {
       // fallback for keys like directors[0].name0/surname0/designation0
@@ -2097,7 +2402,7 @@ public class MandatesResolutionUIController {
       }
     }
 
-    // 5.5 Accounts + Signatories
+    //5.5 Accounts + Signatories
     java.util.List<RequestStagingDTO.AccountDraft> accounts = parseAccountsFromParams(params);
     if (!accounts.isEmpty()) {
       dto.setAccounts(accounts);
@@ -2106,19 +2411,19 @@ public class MandatesResolutionUIController {
     // ---- FINAL TYPE DECISION (do not override explicit/page-derived) ----
     String decidedType = dto.getRequestType();
 
-    // 1) If user posted a value, it’s already in dto via mapRequestType(mr)
-    // 2) If still blank, reuse existing
+    // 1)If user posted a value, it’s already in dto via mapRequestType(mr)
+    // 2)If still blank, reuse existing
     if (isBlank(decidedType) && existing != null && !isBlank(existing.getRequestType())) {
       decidedType = existing.getRequestType();
     }
-    // 3) If still blank, infer from the current page
+    //3) If still blank, infer from the current page
     if (isBlank(decidedType)) {
       String byPage = inferTypeFromPage(currentPage); // "Both" wins only for BOTH pages
       if (!isBlank(byPage)) {
         decidedType = byPage;
       }
     }
-    // 4) Only if STILL blank, infer from lists
+    //4) Only if STILL blank, infer from lists
     boolean hasAccts = dto.getAccounts() != null && !dto.getAccounts().isEmpty();
     boolean hasAuth = dto.getAuthorities() != null && !dto.getAuthorities().isEmpty();
     if (isBlank(decidedType)) {
@@ -2132,14 +2437,14 @@ public class MandatesResolutionUIController {
     }
     dto.setRequestType(decidedType);
 
-    // 5) Now normalize lists based on the final type
+    //5) Now normalize lists based on the final type
     // IMPORTANT: do NOT normalize on Search Results page (prevents directors disappearing)
     final boolean isSearchResults = "SEARCH_RESULTS".equalsIgnoreCase(currentPage);
     if (!isSearchResults) {
       normalizeListsByType(dto);
     }
 
-    // 6) Debug outbound payload
+    //6) Debug outbound payload
     try {
       com.fasterxml.jackson.databind.ObjectMapper om =
           new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
@@ -2149,7 +2454,7 @@ public class MandatesResolutionUIController {
       // intentionally empty
     }
 
-    // 7) Persist
+    //7) Persist
     if (dto.getStagingId() == null) {
       RequestStagingDTO saved =
           rt.postForObject(base + "/api/request-staging", dto, RequestStagingDTO.class);
@@ -2337,10 +2642,10 @@ public class MandatesResolutionUIController {
           if (!postedPath.isBlank()) {
             logger.info(
                 "nextStep: non-multipart detected; only path seen ({}). File should be uploaded "
-                +
+                    +
                     "via <comm:fileUpload fileUploadUrl='/app-domain"
                     + "/mandates-and-resolutions/mandates/attachment/upload"
-                + "'>.",
+                    + "'>.",
                 postedPath);
           }
         }
@@ -2633,7 +2938,7 @@ public class MandatesResolutionUIController {
         case "3" -> confirmationCheck = request.getParameter("confirmationCheckMandateResolution");
         default ->
           {
-            /* no-op */
+           /* no-op */
           }
       }
     }
@@ -2748,7 +3053,7 @@ public class MandatesResolutionUIController {
       accounts.remove(removeAccountAt - 1);
     }
 
-    //4) Append blanks to reach accountCount (exactly +1 when you clicked Add)
+    //4)Append blanks to reach accountCount (exactly +1 when you clicked Add)
     if (!deletingAccount) {
       while (accounts.size() < accountCount) {
         accounts.add(createBlankAccount());
@@ -2762,13 +3067,13 @@ public class MandatesResolutionUIController {
     dto.setPdfSessionId(pdfSessionId);
     dto.setEditable(true);
 
-    //5) Persist
+    //5)Persist
     if (pdfSessionId != null) {
       pdfExtractionDataCache.put(pdfSessionId, dto);
     }
     session.setAttribute("requestData", dto);
 
-    //6) Render
+    //6)Render
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
@@ -2787,7 +3092,7 @@ public class MandatesResolutionUIController {
       HttpServletRequest req, //Nneeded for applyAccAndSigsEditsFromRequest
       HttpSession session
   ) {
-    // 1) Keep existing session resolution
+    //1) Keep existing session resolution
     if (pdfSessionId == null) {
       Object sessionVal = session.getAttribute("pdfSessionId");
       if (sessionVal != null) {
@@ -2815,7 +3120,6 @@ public class MandatesResolutionUIController {
         ensureSignatories(acc, cur + 1);
       }
 
-      //Keep session vars as before (some flows rely on them)
       session.setAttribute("pdfSessionId", dto.getPdfSessionId());
       session.setAttribute("requestData", dto);
 
@@ -2835,7 +3139,7 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
     }
 
-    // 4)Existing fallback (your skeleton page generator)
+    // 4)Existing fallback
     return generateMandatesFillPage(
         accountCount, signatoryCounts, removeSignatoryAt, addSignatoryAt, removeAccountAt
     );
@@ -2989,7 +3293,7 @@ public class MandatesResolutionUIController {
       dto.setAccounts(new java.util.ArrayList<>());
     }
 
-    // 1) Parse & merge by position (your existing helpers)
+    // 1) Parse & merge by position
     java.util.List<RequestDTO.Account> parsed = parseAccountsFromRequest(request);
     mergeAccounts(dto, parsed);
 
@@ -3155,7 +3459,7 @@ public class MandatesResolutionUIController {
         for (RequestDTO.Signatory s : signs) {
           String inst = nz.apply(s.getInstruction()).toUpperCase();
           if ("REMOVE".equals(inst)) {
-            continue; // skip removed
+            continue;
           }
           if (nz.apply(s.getFullName()).isBlank()) {
             errors.setSignatoryFullName("Full name is required");
@@ -3337,7 +3641,7 @@ public class MandatesResolutionUIController {
                 mf.getSize());
             saved++;
 
-            // expose filename in DTO (optional)
+            //Exposes filename in DTO
             RequestDTO dto = (RequestDTO) session.getAttribute("requestData");
             if (dto == null) {
               dto = new RequestDTO();
@@ -3357,7 +3661,7 @@ public class MandatesResolutionUIController {
       logger.info("UPLOAD: session uploadedFiles count now {}",
           getOrInitSessionFiles(session).size());
 
-      // Return minimal success page
+      //Return minimal success page
       return ResponseEntity.ok("""
             <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="" heading=" " template="blank" version="1">
@@ -3391,7 +3695,7 @@ public class MandatesResolutionUIController {
       dto.setDirectors(new java.util.ArrayList<>());
     }
 
-    // Persist company fields coming as hidden inputs (for Back → SearchResults)
+    //Persist company fields coming as hidden inputs (for Back to SearchResults)
     String nm = request.getParameter("companyName");
     String ad = request.getParameter("companyAddress");
     String rn = request.getParameter("registrationNumber");
@@ -3405,7 +3709,7 @@ public class MandatesResolutionUIController {
       dto.setRegistrationNumber(rn.trim());
     }
 
-    // 1) Merge posted directors by position (from ResolutionAutoFill)
+    //1) Merge posted directors by position (from ResolutionAutoFill)
     java.util.List<RequestDTO.Director> parsed =
         parseDirectorsFromRequest(request); // uses directorName_/Surname_/Designation_
     mergeDirectorsByPosition(dto, parsed);
@@ -3418,7 +3722,7 @@ public class MandatesResolutionUIController {
       directors.add(createBlankDirector());
     }
 
-    // 2) Removal FIRST (don’t re-pad during the same request)
+    //2) Removal FIRST (don’t re-pad during the same request)
     boolean removing =
         (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
     if (removing) {
@@ -3741,7 +4045,7 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok(page);
     }
 
-    // No errors → proceed to Signature Card confirmation page
+    // No errors then proceed to Signature Card confirmation page
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page =
@@ -3798,8 +4102,7 @@ public class MandatesResolutionUIController {
     java.util.List<RequestDTO.Account> parsedAcc = parseAccountsFromRequest(request);
     mergeAccounts(dto, parsedAcc);
 
-    // --- NO VALIDATION HERE ---
-    // Only make sure the structures exist so the next page can render safely.
+    //Makes sure the structures exist so the next page can render safely.
     if (dto.getAccounts().isEmpty()) {
       dto.getAccounts().add(createBlankAccount());
     }
@@ -3812,7 +4115,7 @@ public class MandatesResolutionUIController {
       }
     }
 
-    // Existing directors logic (always proceed)
+    // Existing directors logic
     var parsedDirs = parseDirectorsFromRequest(request);
     mergeDirectorsByPosition(dto, parsedDirs);
 
@@ -3878,8 +4181,6 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-
-  //SUBMIT
   // ======================= MANDATES & RESOLUTIONS SUBMIT =======================
   @PostMapping(value = "/mandatesResolutionsSubmit", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> mrSubmit(HttpServletRequest request, HttpSession session) {
@@ -3950,12 +4251,12 @@ public class MandatesResolutionUIController {
       String uname = currentDisplayId(session, request);
       if (uname.isBlank()) {
         uname = "UI_USER";
-      } // optional extra fallback
+      } //Extra fallback
 
       uiData.setLoggedInUsername(uname);
       uiData.setLoggedInEmail(current != null ? nz(current.getEmail()) : "");
 
-      // Submit (backend handles workflow and returns processId/assignedUser)
+      //Submit (backend handles workflow and returns processId/assignedUser)
       SubmissionPayload payload = buildSubmissionPayload(uiData, "Both");
       za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
           postSnapshotToBackend(payload);
@@ -3992,7 +4293,7 @@ public class MandatesResolutionUIController {
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
-  // ===== Open Reject panel (loads subStatus so XSL can label correctly)
+  //Open Reject panel (loads subStatus so XSL can label correctly)
   @PostMapping(value = "/viewRequestReject", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayViewRequestRejectPage(
       @RequestParam("requestId") Long requestId) {
@@ -4000,20 +4301,24 @@ public class MandatesResolutionUIController {
     RequestDTO dto = new RequestDTO();
     dto.setRequestId(requestId);
 
+    String sub = null;
     try {
       RestTemplate rt = new RestTemplate();
-      var resp =
-          rt.getForEntity(mandatesResolutionsDaoURL + "/api/request/{id}",
-              RequestDTO.class,
-              requestId);
+      var resp = rt.getForEntity(mandatesResolutionsDaoURL + "/api/request/{id}", RequestDTO.class,
+          requestId);
       if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-        dto.setSubStatus(resp.getBody().getSubStatus());
+        sub = resp.getBody().getSubStatus();
+        dto.setSubStatus(sub);
       }
     } catch (Exception ignore) {
       // intentionally empty
     }
 
     wrapper.setRequest(dto);
+
+    //Load instructions for this subStatus
+    populateInstructions(wrapper, sub, mandatesResolutionsDaoURL);
+
     String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"), wrapper);
     return ResponseEntity.ok(page);
   }
@@ -4026,26 +4331,30 @@ public class MandatesResolutionUIController {
     RequestDTO dto = new RequestDTO();
     dto.setRequestId(requestId);
 
+    String sub = null;
     try {
       RestTemplate rt = new RestTemplate();
-      var resp =
-          rt.getForEntity(mandatesResolutionsDaoURL + "/api/request/{id}",
-              RequestDTO.class,
-              requestId);
+      var resp = rt.getForEntity(mandatesResolutionsDaoURL + "/api/request/{id}", RequestDTO.class,
+          requestId);
       if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-        dto.setSubStatus(resp.getBody().getSubStatus());
+        sub = resp.getBody().getSubStatus();
+        dto.setSubStatus(sub);
       }
     } catch (Exception ignore) {
       // intentionally empty
     }
 
     wrapper.setRequest(dto);
+
+    //Load instructions for this subStatus
+    populateInstructions(wrapper, sub, mandatesResolutionsDaoURL);
+
     String page = xsltProcessor.generatePage(xslPagePath("ViewRequestApprovePage"), wrapper);
     return ResponseEntity.ok(page);
   }
 
   /**
-   * Submit a REJECT (comment required) -> Completed + Rejected; backend can terminate Camunda
+   * Submit a REJECT (comment required) to Completed + Rejected; backend can terminate Camunda
    * via outcome=Reject.
    */
   @PostMapping(value = "/comment/reject", produces = MediaType.APPLICATION_XML_VALUE)
@@ -4056,7 +4365,7 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpServletRequest servletRequest
   ) {
-    // ---------- Inline validation (keeps modal open) ----------
+    // ---------- Inline validation ----------
     if (!"1".equals(confirm) || commentText == null || commentText.trim().isEmpty()) {
       ApproveRejectErrorModel em = new ApproveRejectErrorModel();
       if (!"1".equals(confirm)) {
@@ -4125,7 +4434,7 @@ public class MandatesResolutionUIController {
           requestId
       );
 
-      // (Optional) sanity log
+      //Sanity log
       try {
         var check =
             rt.getForEntity(
@@ -4143,7 +4452,10 @@ public class MandatesResolutionUIController {
       }
 
       // Success page
-      String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
+      HttpSession session = servletRequest.getSession(false);
+      String page = isAdmin(session)
+          ? xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPageAdmin"))
+          : xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
@@ -4236,7 +4548,7 @@ public class MandatesResolutionUIController {
         // intentionally empty
       }
 
-      // Already final? just show success
+      // Already final? Just show success
       if (canonical(currentSub).equalsIgnoreCase(SS_DONE)) {
         String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
         return ResponseEntity.ok(page);
@@ -4263,7 +4575,10 @@ public class MandatesResolutionUIController {
       );
 
       // Success page
-      String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
+      HttpSession session = servletRequest.getSession(false);
+      String page = isAdmin(session)
+          ? xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPageAdmin"))
+          : xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
@@ -4288,7 +4603,7 @@ public class MandatesResolutionUIController {
     try {
       RestTemplate rt = new RestTemplate();
 
-      // Resolve display name (like Profile endpoint)
+      // Resolve display name
       za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO user =
           (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO) session.getAttribute(
               "currentUser");
@@ -4329,7 +4644,7 @@ public class MandatesResolutionUIController {
           }
       );
 
-      // Format helper
+      //Format helper
       java.time.format.DateTimeFormatter viewFmt =
           java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -4386,7 +4701,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      // Optional: compute newest approve/reject strings (unchanged)
+      //Newest approve/reject strings
       String newestReject = null;
       String newestApprove = null;
       if (commentsResp.getStatusCode().is2xxSuccessful() && commentsResp.getBody() != null) {
@@ -4503,11 +4818,10 @@ public class MandatesResolutionUIController {
                 submissionHasInstr = true;
               }
 
-              // existing logging:
               logger.info("AUTH from submission: class={}, hasGetInstructions={}",
                   a.getClass().getName(), hasInstr);
 
-              // map firstname/surname/designation as you already do...
+              //Map firstname/surname/designation
               String first = null;
               String last = null;
               String role = null;
@@ -4528,7 +4842,6 @@ public class MandatesResolutionUIController {
               }
 
               // if the method doesn't exist, extractInstruction() will default to Add.
-              // We'll correct that after the loop if submissionHasInstr == false.
               String instEff = extractInstruction(a);
 
               var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
@@ -4543,7 +4856,7 @@ public class MandatesResolutionUIController {
             }
           }
 
-//  If submission had NO instructions at all, replace with the DAO authorities (which do)
+//  If submission had NO instructions at all, replace with the DAO authorities
           if (!submissionHasInstr && sub.getRequest() != null
               && sub.getRequest().getCompanyId() != null) {
             try {
@@ -4567,7 +4880,7 @@ public class MandatesResolutionUIController {
                   //  AuthorityDTO has instructions — use it directly
                   String instr = nz.apply(a.getInstructions());
                   if (instr.isEmpty()) {
-                    // last resort inference from isActive (optional)
+                    //Last resort inference from isActive
                     Boolean active = a.getIsActive();
                     instr = (Boolean.FALSE.equals(active)) ? "Remove" : "Add";
                   }
@@ -4707,7 +5020,7 @@ public class MandatesResolutionUIController {
               ? sub.getCompany().getName() : "Unknown"
       );
 
-      // Inject newest approve/reject comments (already normalized)
+      // Inject newest approve/reject comments
       view.setApprovedComments(approvedRows);
       view.setRejectedComments(rejectedRows);
 
@@ -4782,20 +5095,63 @@ public class MandatesResolutionUIController {
   ) {
     try {
       RestTemplate rt = new RestTemplate();
-      persistStatusOnly(rt, requestId, "In Progress");
 
-      //Stay in admin view if we came from admin
-      if ("admin".equalsIgnoreCase(origin)) {
-        return displayAdminView(requestId, session, servletRequest);
+      try {
+        rt.getForObject(mandatesResolutionsDaoURL + "/api/request/{id}",
+            RequestDTO.class, requestId);
+      } catch (Exception e) {
+        logger.warn("UnHold: GET /api/request/{} failed (continuing): {}",
+            requestId, e.getMessage());
       }
-      return displayViewRequest(requestId, session, servletRequest);
+
+      //PUT: only status + processOutcome andleaves subStatus asnis
+      var payload = new java.util.LinkedHashMap<String, Object>();
+      payload.put("status", "In Progress");
+      payload.put("processOutcome", "UnHold");
+      payload.put("updator", currentDisplayId(session, servletRequest));
+
+      var headers = new org.springframework.http.HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+
+      String url = mandatesResolutionsDaoURL + "/api/request/{id}";
+      logger.info("UnHold PUT {} payload={}",
+          url.replace("{id}", String.valueOf(requestId)), payload);
+
+      try {
+        var entity = new org.springframework.http.HttpEntity<>(payload, headers);
+        var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
+        logger.info("UnHold DAO response status={}", resp.getStatusCode());
+      } catch (org.springframework.web.client.HttpServerErrorException e) {
+        if (e.getStatusCode().value() == 503) {
+          logger.warn("UnHold: workflow unavailable for request {}. Body={}",
+              requestId, e.getResponseBodyAsString());
+          return ResponseEntity.ok()
+              .contentType(MediaType.APPLICATION_XML)
+              .body("""
+                <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                  <error>The workflow service is temporarily unavailable, so 
+                  we couldn't take the request off hold. Please try again shortly.</error>
+                </page>
+                """);
+        }
+        throw e;
+      }
+
+      //Return to appropriate view
+      return "admin".equalsIgnoreCase(origin)
+          ? displayAdminView(requestId, session, servletRequest)
+          : displayViewRequest(requestId, session, servletRequest);
+
     } catch (Exception e) {
-      logger.error("UnHold failed: {}", e.getMessage(), e);
-      return ResponseEntity.ok("""
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Unable to take request off hold.</error>
-          </page>
-          """);
+      logger.error("UnHold failed", e);
+      return ResponseEntity.ok()
+          .contentType(MediaType.APPLICATION_XML)
+          .body("""
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Unable to take request off hold.</error>
+            </page>
+            """);
     }
   }
 
@@ -4822,7 +5178,7 @@ public class MandatesResolutionUIController {
           : "SEARCH_RESULTS";
     }
 
-    // 2) Keep any existing pdfSessionId (if you track it), or seed fresh
+    // 2)Keeps existing pdfSessionsId
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
     if (pdfSessionId == null || pdfSessionId.isBlank()) {
       pdfSessionId = java.util.UUID.randomUUID().toString();
@@ -4911,7 +5267,6 @@ public class MandatesResolutionUIController {
     if (goAutoFill) {
       RequestWrapper w = buildAutoFillWrapperFromStaging(id, pdfSessionId);
 
-      // (Seeding optional here, safe anyway)
       String sel = normalizeSelCode(s.getRequestType());
       if (sel == null && s.getRequestSubStatus() != null) {
         int at = s.getRequestSubStatus().lastIndexOf('@');
@@ -4931,7 +5286,7 @@ public class MandatesResolutionUIController {
     } else {
       RequestWrapper w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
 
-      //  Seed dropdown selection for the SearchResults page
+      //Seed dropdown selection for the SearchResults page
       String sel = normalizeSelCode(s.getRequestType());
       if (sel == null && s.getRequestSubStatus() != null) {
         int at = s.getRequestSubStatus().lastIndexOf('@');
@@ -5415,7 +5770,7 @@ public class MandatesResolutionUIController {
       }
 
       //Takes you the Landing Page once the edit is successful
-      return displayRequestTable();
+      return goToDisplayRequestTable();
 
     } catch (Exception e) {
       logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
@@ -5582,7 +5937,7 @@ public class MandatesResolutionUIController {
       return "NAME#" + keyN.apply(name);
     };
 
-    //2) Seed accounts (keep order)
+    //2) Seed accounts (keeps order)
     java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
     if (sub.getAccounts() != null) {
       for (var a : sub.getAccounts()) {
@@ -5598,7 +5953,7 @@ public class MandatesResolutionUIController {
 
         //Attach nested signatories if present
         try {
-          //If your Account class really has getSignatories()
+          //If Account class really has getSignatories()
           if (a.getSignatories() != null) {
             for (var s : a.getSignatories()) {
               SignatoryDTO d = new SignatoryDTO();
@@ -5619,7 +5974,7 @@ public class MandatesResolutionUIController {
       }
     }
 
-    //3) Optional: overlay by request if your DAO provides it
+    //3)Overlay by request if DAO provides it
     try {
       String sigUrl = mandatesResolutionsDaoURL + "/api/signatory/byRequest/" + requestId;
       ResponseEntity<SignatoryDTO[]> sigResp = rt.getForEntity(sigUrl, SignatoryDTO[].class);
@@ -5769,11 +6124,11 @@ public class MandatesResolutionUIController {
       case "RESOLUTIONS" -> dto.setAccounts(null);     // keep only Resolutions
       case "BOTH" ->
         {
-        /* leave both lists as-is */
+          /* leave both lists as-is */
         }
       default ->
         {
-        /* no-op or log/throw for unknown type */
+          /* no-op or log/throw for unknown type */
         }
     }
   }
@@ -6099,7 +6454,7 @@ public class MandatesResolutionUIController {
     }
   }
 
-  // Minimal XML escape (good enough for short messages)
+  // Minimal XML escape (for short messages)
   private static String xmlEscape(String s) {
     if (s == null) {
       return "";
@@ -6413,7 +6768,7 @@ public class MandatesResolutionUIController {
     }
     String c = code.trim().toUpperCase();
     return switch (c) {
-      case "RESOLUTIONS_FILL" -> "RESOLUTION_AUTOFILL"; // alias fix
+      case "RESOLUTIONS_FILL" -> "RESOLUTION_AUTOFILL";
       default -> c;
     };
   }
@@ -6463,8 +6818,8 @@ public class MandatesResolutionUIController {
         case "designation" -> d.setDesignation(v);
         default ->
           {
-          /* no-op */
-          } // keep if your Checkstyle requires a default
+            /* no-op */
+          }
       }
     });
     java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
@@ -6503,7 +6858,7 @@ public class MandatesResolutionUIController {
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     // Patterns:
-    // A) directors[0].name  (optionally directors[0].name0)
+    // A) directors[0].name  (directors[0].name0)
     java.util.regex.Pattern bracketPattern = java.util.regex.Pattern.compile(
         "^directors\\[(\\d+)]\\.(name|surname|designation)(\\d+)?$"
     );
@@ -6522,7 +6877,6 @@ public class MandatesResolutionUIController {
       }
 
       java.util.regex.Matcher bracketMatcher = bracketPattern.matcher(key);
-      // or: var bracketMatcher = pBracket.matcher(key);
       if (bracketMatcher.matches()) {
         int idx = Integer.parseInt(bracketMatcher.group(1)); // 0-based from UI table
         String field = bracketMatcher.group(2);
@@ -6534,7 +6888,7 @@ public class MandatesResolutionUIController {
           case "designation" -> d.setDesignation(nz.apply(val));
           default ->
             {
-            /* intentionally ignore unknown fields */
+              /* intentionally ignore unknown fields */
             }
         }
         continue;
@@ -6553,7 +6907,7 @@ public class MandatesResolutionUIController {
           case "Designation" -> d.setDesignation(nz.apply(val));
           default ->
             {
-            /* intentionally ignore unknown fields */
+              /* intentionally ignore unknown fields */
             }
         }
       }
@@ -6597,7 +6951,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      // Be liberal: support a repeated single key "documentumTool"
+      //Support a repeated single key "documentumTool"
       if (key.equals("documentumTool")) {
         for (String v : e.getValue()) {
           if (v != null && !v.isBlank()) {
@@ -6894,7 +7248,7 @@ public class MandatesResolutionUIController {
       return null;
     }
 
-    // already numeric?
+    //Already numeric
     if ("1".equals(r) || "2".equals(r) || "3".equals(r)) {
       return r;
     }
@@ -6953,6 +7307,50 @@ public class MandatesResolutionUIController {
     return id.isEmpty() ? "UI" : id;
   }
 
+  //Users only see the ticket they created
+  private String loggedInUsername(HttpSession session, HttpServletRequest req) {
+    var u = (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO)
+        session.getAttribute("currentUser");
+    String un = (u == null) ? "" : nz(u.getUsername());
+    return !un.isEmpty() ? un : nz(currentDisplayId(session, req));
+  }
+
+  private boolean isAdmin(HttpSession session) {
+    var u = (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO)
+        session.getAttribute("currentUser");
+    String role =
+        (u == null || u.getUserRole() == null) ? "" : u.getUserRole().trim().toUpperCase();
+    return role.contains("ADMIN");
+  }
+
+  // ---- Wrappers so existing zero-arg calls keep working ----
+
+  // /requestTable
+  private ResponseEntity<String> goToDisplayRequestTable() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    HttpServletRequest req = (attrs == null) ? null : attrs.getRequest();
+    HttpSession sess = (req == null) ? null : req.getSession(false);
+    return displayRequestTable(sess, req); // delegate to the annotated method
+  }
+
+  // /requestTableOnHold
+  private ResponseEntity<String> goToDisplayRequestTableOnHold() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    HttpServletRequest req = (attrs == null) ? null : attrs.getRequest();
+    HttpSession sess = (req == null) ? null : req.getSession(false);
+    return displayRequestTableOnHold(sess, req);
+  }
+
+  // /requestTableCompleted
+  private ResponseEntity<String> goToDisplayRequestTableCompleted() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    HttpServletRequest req = (attrs == null) ? null : attrs.getRequest();
+    HttpSession sess = (req == null) ? null : req.getSession(false);
+    return displayRequestTableCompleted(sess, req);
+  }
 
   private RequestWrapper buildAutoFillWrapperFromStaging(Long stagingId, String pdfSessionId) {
     final String base = mandatesResolutionsDaoURL;
@@ -7467,7 +7865,7 @@ public class MandatesResolutionUIController {
         d.setDesignation(dg.trim());
       }
       if (in != null) {
-        d.setInstruction(in.trim()); // NEW (singular on RequestDTO.Director)
+        d.setInstruction(in.trim());
       }
       out.add(d);
     }
@@ -7500,7 +7898,7 @@ public class MandatesResolutionUIController {
         d.setDesignation(nz(s.getDesignation()));
       }
       if (nz(s.getInstruction()).length() > 0) {
-        d.setInstruction(nz(s.getInstruction())); // NEW
+        d.setInstruction(nz(s.getInstruction()));
       }
     }
   }
@@ -7874,17 +8272,30 @@ public class MandatesResolutionUIController {
     }
   }
 
-  // ---- Canonical names used everywhere (MATCH DAO EXACTLY) ----
-  private static final String SS_REJECTED = "Rejected";
-  private static final String SS_HOGAN_VER = "Hogan Verification Pending";
-  private static final String SS_WINDEED_VER = "Windeed Verification Pending";
-  private static final String SS_HANIS_VER = "Hanis Verification Pending";        // single 'n'
-  private static final String SS_ADMIN_APPROVAL = "Admin Approval Pending";            // 'Approval'
-  private static final String SS_HOGAN_UPD = "Hogan Update Pending";
-  private static final String SS_DOCU_UPD = "Documentum Update Pending";
-  private static final String SS_DONE = "Request Updated Successfully";
+  // ===== DAO-LEGAL "Pending" subStatus values  =====
+  private static final String SS_WINDEED_VER    = "Windeed Verification Pending";
+  private static final String SS_HOGAN_VER      = "Hogan Verification Pending";
+  private static final String SS_HANIS_VER      = "Hanis Verification Pending";
+  private static final String SS_ADMIN_APPROVAL = "Admin Approval Pending";
+  private static final String SS_HOGAN_UPD      = "Hogan Update Pending";
+  private static final String SS_DOCU_UPD       = "Documentum Update Pending";
+  private static final String SS_DONE           = "Request Updated Successfully";
+  private static final String SS_REJECTED       = "Rejected";
 
-  // Map any legacy/typo variants to DAO-legal values BEFORE we branch or PUT
+  // ===== DAO-LEGAL "On Hold" labels  =====
+// NOTE: DAO regex uses lowercase 'on' in "Update on Hold for ..."
+  private static final String HOLD_WINDEED_VER  = "Verification On Hold for Windeed";
+  private static final String HOLD_HOGAN_VER    = "Verification On Hold for Hogan";
+  private static final String HOLD_HANIS_VER    = "Verification On Hold for Hanis";
+  private static final String HOLD_ADMIN        = "Admin Approval On Hold";
+  private static final String HOLD_HOGAN_UPD    = "Update on Hold for Hogan";
+  private static final String HOLD_DOCU_UPD     = "Update on Hold for Documentum";
+
+  /**
+   * Map any legacy/typo variants to DAO-legal values BEFORE we branch or PUT.
+   * Kept intentionally focused on PENDING states. We add a safe pass-through
+   * for already-legal HOLD labels.
+   */
   private static String canonical(String s) {
     if (s == null) {
       return "";
@@ -7894,21 +8305,21 @@ public class MandatesResolutionUIController {
       return t;
     }
 
-    // fix common legacy spellings
+    // ---- Legacy/typo fixes
     if (t.equalsIgnoreCase("Hannis Verification Pending")) {
-      return SS_HANIS_VER;       // double 'n' -> Hanis
+      return SS_HANIS_VER;
     }
     if (t.equalsIgnoreCase("Admin Verification Pending")) {
-      return SS_ADMIN_APPROVAL;  // Verification -> Approval
+      return SS_ADMIN_APPROVAL; // Verification -> Approval
     }
     if (t.equalsIgnoreCase("Submitted")) {
-      return SS_HOGAN_VER;       // old starting state
+      return SS_HOGAN_VER;
     }
     if (t.equalsIgnoreCase("Completed") || t.equalsIgnoreCase("Request Completed")) {
       return SS_DONE;
     }
 
-    // normalize case to EXACT DAO strings
+    // ---- Normalize to exact DAO strings (Pending values) ----
     if (t.equalsIgnoreCase(SS_REJECTED)) {
       return SS_REJECTED;
     }
@@ -7934,7 +8345,69 @@ public class MandatesResolutionUIController {
       return SS_DONE;
     }
 
-    return t; // unknown: leave as-is (validator will 400 if we ever PUT this)
+    //Pass-through if caller accidentally supplies a DAO-legal HOLD label ----
+    if (t.equalsIgnoreCase(HOLD_WINDEED_VER)
+        ||
+        t.equalsIgnoreCase(HOLD_HOGAN_VER)
+        ||
+        t.equalsIgnoreCase(HOLD_HANIS_VER)
+        ||
+        t.equalsIgnoreCase(HOLD_ADMIN)
+        ||
+        t.equalsIgnoreCase(HOLD_HOGAN_UPD)
+        ||
+        t.equalsIgnoreCase(HOLD_DOCU_UPD)) {
+      return t;
+    }
+
+    //Unknown: return as-is
+    return t;
+  }
+
+  /**
+   * Given the current PENDING subStatus, return the exact On-Hold label accepted by the DAO.
+   * If current is unknown, default to "Verification On Hold for Hogan".
+   */
+  private static String toHoldLabel(String currentSubStatus) {
+    String c = canonical(currentSubStatus);
+    if (c == null || c.isBlank()) {
+      return HOLD_HOGAN_VER; //safe default hold bucket
+    }
+    switch (c) {
+      case SS_WINDEED_VER:    return HOLD_WINDEED_VER;
+      case SS_HOGAN_VER:      return HOLD_HOGAN_VER;
+      case SS_HANIS_VER:      return HOLD_HANIS_VER;
+      case SS_ADMIN_APPROVAL: return HOLD_ADMIN;
+      case SS_HOGAN_UPD:      return HOLD_HOGAN_UPD;   //"Update on Hold for Hogan"
+      case SS_DOCU_UPD:       return HOLD_DOCU_UPD;    //Update on Hold for Documentum"
+
+      case SS_DONE:
+      case SS_REJECTED:
+      default:
+        //Park under Admin approval hold if the "pending" doesn't map cleanly
+        return HOLD_ADMIN;
+    }
+  }
+
+  /**
+   * Inverse of toHoldLabel: derive the original PENDING subStatus to restore when unholding.
+   * If label is unexpected, fall back to "Hogan Verification Pending".
+   */
+  private static String fromHoldLabel(String holdLabel) {
+    if (holdLabel == null) {
+      return SS_HOGAN_VER;
+    }
+    String s = holdLabel.trim();
+
+    return switch (s) {
+      case HOLD_WINDEED_VER -> SS_WINDEED_VER;
+      case HOLD_HOGAN_VER   -> SS_HOGAN_VER;
+      case HOLD_HANIS_VER   -> SS_HANIS_VER;
+      case HOLD_ADMIN       -> SS_ADMIN_APPROVAL;
+      case HOLD_HOGAN_UPD   -> SS_HOGAN_UPD;   // "Update on Hold for Hogan"
+      case HOLD_DOCU_UPD    -> SS_DOCU_UPD;    // "Update on Hold for Documentum"
+      default               -> SS_HOGAN_VER;   // sensible default
+    };
   }
 
   /**
@@ -7987,8 +8460,6 @@ public class MandatesResolutionUIController {
     RequestDTO dao = fetchRequest(requestId);
     if (dao != null) {
       try {
-        // If your UI DTO has getStatus()/getSubStatus, just call them directly.
-        // If not, keep the defaults; only subStatus must move.
         String s = (String) RequestDTO.class.getMethod("getStatus").invoke(dao);
         if (s != null && !s.isBlank()) {
           currentStatus = s;
@@ -8014,8 +8485,8 @@ public class MandatesResolutionUIController {
 
     // 3) PUT minimal body (names must match DAO entity JSON)
     var body = new java.util.HashMap<String, Object>();
-    body.put("status", currentStatus);                 // unchanged
-    body.put("subStatus", nextSub);                    // advanced
+    body.put("status", currentStatus);
+    body.put("subStatus", nextSub);
     body.put("outcome", approve ? "Approve" : "Reject");
 
     var headers = new org.springframework.http.HttpHeaders();
@@ -8030,6 +8501,194 @@ public class MandatesResolutionUIController {
     );
   }
 
+  // ======================= Instructions helper for reject/approve instructions page==============
+
+  //Returns the list of instruction strings for a given requestStatus value.
+  //Fetch DAO-driven "Instructions" by status for Approve/Reject models
+  private java.util.List<String> fetchLovInstructions(String requestStatusPrimary,
+                                                      String requestStatusFallback) {
+    final RestTemplate rt = new RestTemplate();
+    final String base = mandatesResolutionsDaoURL
+        + "/api/lov?type={type}&subType={subType}&requestStatus={status}";
+
+    java.util.function.Function<String, java.util.List<String>> call = (String statusVal) -> {
+      if (statusVal == null || statusVal.trim().isEmpty()) {
+        return java.util.List.of();
+      }
+      try {
+        var resp = rt.exchange(
+            base,
+            HttpMethod.GET,
+            null,
+            new org.springframework.core.ParameterizedTypeReference<
+                java.util.List<java.util.Map<String, Object>>>() {
+            },
+            "Readout", "Instructions", statusVal.trim()
+        );
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+          return resp.getBody().stream()
+              .map(m -> String.valueOf(m.getOrDefault("value", "")).trim())
+              .filter(s -> !s.isEmpty())
+              .toList();
+        }
+      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
+        //No LOV rows for this status — fine, fall back.
+      } catch (Exception ignore) {
+        //Network/parse/etc — ignore and fall back.
+      }
+      return java.util.List.of();
+    };
+
+    //Try subStatus first, then main status
+    var items = call.apply(requestStatusPrimary);
+    if (!items.isEmpty()) {
+      return items;
+    }
+
+    items = call.apply(requestStatusFallback);
+    return items.isEmpty() ? java.util.List.of() : items;
+  }
+
+  //Cleans up JSON string from database
+  private static java.util.List<String> parseInstructionsFromLovValue(String raw) {
+    java.util.List<String> out = new java.util.ArrayList<>();
+    if (raw == null) {
+      return out;
+    }
+
+    String s = raw.trim();
+
+    //Case A: JSON array/object (DAO example)
+    //Example: [{"line1":"Log into Sigma.", "line2":"Check ..."}]
+    if (s.startsWith("[") || s.startsWith("{")) {
+      try {
+        ObjectMapper om = new ObjectMapper();
+        JsonNode n = om.readTree(s);
+
+        //If it's an array, take the first element (Example uses 1 object inside an array)
+        if (n.isArray() && n.size() > 0) {
+          n = n.get(0);
+        }
+        if (n.isObject()) {
+          //Collect fields in a stable order: line1, line2, ... then any other keys
+          java.util.List<String> known = new java.util.ArrayList<>();
+          java.util.List<String> others = new java.util.ArrayList<>();
+
+          java.util.Iterator<String> it = n.fieldNames();
+          while (it.hasNext()) {
+            others.add(it.next());
+          }
+
+          //Prefer numeric "lineN" ordering
+          others.sort((a, b) -> {
+            boolean s1IsLine = a.toLowerCase().startsWith("line");
+            boolean s2IsLine  = b.toLowerCase().startsWith("line");
+            if (s1IsLine && s2IsLine) {
+              try {
+                int ai = Integer.parseInt(a.replaceAll("\\D+", ""));
+                int bi = Integer.parseInt(b.replaceAll("\\D+", ""));
+                return Integer.compare(ai, bi);
+              } catch (Exception ignore) { /* fall through */ }
+            }
+            if (s1IsLine != s2IsLine) {
+              return s1IsLine ? -1 : 1;
+            }
+            return a.compareToIgnoreCase(b);
+          });
+
+          for (String k : others) {
+            JsonNode v = n.get(k);
+            if (v != null && !v.isNull()) {
+              String line = v.asText().trim();
+              if (!line.isEmpty()) {
+                known.add(line);
+              }
+            }
+          }
+          out.addAll(known);
+          return out;
+        }
+
+        //If it's an array of strings, just add them
+        if (n.isArray()) {
+          for (JsonNode item : n) {
+            if (item.isTextual()) {
+              String line = item.asText().trim();
+              if (!line.isEmpty()) {
+                out.add(line);
+              }
+            }
+          }
+          if (!out.isEmpty()) {
+            return out;
+          }
+        }
+      } catch (Exception ignore) {
+        //Fall through to non-JSON fallback
+      }
+    }
+
+    // Case B: Plain text fallback — split on common delimiters/new lines
+    //(covers any legacy non-JSON values)
+    for (String tok : s.split("\\r?\\n|;|•|-\\s")) {
+      String line = tok.trim();
+      if (!line.isEmpty()) {
+        out.add(line);
+      }
+    }
+    if (out.isEmpty()) {
+      out.add(s); //Last resort: whole string as single item
+    }
+    return out;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void populateInstructions(RequestWrapper wrapper, String subStatus, String daoBaseUrl) {
+    try {
+      if (wrapper == null) {
+        return;
+      }
+      RequestWrapper.LovsDTO lovs = (wrapper.getLovs() == null)
+          ? new RequestWrapper.LovsDTO()
+          : wrapper.getLovs();
+
+      final String status = (subStatus == null) ? "" : subStatus.trim();
+      if (status.isEmpty()) {
+        wrapper.setLovs(lovs);
+        return;
+      }
+
+      RestTemplate rt = new RestTemplate();
+      String url = daoBaseUrl + "/api/lov?type=Readout&subType=Instructions&requestStatus="
+          + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
+
+      //DAO returns a list of LOV rows, we only need each row's "value"
+      var resp = rt.exchange(
+          url,
+          org.springframework.http.HttpMethod.GET,
+          null,
+          new org.springframework.core.ParameterizedTypeReference
+              <java.util.List<java.util.Map<String, Object>>>() {
+          }
+      );
+
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        for (var row : resp.getBody()) {
+          Object v = (row == null) ? null : row.get("value");
+          if (v != null) {
+            for (String line : parseInstructionsFromLovValue(String.valueOf(v))) {
+              lovs.getInstructions().add(line);
+            }
+          }
+        }
+      }
+
+      wrapper.setLovs(lovs);
+    } catch (Exception e) {
+      //Non-fatal: if LOV fails, we just render the fallback in XSLT
+      logger.warn("Could not load instructions LOV for '{}': {}", subStatus, e.toString());
+    }
+  }
 
   // ======================= HTTP helper: POST to backend /api/submission =======================
   private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
