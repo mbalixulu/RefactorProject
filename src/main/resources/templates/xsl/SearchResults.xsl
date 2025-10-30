@@ -150,7 +150,7 @@
                                     <comm:value>Company waiver</comm:value>
                                 </comm:boxSymbol>
 
-                                <!-- Add Waiver Tool button -->
+                                <!-- Add Waiver Tool button-->
                                 <comm:boxSymbol
                                         xsi:type="comm:button"
                                         comm:id="addToolBtn"
@@ -158,24 +158,19 @@
                                         comm:target="main"
                                         comm:type="primary"
                                         comm:formSubmit="true"
-                                        comm:width="3">
-                                    <xsl:attribute name="comm:url">
-                                        <xsl:text>app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=</xsl:text>
-                                        <xsl:value-of select="/requestWrapper/request/registrationNumber"/>
-                                        <xsl:text>&amp;pdfSessionId=</xsl:text>
-                                        <xsl:value-of select="/requestWrapper/request/pdfSessionId"/>
-                                        <xsl:text>&amp;toolCount=</xsl:text>
-                                        <xsl:choose>
-                                            <xsl:when test="count(/requestWrapper/request/documentumTool) &gt; 0">
-                                                <xsl:value-of select="count(/requestWrapper/request/documentumTool) + 1"/>
-                                            </xsl:when>
-                                            <xsl:otherwise>2</xsl:otherwise>
-                                        </xsl:choose>
-                                        <xsl:text>&amp;directorCount=</xsl:text>
-                                        <xsl:value-of select="count(/requestWrapper/request/directors/director)"/>
-                                        <xsl:text>&amp;action=addTool#waiverBox</xsl:text>
-                                    </xsl:attribute>
-                                </comm:boxSymbol>
+                                        comm:width="3"
+                                        comm:url="{concat(
+                                                      'app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
+                                                      /requestWrapper/request/registrationNumber,
+                                                      '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId,
+                                                      '&amp;toolCount=',
+                                                      (count(/requestWrapper/request/documentumTool) &gt; 0)
+                                                        * (count(/requestWrapper/request/documentumTool) + 1)
+                                                        + (count(/requestWrapper/request/documentumTool) = 0) * 2,
+                                                      '&amp;directorCount=', count(/requestWrapper/request/directors/director),
+                                                      '&amp;action=addTool#waiverBox'
+                                                    )}">
+                            </comm:boxSymbol>
 
                                 <!-- Existing tools (labelled Tool 1, Tool 2, ...) -->
                                 <xsl:for-each select="/requestWrapper/request/documentumTool">
@@ -255,50 +250,21 @@
                                            comm:groupId="directors"
                                            comm:groupHeaderLabel="Directors List">
 
-                                <!-- Add Director button URL: include pdfSessionId and keep current toolCount -->
+                                <!-- Add Director button -->
                                 <comm:groupTableButton
                                         xsi:type="comm:imageButton"
                                         comm:id="addDirectorBtn"
                                         comm:label="Add a director"
                                         comm:tip="Click to add a new director"
-                                        comm:target="main">
-                                    <xsl:attribute name="comm:url">
-                                        <!-- base -->
-                                        <xsl:text>app-domain/mandates-and-resolutions/searchCompanyDetails?</xsl:text>
-                                        <xsl:text>pdfSessionId=</xsl:text>
-                                        <xsl:value-of select="/requestWrapper/request/pdfSessionId"/>
-                                        <xsl:text>&amp;companyRegNumber=</xsl:text>
-                                        <xsl:value-of select="/requestWrapper/request/registrationNumber"/>
-
-                                        <!-- next director count -->
-                                        <xsl:text>&amp;directorCount=</xsl:text>
-                                        <xsl:value-of select="count(/requestWrapper/request/directors/director) + 1"/>
-
-                                        <!-- keep current tool count -->
-                                        <xsl:text>&amp;toolCount=</xsl:text>
-                                        <xsl:value-of select="count(/requestWrapper/request/documentumTool)"/>
-
-                                        <!-- carry ALL current directors as request params -->
-                                        <xsl:for-each select="/requestWrapper/request/directors/director">
-                                            <xsl:variable name="i" select="position()-1"/>
-                                            <xsl:text>&amp;directors[</xsl:text><xsl:value-of select="$i"/><xsl:text>].name=</xsl:text>
-                                            <xsl:value-of select="translate(normalize-space(name),' ','+')"/>
-                                            <xsl:text>&amp;directors[</xsl:text><xsl:value-of select="$i"/><xsl:text>].surname=</xsl:text>
-                                            <xsl:value-of select="translate(normalize-space(surname),' ','+')"/>
-                                            <xsl:text>&amp;directors[</xsl:text><xsl:value-of select="$i"/><xsl:text>].designation=</xsl:text>
-                                            <xsl:value-of select="translate(normalize-space(designation),' ','+')"/>
-                                        </xsl:for-each>
-
-                                        <!-- carry ALL current tools as request params -->
-                                        <xsl:for-each select="/requestWrapper/request/documentumTool">
-                                            <xsl:text>&amp;documentumTools[</xsl:text><xsl:value-of select="position()-1"/><xsl:text>]=</xsl:text>
-                                            <xsl:value-of select="translate(normalize-space(.),' ','+')"/>
-                                        </xsl:for-each>
-
-                                        <!-- anchor back to the table -->
-                                        <xsl:text>#directorsTable</xsl:text>
-                                    </xsl:attribute>
-                                </comm:groupTableButton>
+                                        comm:target="main"
+                                        comm:url="{concat(
+                                                          'app-domain/mandates-and-resolutions/searchCompanyDetails?',
+                                                          'pdfSessionId=', /requestWrapper/request/pdfSessionId,
+                                                          '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
+                                                          '&amp;directorCount=', count(/requestWrapper/request/directors/director) + 1,
+                                                          '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
+                                                          '#directorsTable'
+                                                        )}"/>
                             </comm:rowGroup>
 
                             <!-- Render each director as editable row -->

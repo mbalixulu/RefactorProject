@@ -1676,7 +1676,7 @@ public class MandatesResolutionUIController {
     pdfExtractionDataCache.put(sid, dto);
     session.setAttribute("requestData", dto);
 
-    // 9) Render SearchResults page
+    //9) Render SearchResults page
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
@@ -2081,28 +2081,6 @@ public class MandatesResolutionUIController {
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
-  }
-
-  private ResponseEntity<String> renderCreateRequestWithInline(
-      HttpSession session, String registrationNumber, String message, String code
-  ) {
-    RequestDTO dto = new RequestDTO();
-    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
-    dto.setErrorMessage(message);
-    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
-    RequestWrapper wrapper = new RequestWrapper();
-    wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
-    return ResponseEntity.ok(page);
-  }
-
-  //Convenience overload so callers don't have to supply a code every time
-  private ResponseEntity<String> renderCreateRequestWithInline(
-      HttpSession session,
-      String registrationNumber,
-      String message
-  ) {
-    return renderCreateRequestWithInline(session, registrationNumber, message, null);
   }
 
   // ========== SAVE DRAFT FROM SEARCH RESULTS ==========
@@ -8688,6 +8666,29 @@ public class MandatesResolutionUIController {
       //Non-fatal: if LOV fails, we just render the fallback in XSLT
       logger.warn("Could not load instructions LOV for '{}': {}", subStatus, e.toString());
     }
+  }
+
+  //Create request validation rule
+  private ResponseEntity<String> renderCreateRequestWithInline(
+      HttpSession session, String registrationNumber, String message, String code
+  ) {
+    RequestDTO dto = new RequestDTO();
+    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
+    dto.setErrorMessage(message);
+    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  //Convenience overload so callers don't have to supply a code every time
+  private ResponseEntity<String> renderCreateRequestWithInline(
+      HttpSession session,
+      String registrationNumber,
+      String message
+  ) {
+    return renderCreateRequestWithInline(session, registrationNumber, message, null);
   }
 
   // ======================= HTTP helper: POST to backend /api/submission =======================
