@@ -12,7 +12,7 @@
                 <ns1:view ns1:text="On hold"            ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/requestTableOnHold"/>
                 <ns1:view ns1:text="Completed"          ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/mandates-and-resolutions/requestTableCompleted"/>
                 <ns1:view ns1:text="Draft"              ns1:type="active"   ns1:id="draft"           ns1:url="app-domain/mandates-and-resolutions/requestTableDraft"/>
-                <ns1:view ns1:text="Profile"            ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>
+<!--                <ns1:view ns1:text="Profile"            ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>-->
             </symbol>
 
             <symbol xsi:type="ns1:formLayout">
@@ -34,13 +34,13 @@
 
                             <ns1:tableSearch ns1:searchPlaceholder="Search Draft"/>
 
-                            <ns1:tableColumn ns1:id="stagingId"        ns1:heading="Staging ID"         ns1:fieldName="requestId"        ns1:disableSorting="true" ns1:widthPercent="10"/>
-                            <ns1:tableColumn ns1:id="companyName"      ns1:heading="Company Name"       ns1:fieldName="companyName"      ns1:disableSorting="true" ns1:widthPercent="18"/>
-                            <ns1:tableColumn ns1:id="companyRegNumber" ns1:heading="Company Reg Number" ns1:fieldName="registrationNumber" ns1:disableSorting="true" ns1:widthPercent="18"/>
-                            <ns1:tableColumn ns1:id="status"           ns1:heading="Status"             ns1:fieldName="status"           ns1:disableSorting="true" ns1:widthPercent="12"/>
-                            <ns1:tableColumn ns1:id="subStatus"        ns1:heading="Sub Status"         ns1:fieldName="subStatus"        ns1:disableSorting="true" ns1:widthPercent="12"/>
-                            <ns1:tableColumn ns1:id="type"      ns1:heading="Request Type"       ns1:fieldName="type"             ns1:disableSorting="true" ns1:widthPercent="12"/>
-                            <ns1:tableColumn ns1:id="created"      ns1:heading="Date Created"       ns1:fieldName="created"          ns1:disableSorting="true" ns1:widthPercent="10"/>
+                            <ns1:tableColumn ns1:id="stagingId"        ns1:heading="Staging ID"         ns1:fieldName="requestId"        ns1:disableSorting="false" ns1:widthPercent="10"/>
+                            <ns1:tableColumn ns1:id="companyName"      ns1:heading="Company Name"       ns1:fieldName="companyName"      ns1:disableSorting="false" ns1:widthPercent="18"/>
+                            <ns1:tableColumn ns1:id="companyRegNumber" ns1:heading="Company Reg Number" ns1:fieldName="registrationNumber" ns1:disableSorting="false" ns1:widthPercent="18"/>
+                            <ns1:tableColumn ns1:id="status"           ns1:heading="Status"             ns1:fieldName="status"           ns1:disableSorting="false" ns1:widthPercent="12"/>
+                            <ns1:tableColumn ns1:id="subStatus"        ns1:heading="Sub Status"         ns1:fieldName="subStatus"        ns1:disableSorting="false" ns1:widthPercent="12"/>
+                            <ns1:tableColumn ns1:id="type"      ns1:heading="Request Type"       ns1:fieldName="type"             ns1:disableSorting="false" ns1:widthPercent="12"/>
+                            <ns1:tableColumn ns1:id="created"      ns1:heading="Date Created"       ns1:fieldName="created"          ns1:disableSorting="false" ns1:widthPercent="10"/>
 <!--                            <ns1:tableColumn ns1:id="viewBtn"          ns1:heading="View"               ns1:fieldName="viewBtn"          ns1:disableSorting="true" ns1:widthPercent="8"/>-->
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>

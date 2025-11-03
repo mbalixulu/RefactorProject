@@ -77,6 +77,9 @@ public class MandatesResolutionUIController {
   private static final Logger logger =
       LoggerFactory.getLogger(MandatesResolutionUIController.class);
 
+  private static final org.slf4j.Logger EXPORT_LOG =
+      org.slf4j.LoggerFactory.getLogger("MandatesResolutionsUIController.Export");
+
   private final RestTemplate restTemplate = new RestTemplate();
 
   private static final long MAX_FILE_BYTES = 10L * 1024L * 1024L; // 10MB
@@ -996,6 +999,20 @@ public class MandatesResolutionUIController {
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(java.util.List.of(view));
 
+      populateInstructions(wrapper, view.getSubStatus(), mandatesResolutionsDaoURL);
+
+      Object approveErr = servletRequest.getAttribute("approveErr");
+      String errParam = servletRequest.getParameter("err");
+      if (approveErr != null || "chk".equalsIgnoreCase(String.valueOf(errParam))) {
+        ApproveRejectErrorModel em = new ApproveRejectErrorModel();
+        em.setConfirmationCheckMandate(
+            (approveErr != null)
+                ? String.valueOf(approveErr)
+                : "Verification cannot proceed until the checkbox has been selected"
+        );
+        wrapper.setApproveRejectErrorModel(em);
+      }
+
       String page = xsltProcessor.generatePage(xslPagePath("AdminViewRequest"), wrapper);
       return ResponseEntity.ok(page);
 
@@ -1497,8 +1514,143 @@ public class MandatesResolutionUIController {
   // ============= Export as CSV =============
   @PostMapping(value = "/exportCSV", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayExportCSV() {
-    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
+    try {
+      var rt = new RestTemplate();
+      var url = mandatesResolutionsDaoURL + "/api/lov?type=Dropdown&subType=RequestStatus";
+
+      var resp = rt.exchange(url, HttpMethod.GET, null,
+          new org.springframework.core.ParameterizedTypeReference<
+              java.util.List<ListOfValuesDTO>>() {});
+
+      // Exactly what DAO allows (regex is case-sensitive)
+      final java.util.Set<String> allowed = java.util.Set.of(
+          "Draft", "In Progress", "Completed", "On Hold", "Breached"
+      );
+
+      java.util.List<String> statuses = new java.util.ArrayList<>();
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        for (var lov : resp.getBody()) {
+          if (lov != null) {
+            String v = lov.getValue() == null ? "" : lov.getValue().trim();
+            if (!v.isEmpty() && allowed.contains(v)) {
+              statuses.add(v);
+            }
+          }
+        }
+      }
+
+      var wrapper = new RequestWrapper();
+      var lovs = new RequestWrapper.LovsDTO();
+      lovs.setStatuses(statuses);
+      wrapper.setLovs(lovs);
+
+      String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      String fallback = """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <error>Unable to load Export CSV page.</error>
+      </page>
+          """;
+      return ResponseEntity.ok(fallback);
+    }
+  }
+
+  @PostMapping(
+      value = "/exportRequests",
+      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
+  )
+  public ResponseEntity<byte[]> exportRequestsPost(
+      HttpServletRequest request,
+      @RequestParam(name = "status", required = false) String status,
+      @RequestParam(name = "fromDate", required = false) String fromDate,
+      @RequestParam(name = "toDate", required = false) String toDate,
+      @RequestParam(name = "type", required = false) String type
+  ) {
+    return exportRequestsDebugInternal(request, status, fromDate, toDate, "POST");
+  }
+
+  @GetMapping(
+      value = "/exportRequests",
+      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
+  )
+  public ResponseEntity<byte[]> exportRequestsGet(
+      HttpServletRequest request,
+      @RequestParam(name = "status", required = false) String status,
+      @RequestParam(name = "fromDate", required = false) String fromDate,
+      @RequestParam(name = "toDate", required = false) String toDate,
+      @RequestParam(name = "type", required = false) String type
+  ) {
+    return exportRequestsDebugInternal(request, status, fromDate, toDate, "GET");
+  }
+
+  private ResponseEntity<byte[]> exportRequestsDebugInternal(
+      HttpServletRequest request,
+      String status,
+      String fromDate,
+      String toDate,
+      String method
+  ) {
+    String qs = request.getQueryString();
+    String uriLine = method + " " + request.getRequestURI() + (qs == null ? "" : "?" + qs);
+
+    logger.info("EXPORT DEBUG hit: {}", uriLine);
+    EXPORT_LOG.info("EXPORT DEBUG hit: {}", uriLine);
+
+    logger.info("EXPORT DEBUG values -> status='{}', "
+        + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
+    EXPORT_LOG.info("EXPORT DEBUG values -> status='{}', "
+        + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
+
+    Map<String, String[]> pm = request.getParameterMap();
+    if (pm == null || pm.isEmpty()) {
+      logger.info("EXPORT DEBUG params -> (none)");
+      EXPORT_LOG.info("EXPORT DEBUG params -> (none)");
+    } else {
+      List<String> lines = pm.entrySet().stream()
+          .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+          .map(e -> e.getKey() + "=" + java.util.Arrays.toString(e.getValue()))
+          .toList();
+      String joined = String.join(" ; ", lines);
+      logger.info("EXPORT DEBUG params -> {}", joined);
+      EXPORT_LOG.info("EXPORT DEBUG params -> {}", joined);
+    }
+
+    //Return text file tiny
+    String body = """
+      EXPORT DEBUG
+      ------------
+
+      %s
+
+      status   = %s
+      fromDate = %s
+      toDate   = %s
+
+      all params:
+      %s
+        """.formatted(
+        uriLine,
+        String.valueOf(status),
+        String.valueOf(fromDate),
+        String.valueOf(toDate),
+        (pm == null || pm.isEmpty())
+            ? "(none)"
+            : pm.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+            .map(e -> e.getKey() + "=" + java.util.Arrays.toString(e.getValue()))
+            .collect(java.util.stream.Collectors.joining("\n"))
+    );
+
+    byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    HttpHeaders out = new HttpHeaders();
+    out.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"export-debug.txt\"");
+    out.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+    out.setCacheControl("no-store");
+
+    return new ResponseEntity<>(bytes, out, org.springframework.http.HttpStatus.OK);
   }
 
   // ============= CREATION PAGES =============
@@ -2907,42 +3059,69 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok(page);
     }
 
-    // Confirmation tick per selection
-    String confirmationCheck = null;
-    if (requestType != null) {
-      switch (requestType) {
-        case "1" -> confirmationCheck = request.getParameter("confirmationCheckMandate");
-        case "2" -> confirmationCheck = request.getParameter("confirmationCheckResolution");
-        case "3" -> confirmationCheck = request.getParameter("confirmationCheckMandateResolution");
-        default ->
-          {
-           /* no-op */
-          }
-      }
-    }
+    // Read all potential checkbox params
+    String mandateSign = firstNonBlank(request,
+        "confirmationCheckMandate",               // comm:name
+        "confirmationCheckMandate_signatures"     // inputItem id
+    );
+    String mandateSigma = firstNonBlank(request,
+        "confirmationCheckMandateSigma",          // comm:name
+        "confirmationCheckMandate_sigma"          // inputItem id
+    );
+
+    String resolutionSign = firstNonBlank(request,
+        "confirmationCheckResolution",
+        "confirmationCheckResolution_signatures"
+    );
+    String resolutionSigma = firstNonBlank(request,
+        "confirmationCheckResolutionSigma",
+        "confirmationCheckResolution_sigma"
+    );
+
+    String mandateResolutionSign = firstNonBlank(request,
+        "confirmationCheckMandateResolution",
+        "confirmationCheckMandateResolution_signatures"
+    );
+    String mandateResolutionSigma = firstNonBlank(request,
+        "confirmationCheckMandateResolutionSigma",
+        "confirmationCheckMandateResolution_sigma"
+    );
+
+  //RequestType validation
     if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
       return ResponseEntity.ok("""
-          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                id="" heading=" " template="error" version="1">
-              <error xsi:type="validationError">
-                  <name>mandateResolution</name><code>0</code>
-                  <message>Please select a valid request type.</message>
-              </error>
-          </page>
-          """);
+      <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            id="" heading=" " template="error" version="1">
+          <error xsi:type="validationError">
+              <name>mandateResolution</name><code>0</code>
+              <message>Please select a valid request type.</message>
+          </error>
+      </page>
+      """);
     }
-    if (confirmationCheck == null || !"1".equals(confirmationCheck)) {
+
+    // Require BOTH boxes for the active section
+    boolean ok = switch (requestType) {
+      case "1" -> "1".equals(mandateSign)  && "1".equals(mandateSigma);   // Mandate
+      case "2" -> "1".equals(resolutionSign)  && "1".equals(resolutionSigma);   // Resolution
+      // Mandate + Resolution
+      case "3" -> "1".equals(mandateResolutionSign) && "1".equals(mandateResolutionSigma);
+      default -> false;
+    };
+
+    if (!ok) {
       return ResponseEntity.ok("""
-          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                id="" heading=" " template="error" version="1">
-              <error xsi:type="validationError">
-                  <name>confirmationCheck</name><code>0</code>
-                  <message>Please check the confirmation box to proceed.</message>
-              </error>
-          </page>
-          """);
+      <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            id="" heading=" " template="error" version="1">
+          <error xsi:type="validationError">
+              <name>confirmationCheck</name><code>0</code>
+              <message>Please make sure both confirmation 
+              checkboxes are checked at the bottom of the page.</message>
+          </error>
+      </page>
+      """);
     }
 
     if (reqSel != null) {
@@ -4343,57 +4522,25 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpServletRequest servletRequest
   ) {
-    // ---------- Inline validation ----------
-    if (!"1".equals(confirm) || commentText == null || commentText.trim().isEmpty()) {
-      ApproveRejectErrorModel em = new ApproveRejectErrorModel();
-      if (!"1".equals(confirm)) {
-        em.setConfirmationCheckMandate("Please tick the confirmation checkbox to proceed.");
-      }
-      if (commentText == null || commentText.trim().isEmpty()) {
-        em.setCommentbox("Please provide a reason for rejection.");
-      }
-      em.setCommentboxValue(commentText == null ? "" : commentText);
-
-      RequestWrapper wrapper = new RequestWrapper();
-      RequestDTO dto = new RequestDTO();
-      dto.setRequestId(requestId);
-
-      try {
-        RestTemplate rt = new RestTemplate();
-        var resp =
-            rt.getForEntity(mandatesResolutionsDaoURL + "/api/request/{id}",
-                RequestDTO.class,
-                requestId);
-        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-          dto.setSubStatus(resp.getBody().getSubStatus());
-        }
-      } catch (Exception ignore) {
-        // intentionally empty
-      }
-
-      wrapper.setRequest(dto);
-      wrapper.setApproveRejectErrorModel(em);
-
-      // Re-render the same Reject modal with inline errors
-      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"), wrapper);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
-    }
-
-    // ---------- Happy path ----------
+    // ---------- Happy path (no checkbox validation) ----------
     try {
       RestTemplate rt = new RestTemplate();
 
       // 1) Save REJECT comment (internal)
       String creator = (servletRequest.getUserPrincipal() != null)
-          ? servletRequest.getUserPrincipal().getName() : "ui";
+          ? servletRequest.getUserPrincipal().getName()
+          : "ui";
+
       var payload = new java.util.HashMap<String, Object>();
       payload.put("requestId", requestId);
-      payload.put("commentText", commentText.trim());
+      payload.put("commentText", (commentText == null ? "" : commentText.trim()));
       payload.put("isInternal", Boolean.TRUE);
       payload.put("creator", creator);
-      rt.postForEntity(mandatesResolutionsDaoURL + "/api/comment",
+      rt.postForEntity(
+          mandatesResolutionsDaoURL + "/api/comment",
           payload,
-          Object.class);
+          Object.class
+      );
 
       // 2) PUT: Completed + Rejected + processOutcome=Reject (triggers DAO -> reject-path)
       var update = new java.util.HashMap<String, Object>();
@@ -4422,27 +4569,33 @@ public class MandatesResolutionUIController {
             );
         if (check.getStatusCode().is2xxSuccessful() && check.getBody() != null) {
           logger.info("After REJECT PUT -> status={}, subStatus={}, processId={}",
-              check.getBody().getStatus(), check.getBody().getSubStatus(),
+              check.getBody().getStatus(),
+              check.getBody().getSubStatus(),
               check.getBody().getProcessId());
         }
       } catch (Exception ignore) {
         // intentionally empty
       }
 
-      // Success page
+      // Success page (XSL + wrapper with requestId)
       HttpSession session = servletRequest.getSession(false);
+      RequestWrapper w = new RequestWrapper();
+      RequestDTO d = new RequestDTO();
+      d.setRequestId(requestId);
+      w.setRequest(d);
+
       String page = isAdmin(session)
-          ? xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPageAdmin"))
-          : xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessRejectPage"));
+          ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPageAdmin"), w)
+          : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPage"), w);
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
       logger.error("Failed to reject/update request: {}", ex.getMessage(), ex);
       return ResponseEntity.ok("""
-            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <error>Could not save rejection.</error>
-            </page>
-          """);
+        <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+          <error>Could not save rejection.</error>
+        </page>
+      """);
     }
   }
 
@@ -4457,39 +4610,7 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpServletRequest servletRequest
   ) {
-    // ---------- Inline validation (checkbox only) ----------
-    if (!"1".equals(confirm)) {
-      ApproveRejectErrorModel em = new ApproveRejectErrorModel();
-      em.setConfirmationCheckMandate("Please tick the confirmation checkbox to proceed.");
-
-      RequestWrapper wrapper = new RequestWrapper();
-      RequestDTO dto = new RequestDTO();
-      dto.setRequestId(requestId);
-
-      try {
-        RestTemplate rt = new RestTemplate();
-        var resp =
-            rt.getForEntity(
-                mandatesResolutionsDaoURL + "/api/request/{id}",
-                RequestDTO.class,
-                requestId
-            );
-        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-          dto.setSubStatus(resp.getBody().getSubStatus());
-        }
-      } catch (Exception ignore) {
-        // intentionally empty
-      }
-
-      wrapper.setRequest(dto);
-      wrapper.setApproveRejectErrorModel(em);
-
-      // Re-render the same Approve modal with inline errors
-      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestApprovePage"), wrapper);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
-    }
-
-    // ---------- Happy path ----------
+    // ---------- Happy path (no checkbox validation) ----------
     try {
       RestTemplate rt = new RestTemplate();
 
@@ -4526,9 +4647,17 @@ public class MandatesResolutionUIController {
         // intentionally empty
       }
 
-      // Already final? Just show success
+      // Already final? Just show success (XSL + wrapper with requestId)
       if (canonical(currentSub).equalsIgnoreCase(SS_DONE)) {
-        String page = xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
+        HttpSession session = servletRequest.getSession(false);
+        RequestWrapper w = new RequestWrapper();
+        RequestDTO d = new RequestDTO();
+        d.setRequestId(requestId);
+        w.setRequest(d);
+
+        String page = isAdmin(session)
+            ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPageAdmin"), w)
+            : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
         return ResponseEntity.ok(page);
       }
 
@@ -4552,20 +4681,25 @@ public class MandatesResolutionUIController {
           requestId
       );
 
-      // Success page
+      //Success page (XSL + wrapper with requestId)
       HttpSession session = servletRequest.getSession(false);
+      RequestWrapper w = new RequestWrapper();
+      RequestDTO d = new RequestDTO();
+      d.setRequestId(requestId);
+      w.setRequest(d);
+
       String page = isAdmin(session)
-          ? xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPageAdmin"))
-          : xsltProcessor.returnPage(xmlPagePath("ViewRequestSuccessPage"));
+          ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPageAdmin"), w)
+          : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
       logger.error("Failed to approve/update request: {}", ex.getMessage(), ex);
       return ResponseEntity.ok("""
-            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <error>Could not complete approval.</error>
-            </page>
-          """);
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Could not complete approval.</error>
+          </page>
+        """);
     }
   }
 
@@ -4998,7 +5132,7 @@ public class MandatesResolutionUIController {
               ? sub.getCompany().getName() : "Unknown"
       );
 
-      // Inject newest approve/reject comments
+      //Inject newest approve/reject comments
       view.setApprovedComments(approvedRows);
       view.setRejectedComments(rejectedRows);
 
@@ -5008,6 +5142,21 @@ public class MandatesResolutionUIController {
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(java.util.List.of(view));
 
+      populateInstructions(wrapper, view.getSubStatus(), mandatesResolutionsDaoURL);
+
+      Object approveErr = servletRequest.getAttribute("approveErr");
+      String errParam = servletRequest.getParameter("err");
+      if (approveErr != null || "chk".equalsIgnoreCase(String.valueOf(errParam))) {
+        ApproveRejectErrorModel em = new ApproveRejectErrorModel();
+        em.setConfirmationCheckMandate(
+            (approveErr != null)
+                ? String.valueOf(approveErr)
+                : "Verification cannot proceed until the checkbox has been selected"
+        );
+        wrapper.setApproveRejectErrorModel(em);
+      }
+
+    // Render
       String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), wrapper);
       return ResponseEntity.ok(page);
 
@@ -5022,13 +5171,90 @@ public class MandatesResolutionUIController {
     }
   }
 
-  // Hold footer button on (ViewRequest.xsl) and AdminViewRequest.xsl
+  @PostMapping(value = "/approve-validate", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> approveValidate(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpSession session,
+      HttpServletRequest servletRequest
+  ) {
+    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
+    if (!checked) {
+      servletRequest.setAttribute(
+          "approveErr",
+          "Verification cannot proceed until the checkbox has been selected"
+      );
+      return displayViewRequest(requestId, session, servletRequest);
+    }
+
+    return displayViewRequestApprovePage(requestId);
+  }
+
+  @PostMapping(value = "/reject-validate", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> rejectValidate(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpSession session,
+      HttpServletRequest servletRequest
+  ) {
+    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
+    if (!checked) {
+      servletRequest.setAttribute(
+          "approveErr",
+          "Verification cannot proceed until the checkbox has been selected"
+      );
+      return displayViewRequest(requestId, session, servletRequest);
+    }
+
+    return displayViewRequestRejectPage(requestId);
+  }
+
+  @PostMapping(value = "/admin-approve-validate", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminApproveValidate(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpSession session,
+      HttpServletRequest servletRequest
+  ) {
+    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
+    if (!checked) {
+      servletRequest.setAttribute(
+          "approveErr",
+          "Verification cannot proceed until the checkbox has been selected"
+      );
+      return displayAdminView(requestId, session, servletRequest);
+    }
+
+    return displayViewRequestApprovePage(requestId);
+  }
+
+  @PostMapping(value = "/admin-reject-validate", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminRejectValidate(
+      @RequestParam("requestId") Long requestId,
+      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
+      HttpSession session,
+      HttpServletRequest servletRequest
+  ) {
+    //Same gating rule as Approve: checkbox must be selected
+    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
+    if (!checked) {
+      servletRequest.setAttribute(
+          "approveErr",
+          "Verification cannot proceed until the checkbox has been selected"
+      );
+      //Re-render the main ViewRequest page (no popup)
+      return displayAdminView(requestId, session, servletRequest);
+    }
+
+    //Open reject page
+    return displayViewRequestRejectPage(requestId);
+  }
+
+
   @org.springframework.web.bind.annotation.RequestMapping(
       value = "/viewRequestHold",
-      method = {
-          org.springframework.web.bind.annotation.RequestMethod.GET,
-          org.springframework.web.bind.annotation.RequestMethod.POST
-      },
+      method = { org.springframework.web.bind.annotation.RequestMethod.GET,
+          org.springframework.web.bind.annotation.RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> holdRequest(
@@ -5039,24 +5265,74 @@ public class MandatesResolutionUIController {
   ) {
     try {
       RestTemplate rt = new RestTemplate();
-      persistStatusOnly(rt, requestId, "On Hold");
 
-      //Stay in admin view if we came from admin
-      if ("admin".equalsIgnoreCase(origin)) {
-        return displayAdminView(requestId, session, servletRequest);
+      //1) Read current subStatus (fresh)
+      String currentSub = null;
+      try {
+        var resp = rt.getForEntity(
+            mandatesResolutionsDaoURL + "/api/request/{id}",
+            RequestDTO.class, requestId);
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+          currentSub = resp.getBody().getSubStatus();
+        }
+      } catch (Exception ignore) {
+        // intentionally empty
       }
-      return displayViewRequest(requestId, session, servletRequest);
+
+      //2) Derive the correct DAO-legal Hold label from current pending subStatus
+      String holdLabel = toHoldLabel(currentSub); //uses helper
+
+      //3) PUT to DAO: status + subStatus + processOutcome=Hold (advances Camunda)
+      var payload = new java.util.LinkedHashMap<String, Object>();
+      payload.put("status", "On Hold");
+      payload.put("subStatus", holdLabel);
+      payload.put("processOutcome", "Hold");
+      payload.put("updator", currentDisplayId(session, servletRequest));
+
+      var headers = new org.springframework.http.HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+
+      String url = mandatesResolutionsDaoURL + "/api/request/{id}";
+      logger.info("Hold PUT {} payload={}",
+          url.replace("{id}", String.valueOf(requestId)), payload);
+
+      try {
+        var entity = new org.springframework.http.HttpEntity<>(payload, headers);
+        var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
+        logger.info("Hold DAO response status={}", resp.getStatusCode());
+      } catch (org.springframework.web.client.HttpServerErrorException e) {
+        if (e.getStatusCode().value() == 503) {
+          logger.warn("Hold: workflow unavailable for request {}. Body={}",
+              requestId, e.getResponseBodyAsString());
+          return ResponseEntity.ok()
+              .contentType(MediaType.APPLICATION_XML)
+              .body("""
+              <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <error>The workflow service is temporarily unavailable, so
+                we couldn't place the request on hold. Please try again shortly.</error>
+              </page>
+            """);
+        }
+        throw e;
+      }
+
+      //4) Return to the same screen the user was on
+      return "admin".equalsIgnoreCase(origin)
+          ? displayAdminView(requestId, session, servletRequest)
+          : displayViewRequest(requestId, session, servletRequest);
+
     } catch (Exception e) {
       logger.error("Hold failed: {}", e.getMessage(), e);
       return ResponseEntity.ok("""
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Unable to place request on hold.</error>
-          </page>
-          """);
+        <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+          <error>Unable to place request on hold.</error>
+        </page>
+        """);
     }
   }
 
-  //Un Hold footer button on (ViewRequest.xsl) and AdminViewRequest.xsl
+  // === UNHOLD ===
   @org.springframework.web.bind.annotation.RequestMapping(
       value = "/viewRequestUnhold",
       method = {
@@ -5074,46 +5350,107 @@ public class MandatesResolutionUIController {
     try {
       RestTemplate rt = new RestTemplate();
 
+      //1) Read current subStatus (should be the HOLD label)
+      String currentHoldLabel = null;
       try {
-        rt.getForObject(mandatesResolutionsDaoURL + "/api/request/{id}",
+        var resp = rt.getForEntity(
+            mandatesResolutionsDaoURL + "/api/request/{id}",
             RequestDTO.class, requestId);
+        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+          currentHoldLabel = resp.getBody().getSubStatus();
+        }
       } catch (Exception e) {
-        logger.warn("UnHold: GET /api/request/{} failed (continuing): {}",
-            requestId, e.getMessage());
+        logger.warn("UnHold: GET "
+            + "/api/request/{} failed (continuing): {}", requestId, e.getMessage());
       }
 
-      //PUT: only status + processOutcome andleaves subStatus asnis
-      var payload = new java.util.LinkedHashMap<String, Object>();
-      payload.put("status", "In Progress");
-      payload.put("processOutcome", "UnHold");
-      payload.put("updator", currentDisplayId(session, servletRequest));
+      //2)Compute target pending subStatus
+      String restoredPending = fromHoldLabel(currentHoldLabel);
 
       var headers = new org.springframework.http.HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
       headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-
       String url = mandatesResolutionsDaoURL + "/api/request/{id}";
-      logger.info("UnHold PUT {} payload={}",
-          url.replace("{id}", String.valueOf(requestId)), payload);
 
+      // WORKFLOW-FIRST
+      var wfPayload = new java.util.LinkedHashMap<String, Object>();
+      wfPayload.put("processOutcome", "UnHold");          //adapter triggers Camunda lane
+      wfPayload.put("outcome", "UnHold");                 //BPMN gateway: ${outcome == 'UnHold'}
+      wfPayload.put("updator", currentDisplayId(session, servletRequest));
+
+      boolean workflowOk = false;
       try {
-        var entity = new org.springframework.http.HttpEntity<>(payload, headers);
-        var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
-        logger.info("UnHold DAO response status={}", resp.getStatusCode());
+        //Small retry (handles transient hiccups)
+        for (int attempt = 1; attempt <= 2 && !workflowOk; attempt++) {
+          logger.info("UnHold WF PUT (attempt {}) {} payload={}",
+              attempt, url.replace("{id}", String.valueOf(requestId)), wfPayload);
+          var entity = new org.springframework.http.HttpEntity<>(wfPayload, headers);
+          var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
+          logger.info("UnHold WF response status={}", resp.getStatusCode());
+          workflowOk = resp.getStatusCode().is2xxSuccessful();
+          if (!workflowOk) {
+            Thread.sleep(200L * attempt); // simple backoff
+          }
+        }
       } catch (org.springframework.web.client.HttpServerErrorException e) {
         if (e.getStatusCode().value() == 503) {
-          logger.warn("UnHold: workflow unavailable for request {}. Body={}",
+          logger.warn("UnHold WF: workflow unavailable for request {}. Body={}",
               requestId, e.getResponseBodyAsString());
+        } else {
+          throw e; //non-503 server error
+        }
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+      }
+
+      if (workflowOk) {
+        //Workflow changer
+        var dbSync = new java.util.LinkedHashMap<String, Object>();
+        dbSync.put("status", "In Progress");
+        dbSync.put("subStatus", restoredPending);
+        dbSync.put("outcome", "In Progress");
+        dbSync.put("updator", currentDisplayId(session, servletRequest));
+
+        logger.info("UnHold DB-SYNC PUT {} payload={}",
+            url.replace("{id}", String.valueOf(requestId)), dbSync);
+
+        var entity = new org.springframework.http.HttpEntity<>(dbSync, headers);
+        var resp2 = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
+        logger.info("UnHold DB-SYNC response status={}", resp2.getStatusCode());
+      } else {
+        //FALLBACK: workflow down -> DB-only update so UI recovers state ----
+        var dbOnly = new java.util.LinkedHashMap<String, Object>();
+        dbOnly.put("status", "In Progress");
+        dbOnly.put("subStatus", restoredPending);
+        dbOnly.put("outcome", "In Progress");
+        dbOnly.put("updator", currentDisplayId(session, servletRequest));
+
+        try {
+          var entity = new org.springframework.http.HttpEntity<>(dbOnly, headers);
+          var resp2 = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
+          logger.info("UnHold fallback (DB-only) status={}", resp2.getStatusCode());
+
+          //Add an internal audit note so ops can reconcile once workflow is healthy
+          try {
+            var comment = new java.util.LinkedHashMap<String, Object>();
+            comment.put("requestId", requestId);
+            comment.put("commentText", "UnHold applied without workflow sync "
+                + "(Camunda unavailable). Please reconcile once workflow is back.");
+            comment.put("isInternal", Boolean.TRUE);
+            comment.put("creator", currentDisplayId(session, servletRequest));
+            rt.postForEntity(mandatesResolutionsDaoURL + "/api/comment", comment, Object.class);
+          } catch (Exception ignore) { /* non-fatal */ }
+
+        } catch (Exception e2) {
           return ResponseEntity.ok()
               .contentType(MediaType.APPLICATION_XML)
               .body("""
-                <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                  <error>The workflow service is temporarily unavailable, so 
-                  we couldn't take the request off hold. Please try again shortly.</error>
-                </page>
-                """);
+              <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <error>We couldn't take the request off hold, and the workflow service is down.
+                Please try again shortly.</error>
+              </page>
+            """);
         }
-        throw e;
       }
 
       //Return to appropriate view
@@ -5126,10 +5463,10 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_XML)
           .body("""
-            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <error>Unable to take request off hold.</error>
-            </page>
-            """);
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Unable to take request off hold.</error>
+          </page>
+        """);
     }
   }
 
@@ -5295,15 +5632,542 @@ public class MandatesResolutionUIController {
     return viewDraft(id, session);
   }
 
+  // ================ ADMIN EDIT ENDPOINTS =================
+  //Edit request page
+  @RequestMapping(
+      value = "/adminEditRequest/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> adminDisplayEditRequest(@PathVariable Long requestId,
+                                                   HttpSession session,
+                                                   HttpServletRequest servletRequest) {
+    try {
+      String displayName = currentDisplayId(session, servletRequest);
+
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+
+      //Normalize creator/updator
+      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+      RequestTableDTO view = (wrapper.getRequest() != null && !wrapper.getRequest().isEmpty())
+          ? wrapper.getRequest().get(0) : null;
+      if (view != null) {
+        String creator = nz.apply(view.getCreator());
+        if (creator.isEmpty() || "ui".equalsIgnoreCase(creator)) {
+          view.setCreator(displayName);
+        }
+        String updator = nz.apply(view.getUpdator());
+        if (updator.isEmpty() || "ui".equalsIgnoreCase(updator)) {
+          view.setUpdator(displayName);
+        }
+      }
+
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      logWrapperAndPage("EditRequest", requestId, wrapper, page);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    } catch (Exception e) {
+      logger.error("Error fetching request for edit: {}", e.getMessage(), e);
+      return ResponseEntity.ok()
+          .contentType(MediaType.APPLICATION_XML)
+          .body("<page><error>Unable to load request for editing.</error></page>");
+    }
+  }
+
+  //Add one blank signatory row to account at 1-based index {addSignatoryAt} ===
+  @PostMapping(value = "/adminEditRequestAddSignatory/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminEditRequestAddSignatory(@PathVariable Long requestId,
+                                                        @RequestParam("addSignatoryAt")
+                                                        int accountIndex1) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getAccounts() == null) {
+        view.setAccounts(new java.util.ArrayList<>());
+      }
+      int ai = Math.max(1, accountIndex1) - 1;
+
+      if (ai >= 0 && ai < view.getAccounts().size()) {
+        AccountDTO acc = view.getAccounts().get(ai);
+        if (acc.getSignatories() == null) {
+          acc.setSignatories(new java.util.ArrayList<>());
+        }
+
+        SignatoryDTO blank = new SignatoryDTO();
+        blank.setFullName("");
+        blank.setIdNumber("");
+        blank.setInstructions("");
+        blank.setCapacity("");
+        blank.setGroupCategory("");
+        blank.setAccountName(acc.getAccountName());
+        blank.setAccountNumber(acc.getAccountNumber());
+
+        acc.getSignatories().add(blank);
+      }
+
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+
+      //Logging
+      logger.info("AddSignatory: requestId={}, accountIndex1={}", requestId, accountIndex1);
+      logWrapperAndPage("EditRequest-AddSignatory", requestId, wrapper, page);
+
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add signatory failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add signatory row.</error></page>");
+    }
+  }
+
+  //Remove signatory given "aPos_sPos" (both 1-based)
+  @PostMapping(value = "/adminEditRequestRemoveSignatory/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminEditRequestRemoveSignatory(@PathVariable Long requestId,
+                                                           @RequestParam("removeSignatoryAt")
+                                                           String at) {
+    try {
+      String[] parts = at.split("_");
+      int a1 = Integer.parseInt(parts[0]);
+      int s1 = Integer.parseInt(parts[1]);
+
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+
+      if (view.getAccounts() != null) {
+        int ai = a1 - 1;
+        if (ai >= 0 && ai < view.getAccounts().size()) {
+          var acc = view.getAccounts().get(ai);
+          if (acc.getSignatories() != null) {
+            int si = s1 - 1;
+            if (si >= 0 && si < acc.getSignatories().size()) {
+              acc.getSignatories().remove(si);
+            }
+          }
+        }
+      }
+
+      //Dumps
+      dumpWrapperJson("EditRequest-RemoveSignatory", wrapper, requestId);
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      dumpPageXml("EditRequest-RemoveSignatory", page, requestId);
+
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Remove signatory failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to remove signatory row.</error></page>");
+    }
+  }
+
+  @PostMapping(value = "/adminEditRequestAddDirector/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminEditRequestAddDirector(@PathVariable Long requestId) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getDirectors() == null) {
+        view.setDirectors(new java.util.ArrayList<>());
+      }
+
+      DirectorDTO blank = new DirectorDTO();
+      blank.setAuthorityId(null);
+      blank.setName("");
+      blank.setSurname("");
+      blank.setDesignation("");
+      view.getDirectors().add(blank);
+
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      logWrapperAndPage("EditRequest-AddDirector", requestId, wrapper, page);
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add director failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add director row.</error></page>");
+    }
+  }
+
+  @PostMapping(value = "/adminEditRequestRemoveDirector/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminEditRequestRemoveDirector(@PathVariable Long requestId,
+                                                          @RequestParam("removeDirectorAt")
+                                                          int index1) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getDirectors() != null) {
+        int i = Math.max(1, index1) - 1;
+        if (i >= 0 && i < view.getDirectors().size()) {
+          view.getDirectors().remove(i);
+        }
+      }
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      logWrapperAndPage("EditRequest-RemoveDirector", requestId, wrapper, page);
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Remove director failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to remove director row.</error></page>");
+    }
+  }
+
+
+  //Add blank account section (with no signatories by default) ===
+  @PostMapping(value = "/adminEditRequestAddAccount/{requestId}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> adminEditRequestAddAccount(@PathVariable Long requestId) {
+    try {
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+      if (view.getAccounts() == null) {
+        view.setAccounts(new java.util.ArrayList<>());
+      }
+
+      AccountDTO newAcc = new AccountDTO();
+      newAcc.setAccountName("");
+      newAcc.setAccountNumber("");
+      newAcc.setSignatories(new java.util.ArrayList<>());
+
+      view.getAccounts().add(newAcc);
+
+      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+
+      //LOGGING
+      logger.info("AddAccount: requestId={}", requestId);
+      logWrapperAndPage("EditRequest-AddAccount", requestId, wrapper, page);
+
+      return ResponseEntity.ok(page);
+    } catch (Exception e) {
+      logger.error("Add account failed: {}", e.getMessage(), e);
+      return ResponseEntity.ok("<page><error>Unable to add account section.</error></page>");
+    }
+  }
+
+  //Remove account section at 1-based index {removeAccountAt}
+  @RequestMapping(
+      value = "/adminEditRequestRemoveAccount/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> adminEditRequestRemoveAccount(
+      @PathVariable Long requestId,
+      @RequestParam("removeAccountAt") int accountIndex1
+  ) {
+    try {
+      logger.info("RemoveAccount CALLED: requestId={}, removeAccountAt={}", requestId,
+          accountIndex1);
+
+      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+      RequestTableDTO view = wrapper.getRequest().get(0);
+
+      if (view.getAccounts() != null) {
+        int ai = Math.max(1, accountIndex1) - 1;
+        if (ai >= 0 && ai < view.getAccounts().size()) {
+          view.getAccounts().remove(ai);
+        } else {
+          logger.warn("RemoveAccount: index out of range. size={}, requestedZeroBased={}",
+              view.getAccounts().size(), ai);
+        }
+      } else {
+        logger.warn("RemoveAccount: accounts list is null");
+      }
+
+      dumpWrapperJson("EditRequest-RemoveAccount", wrapper, requestId);
+      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      dumpPageXml("EditRequest-RemoveAccount", page, requestId);
+
+      logger.info("RemoveAccount DONE: requestId={}, accountsNow={}",
+          requestId, view.getAccounts() == null ? 0 : view.getAccounts().size());
+
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Remove account failed: {}", e.getMessage(), e);
+      String errorPage = renderSimpleErrorPage(
+          "Remove Account",
+          "Unable to remove account section.",
+          "app-domain/mandates-and-resolutions/AdminEditRequest/" + requestId
+      );
+      return ResponseEntity.ok(errorPage);
+    }
+  }
+
+  //Save edits from the Edit Request page and then go back to the Landing page
+  @RequestMapping(
+      value = "/adminEditRequestSave/{requestId}",
+      method = {RequestMethod.GET, RequestMethod.POST},
+      produces = MediaType.APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<String> adminEditRequestSave(@PathVariable Long requestId,
+                                                HttpServletRequest request) {
+    try {
+      //Parse form
+      Map<String, String[]> params = request.getParameterMap();
+
+      //Collect 1-based account indices present in the form
+      java.util.regex.Pattern accIdxPat =
+          java.util.regex.Pattern.compile("^(accountName|accountNo|accountId)_(\\d+)$");
+      java.util.SortedSet<Integer> accountIdxs = new java.util.TreeSet<>();
+      for (String k : params.keySet()) {
+        java.util.regex.Matcher m = accIdxPat.matcher(k);
+        if (m.matches()) {
+          accountIdxs.add(Integer.parseInt(m.group(2)));
+        }
+      }
+
+      //Build in-memory representation of the form rows
+      class FormAcc {
+        String accountId;  //may be null for new rows
+        String accountName;
+        String accountNo;
+        java.util.List<Map<String, Object>> signatories = new java.util.ArrayList<>();
+      }
+
+      java.util.List<FormAcc> formAccounts = new java.util.ArrayList<>();
+
+      for (Integer ai : accountIdxs) {
+        FormAcc fa = new FormAcc();
+        fa.accountId = getParam(params, "accountId_" + ai);   //hidden field from XSL
+        fa.accountName = getParam(params, "accountName_" + ai);
+        fa.accountNo = getParam(params, "accountNo_" + ai);
+
+        //Signatory rows under this account
+        java.util.regex.Pattern sigIdxPat = java.util.regex.Pattern.compile(
+            "^(fullName|idNumber|capacity|group|instruction)_" + ai + "_(\\d+)$");
+        java.util.SortedSet<Integer> sigIdxs = new java.util.TreeSet<>();
+        for (String k : params.keySet()) {
+          java.util.regex.Matcher m = sigIdxPat.matcher(k);
+          if (m.matches()) {
+            sigIdxs.add(Integer.parseInt(m.group(2)));
+          }
+        }
+        for (Integer sj : sigIdxs) {
+          String fullName = getParam(params, "fullName_" + ai + "_" + sj);
+          String idNumber = getParam(params, "idNumber_" + ai + "_" + sj);
+          String capacity = getParam(params, "capacity_" + ai + "_" + sj);
+          String group = getParam(params, "group_" + ai + "_" + sj);
+          String instruction = getParam(params, "instruction_" + ai + "_" + sj);
+          if (instruction == null || instruction.isBlank()) {
+            instruction =
+                getParam(params, "origInstruction_" + ai + "_" + sj); // fallback to saved value
+          }
+
+          if (isAllBlank(fullName, idNumber, capacity, group, instruction)) {
+            continue;
+          }
+
+          Map<String, Object> s = new java.util.LinkedHashMap<>();
+          s.put("fullName", nz(fullName));
+          s.put("idNumber", nz(idNumber));
+          s.put("capacity", nz(capacity));
+          s.put("groupCategory", nz(group));
+          s.put("instructions", nz(instruction)); // Add|Remove
+          fa.signatories.add(s);
+        }
+
+        //Skip completely blank account rows
+        if (isAllBlank(fa.accountName, fa.accountNo) && fa.signatories.isEmpty()) {
+          continue;
+        }
+
+        formAccounts.add(fa);
+      }
+
+      //Load current state (companyId & existing accounts)
+      final String base = mandatesResolutionsDaoURL;
+      RestTemplate rt = new RestTemplate();
+
+      MandateResolutionSubmissionResultDTO sub =
+          rt.getForObject(base + "/api/submission/{id}", MandateResolutionSubmissionResultDTO.class,
+              requestId);
+      if (sub == null || sub.getCompany() == null) {
+        logger.error("Cannot load submission for requestId {}", requestId);
+        return ResponseEntity.ok(
+            "<page><error>Unable to save: submission not found.</error></page>");
+      }
+      Long companyId = sub.getCompany().getCompanyId();
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Account> existingById =
+          new java.util.HashMap<>();
+      if (sub.getAccounts() != null) {
+        for (MandateResolutionSubmissionResultDTO.Account a : sub.getAccounts()) {
+          existingById.put(a.getAccountId(), a);
+        }
+      }
+
+      //Persist: PUT existing, POST new, DELETE removed
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+
+      java.util.Set<Long> keptExistingIds = new java.util.HashSet<>();
+
+      //Upserts
+      for (FormAcc fa : formAccounts) {
+        Map<String, Object> dto = new java.util.LinkedHashMap<>();
+        dto.put("companyId", companyId);
+        dto.put("accountName", nz(fa.accountName));
+        dto.put("accountNumber", nz(fa.accountNo));
+        dto.put("isActive", Boolean.TRUE);
+        dto.put("signatories", fa.signatories);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(dto, headers);
+
+        if (fa.accountId != null && !fa.accountId.isBlank()) {
+          Long accountId = Long.valueOf(fa.accountId);
+          rt.exchange(base + "/api/account/{accountId}", HttpMethod.PUT, entity, Object.class,
+              accountId);
+          keptExistingIds.add(accountId);
+          logger.info("Updated account {}", accountId);
+        } else {
+          var created = rt.postForEntity(base + "/api/account", entity, Object.class);
+          logger.info("Created account; status={}", created.getStatusCode());
+        }
+      }
+
+      //Deletes (anything that existed but isn’t in the form anymore)
+      for (Long existingId : existingById.keySet()) {
+        if (!keptExistingIds.contains(existingId)) {
+          rt.delete(base + "/api/account/{accountId}", existingId);
+          logger.info("Deleted account {}", existingId);
+        }
+      }
+
+      // ===== DIRECTORS (Authorities) =====
+
+      // 1) Parse rows from form: dirFirstName_#, dirSurname_#, dirDesignation_#, dirId_#
+      java.util.regex.Pattern dirIdxPat =
+          java.util.regex.Pattern.compile(
+              "^(dirFirstName|dirSurname|dirDesignation|dirId)_(\\d+)$");
+      java.util.SortedSet<Integer> dirIdxs = new java.util.TreeSet<>();
+      for (String k : params.keySet()) {
+        java.util.regex.Matcher m = dirIdxPat.matcher(k);
+        if (m.matches()) {
+          dirIdxs.add(Integer.parseInt(m.group(2)));
+        }
+      }
+
+      class FormDir {
+        String id;          // authorityId (blank/null for new)
+        String firstName;
+        String surname;
+        String designation;
+      }
+
+      java.util.List<FormDir> formDirs = new java.util.ArrayList<>();
+      for (Integer i : dirIdxs) {
+        FormDir d = new FormDir();
+        d.id = getParam(params, "dirId_" + i);
+        d.firstName = getParam(params, "dirFirstName_" + i);
+        d.surname = getParam(params, "dirSurname_" + i);
+        d.designation = getParam(params, "dirDesignation_" + i);
+
+        // skip rows that are completely blank
+        if (!isAllBlank(d.firstName, d.surname, d.designation)) {
+          formDirs.add(d);
+        }
+      }
+
+      // 2) Build existing authorities map (by id) to detect deletes
+      java.util.Map<Long, MandateResolutionSubmissionResultDTO.Authority> existingAuthById =
+          new java.util.HashMap<>();
+      if (sub.getAuthorities() != null) {
+        for (MandateResolutionSubmissionResultDTO.Authority a : sub.getAuthorities()) {
+          if (a != null && a.getAuthorityId() != null) {
+            existingAuthById.put(a.getAuthorityId(), a);
+          }
+        }
+      }
+
+      java.util.Set<Long> keptAuthorityIds = new java.util.HashSet<>();
+
+      // 3) Upserts (PUT for existing id, POST for new)
+      for (FormDir d : formDirs) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("companyId", companyId);
+        payload.put("firstname", nz(d.firstName));
+        payload.put("surname", nz(d.surname));
+        payload.put("designation", nz(d.designation));
+        payload.put("isActive", Boolean.TRUE);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+        if (d.id != null && !d.id.isBlank()) {
+          Long id = Long.valueOf(d.id);
+          rt.exchange(base + "/api/authority/{id}", HttpMethod.PUT, entity, Object.class, id);
+          keptAuthorityIds.add(id);
+          logger.info("Updated authority {}", id);
+        } else {
+          var created = rt.postForEntity(base + "/api/authority", entity, Object.class);
+          logger.info("Created authority; status={}", created.getStatusCode());
+        }
+      }
+
+// 4) Deletes (anything that existed but isn’t in the form anymore)
+      for (Long id : existingAuthById.keySet()) {
+        if (!keptAuthorityIds.contains(id)) {
+          rt.delete(base + "/api/authority/{id}", id);
+          logger.info("Deleted authority {}", id);
+        }
+      }
+
+// Takes you to the View Request page once the edit is successful,
+// and ALWAYS return valid XML to the UI.
+      HttpSession session = request.getSession(false);
+      ResponseEntity<String> view = displayAdminView(requestId, session, request);
+      String body = (view != null ? view.getBody() : null);
+
+// If the body is null/blank or doesn't start with '<', wrap a valid <page> so XSLT can parse it.
+      if (body == null || body.isBlank() || body.charAt(0) != '<') {
+        body =
+            "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+                +
+                "  <error>Unexpected response after save. Please try again.</error>"
+                +
+                "</page>";
+      }
+
+      return ResponseEntity
+          .ok()
+          .contentType(MediaType.APPLICATION_XML)
+          .body(body);
+
+    } catch (Exception e) {
+      logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
+      String error = """
+      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <error>Unable to save changes for this request.</error>
+      </page>
+          """;
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
+    }
+  }
+
+  //============ USER EDIT REQUEST ENDPOINTS ============
+
   //Edit request page
   @RequestMapping(
       value = "/editRequest/{requestId}",
       method = {RequestMethod.GET, RequestMethod.POST},
       produces = MediaType.APPLICATION_XML_VALUE
   )
-  public ResponseEntity<String> displayEditRequest(@PathVariable Long requestId) {
+  public ResponseEntity<String> displayEditRequest(@PathVariable Long requestId,
+                                                   HttpSession session,
+                                                   HttpServletRequest servletRequest) {
     try {
+      String displayName = currentDisplayId(session, servletRequest);
+
       RequestTableWrapper wrapper = buildEditWrapper(requestId);
+
+      //Normalize creator/updator
+      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
+      RequestTableDTO view = (wrapper.getRequest() != null && !wrapper.getRequest().isEmpty())
+          ? wrapper.getRequest().get(0) : null;
+      if (view != null) {
+        String creator = nz.apply(view.getCreator());
+        if (creator.isEmpty() || "ui".equalsIgnoreCase(creator)) {
+          view.setCreator(displayName);
+        }
+        String updator = nz.apply(view.getUpdator());
+        if (updator.isEmpty() || "ui".equalsIgnoreCase(updator)) {
+          view.setUpdator(displayName);
+        }
+      }
+
       String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
       logWrapperAndPage("EditRequest", requestId, wrapper, page);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
@@ -5739,7 +6603,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      // 4) Deletes (anything that existed but isn’t in the form anymore)
+// 4) Deletes (anything that existed but isn’t in the form anymore)
       for (Long id : existingAuthById.keySet()) {
         if (!keptAuthorityIds.contains(id)) {
           rt.delete(base + "/api/authority/{id}", id);
@@ -5747,15 +6611,33 @@ public class MandatesResolutionUIController {
         }
       }
 
-      //Takes you the Landing Page once the edit is successful
-      return goToDisplayRequestTable();
+// Takes you to the View Request page once the edit is successful,
+// and ALWAYS return valid XML to the UI.
+      HttpSession session = request.getSession(false);
+      ResponseEntity<String> view = displayViewRequest(requestId, session, request);
+      String body = (view != null ? view.getBody() : null);
+
+// If the body is null/blank or doesn't start with '<', wrap a valid <page> so XSLT can parse it.
+      if (body == null || body.isBlank() || body.charAt(0) != '<') {
+        body =
+            "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+                +
+                "  <error>Unexpected response after save. Please try again.</error>"
+                +
+                "</page>";
+      }
+
+      return ResponseEntity
+          .ok()
+          .contentType(MediaType.APPLICATION_XML)
+          .body(body);
 
     } catch (Exception e) {
       logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
       String error = """
-            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <error>Unable to save changes for this request.</error>
-            </page>
+      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <error>Unable to save changes for this request.</error>
+      </page>
           """;
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
     }
@@ -5890,21 +6772,20 @@ public class MandatesResolutionUIController {
   private RequestTableWrapper buildEditWrapper(Long requestId) {
     RestTemplate rt = new RestTemplate();
 
-    //1) Load submission (request, company, accounts + nested signatories if any)
+    // 1) Load submission (request, company, accounts + nested signatories if any)
     String submissionUrl = mandatesResolutionsDaoURL + "/api/submission/" + requestId;
     ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui
-        .model.dto.MandateResolutionSubmissionResultDTO>
-        subResp = rt.getForEntity(
-        submissionUrl,
-        za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO.class
-    );
+        .model.dto.MandateResolutionSubmissionResultDTO> subResp =
+        rt.getForEntity(submissionUrl,
+            za.co.rmb.tts.mandates.resolutions.ui
+                .model.dto.MandateResolutionSubmissionResultDTO.class);
 
     if (!subResp.getStatusCode().is2xxSuccessful() || subResp.getBody() == null) {
       throw new RuntimeException("Failed to fetch submission " + requestId);
     }
     var sub = subResp.getBody();
 
-    //Helpers
+    // Helpers
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
     java.util.function.Function<String, String> keyN = s -> s == null ? "" : s.trim().toUpperCase();
     java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
@@ -5915,7 +6796,7 @@ public class MandatesResolutionUIController {
       return "NAME#" + keyN.apply(name);
     };
 
-    //2) Seed accounts (keeps order)
+    // 2) Seed accounts (keeps order)
     java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
     if (sub.getAccounts() != null) {
       for (var a : sub.getAccounts()) {
@@ -5929,9 +6810,8 @@ public class MandatesResolutionUIController {
           accountsByKey.put(k, bucket);
         }
 
-        //Attach nested signatories if present
+        // Attach nested signatories if present
         try {
-          //If Account class really has getSignatories()
           if (a.getSignatories() != null) {
             for (var s : a.getSignatories()) {
               SignatoryDTO d = new SignatoryDTO();
@@ -5946,13 +6826,12 @@ public class MandatesResolutionUIController {
             }
           }
         } catch (NoSuchMethodError | RuntimeException ignored) {
-          //If nested signatories are not present on Account from backend, we’ll rely on the
-          // overlay below.
+          // If nested signatories are not present on Account from backend, rely on overlay
         }
       }
     }
 
-    //3)Overlay by request if DAO provides it
+    // 3) Overlay by request if DAO provides it
     try {
       String sigUrl = mandatesResolutionsDaoURL + "/api/signatory/byRequest/" + requestId;
       ResponseEntity<SignatoryDTO[]> sigResp = rt.getForEntity(sigUrl, SignatoryDTO[].class);
@@ -5967,12 +6846,12 @@ public class MandatesResolutionUIController {
             bucket.setSignatories(new java.util.ArrayList<>());
             accountsByKey.put(k, bucket);
           }
-          if ((s.getAccountName() == null || s.getAccountName().isBlank())
-              && bucket.getAccountName() != null) {
+          if ((s.getAccountName() == null
+              || s.getAccountName().isBlank()) && bucket.getAccountName() != null) {
             s.setAccountName(bucket.getAccountName());
           }
-          if ((s.getAccountNumber() == null || s.getAccountNumber().isBlank())
-              && bucket.getAccountNumber() != null) {
+          if ((s.getAccountNumber() == null
+              || s.getAccountNumber().isBlank()) && bucket.getAccountNumber() != null) {
             s.setAccountNumber(bucket.getAccountNumber());
           }
           bucket.getSignatories().add(s);
@@ -5982,46 +6861,63 @@ public class MandatesResolutionUIController {
       // intentionally empty
     }
 
-    //4) Build wrapper
+    // 4) Build wrapper
     RequestTableDTO view = new RequestTableDTO();
     if (sub.getRequest() != null) {
-      view.setRequestId(sub.getRequest().getRequestId());
-      view.setCompanyId(sub.getRequest().getCompanyId());
-      view.setSla(sub.getRequest().getSla());
-      view.setType(sub.getRequest().getType());
-      view.setStatus(sub.getRequest().getStatus());
-      view.setSubStatus(sub.getRequest().getSubStatus());
-      view.setCreated(
-          sub.getRequest().getCreated() != null ? sub.getRequest().getCreated().toString() : null);
-      view.setUpdated(
-          sub.getRequest().getUpdated() != null ? sub.getRequest().getUpdated().toString() : null);
+      var r = sub.getRequest();
 
-      // ---- Directors (for Resolutions edit screen) ----
-      // Source them from the submission's authorities (mirror DTO)
+      view.setRequestId(r.getRequestId());
+      view.setCompanyId(r.getCompanyId());
+      view.setSla(r.getSla());
+      view.setType(r.getType());
+      view.setStatus(r.getStatus());
+      view.setSubStatus(r.getSubStatus());
+      view.setCreated(r.getCreated() != null ? r.getCreated().toString() : null);
+      view.setUpdated(r.getUpdated() != null ? r.getUpdated().toString() : null);
+      view.setProcessId(r.getProcessId());
+      view.setAssignedUser(r.getAssignedUser());
+      view.setRequestIdForDisplay(r.getRequestIdForDisplay());
+
+      // --- Creator/Updator same fallback logic as View ---
+      String creator = nz.apply(r.getCreator());
+      String updator = nz.apply(r.getUpdator());
+      if (creator == null || creator.isBlank() || "ui".equalsIgnoreCase(creator)) {
+        creator = "UI";
+      }
+      if (updator == null || updator.isBlank() || "ui".equalsIgnoreCase(updator)) {
+        updator = "UI";
+      }
+      view.setCreator(creator);
+      view.setUpdator(updator);
+
+      // ---- Directors (Authorities) ----
       if (sub.getAuthorities() != null) {
         var dirs = new java.util.ArrayList<DirectorDTO>();
         for (var a : sub.getAuthorities()) {
-          if (a == null || (a.getIsActive() != null && !a.getIsActive())) {
+          if (a == null || Boolean.FALSE.equals(a.getIsActive())) {
             continue;
           }
           DirectorDTO dd = new DirectorDTO();
           dd.setAuthorityId(a.getAuthorityId());
-          dd.setName(nz.apply(a.getFirstname()));
-          dd.setSurname(nz.apply(a.getSurname()));
-          dd.setDesignation(nz.apply(a.getDesignation()));
+          dd.setName(a.getFirstname() == null ? "" : a.getFirstname().trim());
+          dd.setSurname(a.getSurname() == null ? "" : a.getSurname().trim());
+          dd.setDesignation(a.getDesignation() == null ? "" : a.getDesignation().trim());
           dirs.add(dd);
         }
         view.setDirectors(dirs);
       }
     }
+
     view.setCompanyName(
         (sub.getCompany() != null && sub.getCompany().getName() != null)
-            ? sub.getCompany().getName() : "Unknown"
+            ? sub.getCompany().getName()
+            : "Unknown"
     );
+
     view.setAccounts(new java.util.ArrayList<>(accountsByKey.values()));
+
     RequestTableWrapper wrapper = new RequestTableWrapper();
     wrapper.setRequest(java.util.List.of(view));
-
     return wrapper;
   }
 
@@ -8668,6 +9564,56 @@ public class MandatesResolutionUIController {
     }
   }
 
+
+
+  @SuppressWarnings("unchecked")
+  private void populateInstructions(RequestTableWrapper wrapper,
+                                    String subStatus, String daoBaseUrl) {
+    try {
+      if (wrapper == null) {
+        return;
+      }
+
+      RequestTableWrapper.LovsDTO lovs = (wrapper.getLovs() == null)
+          ? new RequestTableWrapper.LovsDTO()
+          : wrapper.getLovs();
+
+      final String status = (subStatus == null) ? "" : subStatus.trim();
+      if (status.isEmpty()) {
+        wrapper.setLovs(lovs);
+        return;
+      }
+
+      RestTemplate rt = new RestTemplate();
+      String url = daoBaseUrl + "/api/lov?type=Readout&subType=Instructions&requestStatus="
+          + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
+
+      var resp = rt.exchange(
+          url,
+          org.springframework.http.HttpMethod.GET,
+          null,
+          new org.springframework.core.ParameterizedTypeReference
+              <java.util.List<java.util.Map<String, Object>>>() {}
+      );
+
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        for (var row : resp.getBody()) {
+          Object v = (row == null) ? null : row.get("value");
+          if (v != null) {
+            for (String line : parseInstructionsFromLovValue(String.valueOf(v))) {
+              lovs.getInstructions().add(line);
+            }
+          }
+        }
+      }
+
+      wrapper.setLovs(lovs);
+    } catch (Exception e) {
+      logger.warn("Could not load instructions LOV for '{}': {}", subStatus, e.toString());
+    }
+  }
+
+
   //Create request validation rule
   private ResponseEntity<String> renderCreateRequestWithInline(
       HttpSession session, String registrationNumber, String message, String code
@@ -8851,6 +9797,16 @@ public class MandatesResolutionUIController {
     // Clear after attempting uploads
     files.clear();
     session.setAttribute("uploadedFiles", files);
+  }
+
+  private static String firstNonBlank(HttpServletRequest req, String... names) {
+    for (String n : names) {
+      String v = req.getParameter(n);
+      if (v != null && !v.isBlank()) {
+        return v;
+      }
+    }
+    return null;
   }
 
   /**

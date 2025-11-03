@@ -74,40 +74,24 @@
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="boxDiv">
                             <comm:box xsi:type="comm:box">
 
-                                <!-- ===== Dynamic Instructions from wrapper.lovs.instructions ===== -->
-                                <comm:boxSymbol xsi:type="comm:textList" comm:subHeading="Instructions">
-                                    <comm:value/>
-                                    <xsl:choose>
-                                        <!--Render list items when present-->
-                                        <xsl:when test="count(/requestWrapper/lovs/instructions/instruction) &gt; 0">
-                                            <xsl:for-each select="/requestWrapper/lovs/instructions/instruction">
-                                                <comm:textListItem><comm:value><xsl:value-of select="."/></comm:value></comm:textListItem>
-                                            </xsl:for-each>
-                                        </xsl:when>
-                                        <!--Fallback-->
-                                        <xsl:otherwise>
-                                            <comm:textListItem>
-                                                <comm:value>No specific instructions for this status.</comm:value>
-                                            </comm:textListItem>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                </comm:boxSymbol>
-
-                                <comm:boxSymbol xsi:type="comm:input"
-                                                comm:name="confirmationCheckMandate"
-                                                comm:inputType="checkbox"
-                                                comm:unCheckedValue="No"
-                                                comm:selected="false"
-                                                comm:errorMessage="{/requestWrapper/approveRejectErrorModel/confirmationCheckMandate}">
-                                    <comm:value/>
-                                    <comm:inputItem comm:id="confirmationCheckMandate"
-                                                    comm:label="I confirm that the Instructions have been followed as mentioned above."
-                                                    comm:type="checkbox"
-                                                    comm:value="1"
-                                                    comm:unCheckedValue="No"
-                                                    comm:selected="false"/>
-                                </comm:boxSymbol>
-
+<!--                                &lt;!&ndash; ===== Dynamic Instructions from wrapper.lovs.instructions ===== &ndash;&gt;-->
+<!--                                <comm:boxSymbol xsi:type="comm:textList" comm:subHeading="Instructions">-->
+<!--                                    <comm:value/>-->
+<!--                                    <xsl:choose>-->
+<!--                                        &lt;!&ndash;Render list items when present&ndash;&gt;-->
+<!--                                        <xsl:when test="count(/requestWrapper/lovs/instructions/instruction) &gt; 0">-->
+<!--                                            <xsl:for-each select="/requestWrapper/lovs/instructions/instruction">-->
+<!--                                                <comm:textListItem><comm:value><xsl:value-of select="."/></comm:value></comm:textListItem>-->
+<!--                                            </xsl:for-each>-->
+<!--                                        </xsl:when>-->
+<!--                                        &lt;!&ndash;Fallback&ndash;&gt;-->
+<!--                                        <xsl:otherwise>-->
+<!--                                            <comm:textListItem>-->
+<!--                                                <comm:value>No specific instructions for this status.</comm:value>-->
+<!--                                            </comm:textListItem>-->
+<!--                                        </xsl:otherwise>-->
+<!--                                    </xsl:choose>-->
+<!--                                </comm:boxSymbol>-->
                                 <comm:boxSymbol xsi:type="comm:commentbox"
                                                 comm:name="commentbox"
                                                 comm:label="Comment"
