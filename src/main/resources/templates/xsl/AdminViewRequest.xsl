@@ -127,7 +127,7 @@
                                     <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='created']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date By" ns1:headingColor="ghostmedium">
+                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created By" ns1:headingColor="ghostmedium">
                                         <ns1:value><xsl:value-of select="$REQ/*[local-name()='creator']"/></ns1:value>
                                     </ns1:boxSplitSymbol>
                                 </ns1:boxSymbol>
@@ -229,8 +229,26 @@
                                                     </ns1:rowGroup>
 
                                                     <xsl:choose>
-                                                        <xsl:when test="count($SIGS_THIS[translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD']) &gt; 0">
-                                                            <xsl:for-each select="$SIGS_THIS[translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD']">
+                                                        <!-- Only count rows that are ADD and NOT completely blank -->
+                                                        <xsl:when test="count($SIGS_THIS[
+      translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD'
+      and (
+        string-length(normalize-space(string((fullName|fullname|name)[1]))) &gt; 0
+        or string-length(normalize-space(string((idNumber|id|identificationNumber)[1]))) &gt; 0
+        or string-length(normalize-space(string((*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]))) &gt; 0
+        or string-length(normalize-space(string((*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]))) &gt; 0
+      )
+    ]) &gt; 0">
+
+                                                            <xsl:for-each select="$SIGS_THIS[
+      translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD'
+      and (
+        string-length(normalize-space(string((fullName|fullname|name)[1]))) &gt; 0
+        or string-length(normalize-space(string((idNumber|id|identificationNumber)[1]))) &gt; 0
+        or string-length(normalize-space(string((*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]))) &gt; 0
+        or string-length(normalize-space(string((*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]))) &gt; 0
+      )
+    ]">
                                                                 <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="{concat('gAdd_', $pos)}">
                                                                     <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
                                                                         <ns1:cellItem xsi:type="ns1:cellItem">
@@ -263,6 +281,7 @@
                                                                     </ns1:cell>
                                                                 </ns1:row>
                                                             </xsl:for-each>
+
                                                         </xsl:when>
                                                         <xsl:otherwise>
                                                             <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="{concat('gAdd_', $pos)}">
@@ -753,9 +772,54 @@
                                 </ns1:box>
                             </ns1:symbol>
                         </ns1:sections>
-                    </xsl:if>
-                    <!-- ================= /Combined Comments ================= -->
 
+
+                        <!-- ===== Instructions  ===== -->
+                        <ns1:sections ns1:align="left" ns1:width="full">
+                            <ns1:symbol xsi:type="ns1:input" ns1:name="requestId" ns1:inputType="hidden">
+                                <ns1:value><xsl:value-of select="$REQ/*[local-name()='requestId']"/></ns1:value>
+                            </ns1:symbol>
+
+                            <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="instructionsBox">
+                                <ns1:box xsi:type="ns1:box">
+
+                                    <!-- List of instructions -->
+                                    <ns1:boxSymbol xsi:type="ns1:textList" ns1:subHeading="Instructions">
+                                        <ns1:value/>
+                                        <xsl:choose>
+                                            <xsl:when test="count(//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']) &gt; 0">
+                                                <xsl:for-each select="//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']">
+                                                    <ns1:textListItem>
+                                                        <ns1:value><xsl:value-of select="."/></ns1:value>
+                                                    </ns1:textListItem>
+                                                </xsl:for-each>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                                <ns1:textListItem>
+                                                    <ns1:value>No specific instructions for this status.</ns1:value>
+                                                </ns1:textListItem>
+                                            </xsl:otherwise>
+                                        </xsl:choose>
+                                    </ns1:boxSymbol>
+                                    <ns1:boxSymbol xsi:type="ns1:input"
+                                                   ns1:name="confirmationCheckMandate"
+                                                   ns1:inputType="checkbox"
+                                                   ns1:unCheckedValue="No"
+                                                   ns1:selected="false"
+                                                   ns1:errorMessage="{//*[local-name()='approveRejectErrorModel']/*[local-name()='confirmationCheckMandate']}">
+                                        <ns1:value/>
+                                        <ns1:inputItem ns1:id="confirmationCheckMandate"
+                                                       ns1:label="I confirm that the Instructions have been followed as mentioned above."
+                                                       ns1:type="checkbox"
+                                                       ns1:value="1"
+                                                       ns1:unCheckedValue="No"
+                                                       ns1:selected="false"/>
+                                    </ns1:boxSymbol>
+                                </ns1:box>
+                            </ns1:symbol>
+                        </ns1:sections>
+
+                    </xsl:if>
                 </ns1:form>
             </symbol>
 
@@ -820,7 +884,7 @@
                                         ns1:target="panel" ns1:formSubmit="false" ns1:label="Re Assign"/>
 
                         <ns1:baseButton ns1:id="editBtn"
-                                        ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
+                                        ns1:url="{concat('app-domain/mandates-and-resolutions/adminEditRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
 
                         <!-- Only show Hold when status is NOT 'On Hold' -->
@@ -838,11 +902,11 @@
                         </xsl:if>
 
                         <ns1:baseButton ns1:id="approve"
-                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestApprovePage?requestId=', $REQ/*[local-name()='requestId'])}"
-                                        ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_APPROVE}"/>
+                                        ns1:url="app-domain/mandates-and-resolutions/admin-approve-validate"
+                                        ns1:target="main" ns1:formSubmit="true" ns1:label="{$LAB_APPROVE}"/>
                         <ns1:baseButton ns1:id="reject"
-                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestReject?requestId=', $REQ/*[local-name()='requestId'])}"
-                                        ns1:target="panel" ns1:formSubmit="false" ns1:label="{$LAB_REJECT}"/>
+                                        ns1:url="app-domain/mandates-and-resolutions/reject-validate"
+                                        ns1:target="main" ns1:formSubmit="true" ns1:label="{$LAB_REJECT}"/>
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"
                                         ns1:formSubmit="false" ns1:label="Back"/>

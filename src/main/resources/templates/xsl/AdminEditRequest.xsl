@@ -284,7 +284,7 @@
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="fullName"     ns1:heading="Full Name"     ns1:disableSorting="true"/>
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="idNumber"     ns1:heading="ID Number"     ns1:disableSorting="true"/>
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="instructions" ns1:heading="Instructions"  ns1:disableSorting="true"/>
-<!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="remove"       ns1:heading="Remove"        ns1:disableSorting="true"/>-->
+                                                        <!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="remove"       ns1:heading="Remove"        ns1:disableSorting="true"/>-->
 
                                                         <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="{concat('gAdd_', $aPos)}" ns1:groupHeaderLabel="">
                                                             <ns1:totalsRow ns1:category=" ">
@@ -296,16 +296,16 @@
                                                             </ns1:totalsRow>
 
                                                             <!-- Always allow adding a row -->
-<!--                                                            <ns1:groupTableButton xsi:type="ns1:imageButton"-->
-<!--                                                                                  ns1:id="{concat('addSignBtn_', $aPos)}"-->
-<!--                                                                                  ns1:label="Add a signatory"-->
-<!--                                                                                  ns1:tip="Add a signatory"-->
-<!--                                                                                  ns1:url="{concat(-->
-<!--                                                                                  'app-domain/mandates-and-resolutions/editRequestAddSignatory/',-->
-<!--                                                                                  $REQ/*[local-name()='requestId'],-->
-<!--                                                                                  '?addSignatoryAt=',-->
-<!--                                                                                  $aPos-->
-<!--                                                                                )}"/>-->
+                                                            <!--                                                            <ns1:groupTableButton xsi:type="ns1:imageButton"-->
+                                                            <!--                                                                                  ns1:id="{concat('addSignBtn_', $aPos)}"-->
+                                                            <!--                                                                                  ns1:label="Add a signatory"-->
+                                                            <!--                                                                                  ns1:tip="Add a signatory"-->
+                                                            <!--                                                                                  ns1:url="{concat(-->
+                                                            <!--                                                                                  'app-domain/mandates-and-resolutions/editRequestAddSignatory/',-->
+                                                            <!--                                                                                  $REQ/*[local-name()='requestId'],-->
+                                                            <!--                                                                                  '?addSignatoryAt=',-->
+                                                            <!--                                                                                  $aPos-->
+                                                            <!--                                                                                )}"/>-->
                                                         </ns1:rowGroup>
 
                                                         <!-- Rows = EDIT_SET (includes blanks + ADD) -->
@@ -378,23 +378,23 @@
                                                                     </ns1:cellItem>
                                                                 </ns1:cell>
 
-<!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="remove">-->
-<!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
-<!--                                                                        <ns1:item xsi:type="ns1:button"-->
-<!--                                                                                  ns1:id="{concat('removeSignBtn_', $aPos, '_', $sPos)}"-->
-<!--                                                                                  ns1:type="paper"-->
-<!--                                                                                  ns1:label="Remove"-->
-<!--                                                                                  ns1:formSubmit="true"-->
-<!--                                                                                  ns1:target="main"-->
-<!--                                                                                  ns1:width="2"-->
-<!--                                                                                  ns1:url="{concat(-->
-<!--                                                                                'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',-->
-<!--                                                                                $REQ/*[local-name()='requestId'],-->
-<!--                                                                                '?removeSignatoryAt=',-->
-<!--                                                                                $aPos, '_', $sPos-->
-<!--                                                                              )}"/>-->
-<!--                                                                    </ns1:cellItem>-->
-<!--                                                                </ns1:cell>-->
+                                                                <!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="remove">-->
+                                                                <!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
+                                                                <!--                                                                        <ns1:item xsi:type="ns1:button"-->
+                                                                <!--                                                                                  ns1:id="{concat('removeSignBtn_', $aPos, '_', $sPos)}"-->
+                                                                <!--                                                                                  ns1:type="paper"-->
+                                                                <!--                                                                                  ns1:label="Remove"-->
+                                                                <!--                                                                                  ns1:formSubmit="true"-->
+                                                                <!--                                                                                  ns1:target="main"-->
+                                                                <!--                                                                                  ns1:width="2"-->
+                                                                <!--                                                                                  ns1:url="{concat(-->
+                                                                <!--                                                                                'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',-->
+                                                                <!--                                                                                $REQ/*[local-name()='requestId'],-->
+                                                                <!--                                                                                '?removeSignatoryAt=',-->
+                                                                <!--                                                                                $aPos, '_', $sPos-->
+                                                                <!--                                                                              )}"/>-->
+                                                                <!--                                                                    </ns1:cellItem>-->
+                                                                <!--                                                                </ns1:cell>-->
                                                             </ns1:row>
                                                         </xsl:for-each>
                                                     </ns1:boxSymbol>
@@ -414,7 +414,7 @@
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="fullName"     ns1:heading="Full Name"     ns1:disableSorting="true"/>
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="idNumber"     ns1:heading="ID Number"     ns1:disableSorting="true"/>
                                                         <ns1:tableColumn ns1:align="left" ns1:fieldName="instructions" ns1:heading="Instructions"  ns1:disableSorting="true"/>
-<!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="remove"       ns1:heading="Remove"        ns1:disableSorting="true"/>-->
+                                                        <!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="remove"       ns1:heading="Remove"        ns1:disableSorting="true"/>-->
 
                                                         <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="{concat('gRem_', $aPos)}" ns1:groupHeaderLabel="">
                                                             <ns1:totalsRow ns1:category=" ">
@@ -424,16 +424,16 @@
                                                                     </ns1:cellItem>
                                                                 </ns1:cell>
                                                             </ns1:totalsRow>
-<!--                                                            <ns1:groupTableButton xsi:type="ns1:imageButton"-->
-<!--                                                                                  ns1:id="{concat('addSignBtn_', $aPos)}"-->
-<!--                                                                                  ns1:label="Add a signatory"-->
-<!--                                                                                  ns1:tip="Add a signatory"-->
-<!--                                                                                  ns1:url="{concat(-->
-<!--                                                    'app-domain/mandates-and-resolutions/editRequestAddSignatory/',-->
-<!--                                                    $REQ/*[local-name()='requestId'],-->
-<!--                                                    '?addSignatoryAt=',-->
-<!--                                                    $aPos-->
-<!--                                                  )}"/>-->
+                                                            <!--                                                            <ns1:groupTableButton xsi:type="ns1:imageButton"-->
+                                                            <!--                                                                                  ns1:id="{concat('addSignBtn_', $aPos)}"-->
+                                                            <!--                                                                                  ns1:label="Add a signatory"-->
+                                                            <!--                                                                                  ns1:tip="Add a signatory"-->
+                                                            <!--                                                                                  ns1:url="{concat(-->
+                                                            <!--                                                    'app-domain/mandates-and-resolutions/editRequestAddSignatory/',-->
+                                                            <!--                                                    $REQ/*[local-name()='requestId'],-->
+                                                            <!--                                                    '?addSignatoryAt=',-->
+                                                            <!--                                                    $aPos-->
+                                                            <!--                                                  )}"/>-->
                                                         </ns1:rowGroup>
 
 
@@ -505,23 +505,23 @@
                                                                     </ns1:cellItem>
                                                                 </ns1:cell>
 
-<!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="remove">-->
-<!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
-<!--                                                                        <ns1:item xsi:type="ns1:button"-->
-<!--                                                                                  ns1:id="{concat('removeSignBtn_', $aPos, '_', $sPos)}"-->
-<!--                                                                                  ns1:type="paper"-->
-<!--                                                                                  ns1:label="Remove"-->
-<!--                                                                                  ns1:formSubmit="true"-->
-<!--                                                                                  ns1:target="main"-->
-<!--                                                                                  ns1:width="2"-->
-<!--                                                                                  ns1:url="{concat(-->
-<!--                                                                                    'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',-->
-<!--                                                                                    $REQ/*[local-name()='requestId'],-->
-<!--                                                                                    '?removeSignatoryAt=',-->
-<!--                                                                                    $aPos, '_', $sPos-->
-<!--                                                                                  )}"/>-->
-<!--                                                                    </ns1:cellItem>-->
-<!--                                                                </ns1:cell>-->
+                                                                <!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="remove">-->
+                                                                <!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
+                                                                <!--                                                                        <ns1:item xsi:type="ns1:button"-->
+                                                                <!--                                                                                  ns1:id="{concat('removeSignBtn_', $aPos, '_', $sPos)}"-->
+                                                                <!--                                                                                  ns1:type="paper"-->
+                                                                <!--                                                                                  ns1:label="Remove"-->
+                                                                <!--                                                                                  ns1:formSubmit="true"-->
+                                                                <!--                                                                                  ns1:target="main"-->
+                                                                <!--                                                                                  ns1:width="2"-->
+                                                                <!--                                                                                  ns1:url="{concat(-->
+                                                                <!--                                                                                    'app-domain/mandates-and-resolutions/editRequestRemoveSignatory/',-->
+                                                                <!--                                                                                    $REQ/*[local-name()='requestId'],-->
+                                                                <!--                                                                                    '?removeSignatoryAt=',-->
+                                                                <!--                                                                                    $aPos, '_', $sPos-->
+                                                                <!--                                                                                  )}"/>-->
+                                                                <!--                                                                    </ns1:cellItem>-->
+                                                                <!--                                                                </ns1:cell>-->
                                                             </ns1:row>
                                                         </xsl:for-each>
                                                     </ns1:boxSymbol>
@@ -562,7 +562,7 @@
 
                     <!-- ================= Resolutions: Appointed Directors (editable) ================= -->
                     <xsl:if test="$SHOW_RESOLUTIONS">
-                    <ns1:sections ns1:align="left" ns1:width="full">
+                        <ns1:sections ns1:align="left" ns1:width="full">
                             <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
                                 <ns1:value>Directors Details</ns1:value>
                             </ns1:symbol>
@@ -718,20 +718,20 @@
 
             <!-- footer -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-<!--                <ns1:baseButton ns1:id="addAccountBtnFooter"-->
-<!--                                ns1:url="{concat('app-domain/mandates-and-resolutions/editRequestAddAccount/', $REQ/*[local-name()='requestId'])}"-->
-<!--                                ns1:label="Add Account"-->
-<!--                                ns1:formSubmit="true"-->
-<!--                                ns1:target="main"/>-->
+                <!--                <ns1:baseButton ns1:id="addAccountBtnFooter"-->
+                <!--                                ns1:url="{concat('app-domain/mandates-and-resolutions/editRequestAddAccount/', $REQ/*[local-name()='requestId'])}"-->
+                <!--                                ns1:label="Add Account"-->
+                <!--                                ns1:formSubmit="true"-->
+                <!--                                ns1:target="main"/>-->
 
                 <ns1:baseButton ns1:id="back"
-                                ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', $REQ/*[local-name()='requestId'])}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', $REQ/*[local-name()='requestId'])}"
                                 ns1:target="main"
                                 ns1:formSubmit="false"
                                 ns1:label="Back"/>
 
                 <ns1:baseButton ns1:id="save"
-                                ns1:url="{concat('app-domain/mandates-and-resolutions/editRequestSave/', $REQ/*[local-name()='requestId'])}"
+                                ns1:url="{concat('app-domain/mandates-and-resolutions/adminEditRequestSave/', $REQ/*[local-name()='requestId'])}"
                                 ns1:target="main"
                                 ns1:formSubmit="true"
                                 ns1:label="Save"/>

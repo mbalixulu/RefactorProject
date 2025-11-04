@@ -45,38 +45,34 @@
                 <comm:form comm:name="searchResults" comm:action="app-domain/mandates-and-resolutions/nextStep">
                     <comm:sections comm:width="full">
 
-                        <!-- Persist Waiver Tools only when not editable -->
-                        <xsl:if test="/requestWrapper/request/editable!='true'">
-                            <xsl:for-each select="/requestWrapper/request/documentumTool">
-                                <comm:symbol xsi:type="comm:input"
-                                             comm:name="{concat('documentumTools[', position()-1, ']')}"
-                                             comm:inputType="hidden">
-                                    <comm:value><xsl:value-of select="."/></comm:value>
-                                </comm:symbol>
-                            </xsl:for-each>
-                        </xsl:if>
+                        <!--Mirror current tools into hidden inputs so they post on 'Add' -->
+                        <xsl:for-each select="/requestWrapper/request/documentumTool">
+                            <comm:symbol xsi:type="comm:input"
+                                         comm:name="{concat('documentumTools[', position()-1, ']')}"
+                                         comm:inputType="hidden">
+                                <comm:value><xsl:value-of select="."/></comm:value>
+                            </comm:symbol>
+                        </xsl:for-each>
 
-                        <!-- Persist Directors only when not editable -->
-                        <xsl:if test="/requestWrapper/request/editable!='true'">
-                            <xsl:for-each select="/requestWrapper/request/directors/director">
-                                <xsl:variable name="idx" select="position()-1"/>
-                                <comm:symbol xsi:type="comm:input"
-                                             comm:name="{concat('directors[', $idx, '].name')}"
-                                             comm:inputType="hidden">
-                                    <comm:value><xsl:value-of select="normalize-space(name)"/></comm:value>
-                                </comm:symbol>
-                                <comm:symbol xsi:type="comm:input"
-                                             comm:name="{concat('directors[', $idx, '].surname')}"
-                                             comm:inputType="hidden">
-                                    <comm:value><xsl:value-of select="normalize-space(surname)"/></comm:value>
-                                </comm:symbol>
-                                <comm:symbol xsi:type="comm:input"
-                                             comm:name="{concat('directors[', $idx, '].designation')}"
-                                             comm:inputType="hidden">
-                                    <comm:value><xsl:value-of select="normalize-space(designation)"/></comm:value>
-                                </comm:symbol>
-                            </xsl:for-each>
-                        </xsl:if>
+                        <!--Current directors into hidden inputs so they post on 'Add' -->
+                        <xsl:for-each select="/requestWrapper/request/directors/director">
+                            <xsl:variable name="idx" select="position()-1"/>
+                            <comm:symbol xsi:type="comm:input"
+                                         comm:name="{concat('directors[', $idx, '].name')}"
+                                         comm:inputType="hidden">
+                                <comm:value><xsl:value-of select="normalize-space(name)"/></comm:value>
+                            </comm:symbol>
+                            <comm:symbol xsi:type="comm:input"
+                                         comm:name="{concat('directors[', $idx, '].surname')}"
+                                         comm:inputType="hidden">
+                                <comm:value><xsl:value-of select="normalize-space(surname)"/></comm:value>
+                            </comm:symbol>
+                            <comm:symbol xsi:type="comm:input"
+                                         comm:name="{concat('directors[', $idx, '].designation')}"
+                                         comm:inputType="hidden">
+                                <comm:value><xsl:value-of select="normalize-space(designation)"/></comm:value>
+                            </comm:symbol>
+                        </xsl:for-each>
 
                         <!-- Keep session id so POST carries it -->
                         <comm:symbol xsi:type="comm:input" comm:name="pdfSessionId" comm:inputType="hidden">
@@ -154,37 +150,42 @@
                                     <comm:value>Company waiver</comm:value>
                                 </comm:boxSymbol>
 
-                                <!--Add Tool Button (preserve directorCount)-->
-                                <comm:boxSymbol xsi:type="comm:button"
-                                                comm:id="addToolBtn"
-                                                comm:label="Add Waiver Tool"
-                                                comm:target="main"
-                                                comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
-                                                  /requestWrapper/request/registrationNumber,
-                                                  '&amp;toolCount=',
-                                                  count(/requestWrapper/request/documentumTool) + 1,
-                                                  '&amp;directorCount=',
-                                                  count(/requestWrapper/request/directors/director),
-                                                  '&amp;action=addTool',
-                                                  '#waiverBox')}"
-                                                comm:type="primary"
-                                                comm:formSubmit="true"
-                                                comm:width="3"/>
+                                <!-- Add Waiver Tool button-->
+                                <comm:boxSymbol
+                                        xsi:type="comm:button"
+                                        comm:id="addToolBtn"
+                                        comm:label="Add Waiver Tool"
+                                        comm:target="main"
+                                        comm:type="primary"
+                                        comm:formSubmit="true"
+                                        comm:width="3"
+                                        comm:url="{concat(
+                                                      'app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
+                                                      /requestWrapper/request/registrationNumber,
+                                                      '&amp;pdfSessionId=', /requestWrapper/request/pdfSessionId,
+                                                      '&amp;toolCount=',
+                                                      (count(/requestWrapper/request/documentumTool) &gt; 0)
+                                                        * (count(/requestWrapper/request/documentumTool) + 1)
+                                                        + (count(/requestWrapper/request/documentumTool) = 0) * 2,
+                                                      '&amp;directorCount=', count(/requestWrapper/request/directors/director),
+                                                      '&amp;action=addTool#waiverBox'
+                                                    )}">
+                            </comm:boxSymbol>
 
-                                <!--Dynamic rendering of tools-->
+                                <!-- Existing tools (labelled Tool 1, Tool 2, ...) -->
                                 <xsl:for-each select="/requestWrapper/request/documentumTool">
                                     <comm:boxSymbol xsi:type="comm:boxSplit">
                                         <xsl:choose>
                                             <xsl:when test="/requestWrapper/request/editable='true'">
                                                 <comm:boxSplitSymbol xsi:type="comm:input"
                                                                      comm:name="{concat('documentumTools[', position()-1, ']')}"
-                                                                     comm:label="Tool">
+                                                                     comm:label="{concat('Tool ', position())}">
                                                     <comm:value><xsl:value-of select="."/></comm:value>
                                                 </comm:boxSplitSymbol>
                                             </xsl:when>
                                             <xsl:otherwise>
                                                 <comm:boxSplitSymbol xsi:type="comm:textReadout"
-                                                                     comm:subHeading="Tool"
+                                                                     comm:subHeading="{concat('Tool ', position())}"
                                                                      comm:color="ghostmedium">
                                                     <comm:value><xsl:value-of select="."/></comm:value>
                                                 </comm:boxSplitSymbol>
@@ -193,14 +194,28 @@
                                     </comm:boxSymbol>
                                 </xsl:for-each>
 
-                                <!--Fallback if no tools exist-->
-                                <xsl:if test="not(/requestWrapper/request/documentumTool)">
+                                <!-- Default: if no tools exist yet, show one editable input as "Tool 1" -->
+                                <xsl:if test="count(/requestWrapper/request/documentumTool)=0">
                                     <comm:boxSymbol xsi:type="comm:boxSplit">
-                                        <comm:boxSplitSymbol xsi:type="comm:textReadout" comm:subHeading="Tool" comm:color="ghostmedium">
-                                            <comm:value>No tools available</comm:value>
-                                        </comm:boxSplitSymbol>
+                                        <xsl:choose>
+                                            <xsl:when test="/requestWrapper/request/editable='true'">
+                                                <comm:boxSplitSymbol xsi:type="comm:input"
+                                                                     comm:name="documentumTools[0]"
+                                                                     comm:label="Tool 1">
+                                                    <comm:value/>
+                                                </comm:boxSplitSymbol>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                     comm:subHeading="Tool 1"
+                                                                     comm:color="ghostmedium">
+                                                    <comm:value>No tools available</comm:value>
+                                                </comm:boxSplitSymbol>
+                                            </xsl:otherwise>
+                                        </xsl:choose>
                                     </comm:boxSymbol>
                                 </xsl:if>
+
                             </comm:box>
                         </comm:symbol>
 
@@ -235,20 +250,21 @@
                                            comm:groupId="directors"
                                            comm:groupHeaderLabel="Directors List">
 
-                                <!-- Add Director Button -->
-                                <comm:groupTableButton xsi:type="comm:imageButton"
-                                                       comm:id="addDirectorBtn"
-                                                       comm:label="Add a director"
-                                                       comm:tip="Click to add a new director"
-                                                       comm:target="main"
-                                                       comm:url="{concat(
-                                                     'app-domain/mandates-and-resolutions/searchCompanyDetails?',
-                                                     'pdfSessionId=', /requestWrapper/request/pdfSessionId,
-                                                     '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
-                                                     '&amp;directorCount=', count(/requestWrapper/request/directors/director) + 1,
-                                                     '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
-                                                     '#directorsTable'
-                                                   )}"/>
+                                <!-- Add Director button -->
+                                <comm:groupTableButton
+                                        xsi:type="comm:imageButton"
+                                        comm:id="addDirectorBtn"
+                                        comm:label="Add a director"
+                                        comm:tip="Click to add a new director"
+                                        comm:target="main"
+                                        comm:url="{concat(
+                                                          'app-domain/mandates-and-resolutions/searchCompanyDetails?',
+                                                          'pdfSessionId=', /requestWrapper/request/pdfSessionId,
+                                                          '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
+                                                          '&amp;directorCount=', count(/requestWrapper/request/directors/director) + 1,
+                                                          '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
+                                                          '#directorsTable'
+                                                        )}"/>
                             </comm:rowGroup>
 
                             <!-- Render each director as editable row -->
@@ -312,19 +328,23 @@
                                     <!-- Remove (Delete) row -->
                                     <comm:cell comm:col_id="remove">
                                         <comm:cellItem>
-                                            <comm:item xsi:type="comm:button"
-                                                       comm:id="{concat('removeDirectorBtn_', position())}"
-                                                       comm:type="paper"
-                                                       comm:width="2"
-                                                       comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=',
-                                                   /requestWrapper/request/registrationNumber,
-                                                   '&amp;removeDirectorAt=', position(),
-                                                   '&amp;directorCount=', count(/requestWrapper/request/directors/director),
-                                                   '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
-                                                   '#directorsTable')}"
-                                                       comm:target="main"
-                                                       comm:formSubmit="false"
-                                                       comm:label="Remove"/>
+                                            <comm:item
+                                                    xsi:type="comm:button"
+                                                    comm:id="{concat('removeDirectorBtn_', position())}"
+                                                    comm:type="paper"
+                                                    comm:width="2"
+                                                    comm:target="main"
+                                                    comm:formSubmit="true"
+                                                    comm:label="Remove"
+                                                    comm:url="{concat(
+                                                                      'app-domain/mandates-and-resolutions/searchCompanyDetails?',
+                                                                      'pdfSessionId=', /requestWrapper/request/pdfSessionId,
+                                                                      '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
+                                                                      '&amp;removeDirectorAt=', position(),
+                                                                      '&amp;directorCount=', count(/requestWrapper/request/directors/director),
+                                                                      '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
+                                                                      '#directorsTable'
+                                                                    )}"/>
                                         </comm:cellItem>
                                     </comm:cell>
                                 </comm:row>
@@ -363,72 +383,72 @@
                         <comm:symbol xsi:type="comm:divContainer"
                                      comm:id="mandateDetails"
                                      comm:hidden="{not($IS_MANDATE)}">
-                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">
-                                <comm:value>Please attach the required mandate documents</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">-->
+<!--                                <comm:value>Please attach the required mandate documents</comm:value>-->
+<!--                            </comm:divElement>-->
 
-                            <!-- Mandate file upload (AUTO-POSTS on select) -->
-                            <comm:divElement
-                                    xsi:type="comm:fileUpload"
-                                    comm:name="file"
-                                    comm:label="Replace authorised signatories"
-                                    comm:fileUploadUrl="app-domain/mandates-and-resolutions/mandates/attachment/upload"
-                                    comm:fileErrorUrl="app-domain/mandates-and-resolutions/errorPage"
-                                    comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            &lt;!&ndash; Mandate file upload (AUTO-POSTS on select) &ndash;&gt;-->
+<!--                            <comm:divElement-->
+<!--                                    xsi:type="comm:fileUpload"-->
+<!--                                    comm:name="file"-->
+<!--                                    comm:label="Replace authorised signatories"-->
+<!--                                    comm:fileUploadUrl="app-domain/mandates-and-resolutions/mandates/attachment/upload"-->
+<!--                                    comm:fileErrorUrl="app-domain/mandates-and-resolutions/errorPage"-->
+<!--                                    comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:fileUpload"
-                                             comm:name="signatureMandateCardDoc"
-                                             comm:label="Signature card"
-                                             comm:fileUploadUrl="https://your-upload-endpoint"
-                                             comm:fileErrorUrl="https://your-error-handler"
-                                             comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:fileUpload"-->
+<!--                                             comm:name="signatureMandateCardDoc"-->
+<!--                                             comm:label="Signature card"-->
+<!--                                             comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                             comm:fileErrorUrl="https://your-error-handler"-->
+<!--                                             comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">
-                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">
-                                    <comm:divElement
-                                            xsi:type="comm:fileUpload"
-                                            comm:name="{concat('requiredResolutionDoc_', position())}"
-                                            comm:label="Required Document"
-                                            comm:fileUploadUrl="https://your-upload-endpoint"
-                                            comm:fileErrorUrl="https://your-error-endpoint"
-                                            comm:showInput="true">
-                                        <comm:value>
-                                            <xsl:value-of select="."/>
-                                        </comm:value>
-                                    </comm:divElement>
-                                </xsl:for-each>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">-->
+<!--                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">-->
+<!--                                    <comm:divElement-->
+<!--                                            xsi:type="comm:fileUpload"-->
+<!--                                            comm:name="{concat('requiredResolutionDoc_', position())}"-->
+<!--                                            comm:label="Required Document"-->
+<!--                                            comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                            comm:fileErrorUrl="https://your-error-endpoint"-->
+<!--                                            comm:showInput="true">-->
+<!--                                        <comm:value>-->
+<!--                                            <xsl:value-of select="."/>-->
+<!--                                        </comm:value>-->
+<!--                                    </comm:divElement>-->
+<!--                                </xsl:for-each>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement
-                                    xsi:type="comm:button"
-                                    comm:id="mandatesProceedBtn"
-                                    comm:target="main"
-                                    comm:url="app-domain/mandates-and-resolutions/proceedPdfExtraction"
-                                    comm:label="Upload Document"
-                                    comm:width="3"
-                                    comm:formSubmit="true"
-                                    comm:type="primary"/>
+<!--                            <comm:divElement-->
+<!--                                    xsi:type="comm:button"-->
+<!--                                    comm:id="mandatesProceedBtn"-->
+<!--                                    comm:target="main"-->
+<!--                                    comm:url="app-domain/mandates-and-resolutions/proceedPdfExtraction"-->
+<!--                                    comm:label="Upload Document"-->
+<!--                                    comm:width="3"-->
+<!--                                    comm:formSubmit="true"-->
+<!--                                    comm:type="primary"/>-->
 
-                            <comm:divElement
-                                    xsi:type="comm:button"
-                                    comm:id="addRequiredResolutionDoc"
-                                    comm:target="main"
-                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
-                                    comm:label="Add Required Document"
-                                    comm:width="3"
-                                    comm:formSubmit="false"
-                                    comm:type="primary"/>
+<!--                            <comm:divElement-->
+<!--                                    xsi:type="comm:button"-->
+<!--                                    comm:id="addRequiredResolutionDoc"-->
+<!--                                    comm:target="main"-->
+<!--                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"-->
+<!--                                    comm:label="Add Required Document"-->
+<!--                                    comm:width="3"-->
+<!--                                    comm:formSubmit="false"-->
+<!--                                    comm:type="primary"/>-->
 
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Files will be uploaded automatically when selected. Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>
-                            </comm:divElement>
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Files will be uploaded automatically when selected. Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>-->
+<!--                            </comm:divElement>-->
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>-->
+<!--                            </comm:divElement>-->
 
                             <comm:divElement xsi:type="comm:input"
                                              comm:name="confirmationCheckMandate"
@@ -436,12 +456,28 @@
                                              comm:unCheckedValue="No"
                                              comm:selected="false">
                                 <comm:value/>
-                                <comm:inputItem comm:id="confirmationCheckMandate"
+                                <comm:inputItem comm:id="confirmationCheckMandate_signatures"
                                                 comm:label="I confirm that the signatures of the provided documents align with the waiver requirements"
                                                 comm:type="checkbox"
                                                 comm:value="1"
                                                 comm:unCheckedValue="No"
                                                 comm:selected="false"/>
+                            </comm:divElement>
+
+                            <!-- Checkbox 2: Documents uploaded to Sigma -->
+                            <comm:divElement xsi:type="comm:input"
+                                             comm:name="confirmationCheckMandateSigma"
+                                             comm:inputType="checkbox"
+                                             comm:unCheckedValue="No"
+                                             comm:selected="false">
+                                <comm:value/>
+                                <comm:inputItem
+                                        comm:id="confirmationCheckMandate_sigma"
+                                        comm:label="I confirm that the documents have been uploaded to sigma"
+                                        comm:type="checkbox"
+                                        comm:value="1"
+                                        comm:unCheckedValue="No"
+                                        comm:selected="false"/>
                             </comm:divElement>
                         </comm:symbol>
 
@@ -449,51 +485,51 @@
                         <comm:symbol xsi:type="comm:divContainer"
                                      comm:id="resolutionDetails"
                                      comm:hidden="{not($IS_RESOLUTION)}">
-                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">
-                                <comm:value>Please attach the required resolution documents</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">-->
+<!--                                <comm:value>Please attach the required resolution documents</comm:value>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:fileUpload"
-                                             comm:name="signatoriesResolutionDoc"
-                                             comm:label="Replace authorised signatories"
-                                             comm:fileUploadUrl="https://your-upload-endpoint"
-                                             comm:fileErrorUrl="https://your-error-handler"
-                                             comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:fileUpload"-->
+<!--                                             comm:name="signatoriesResolutionDoc"-->
+<!--                                             comm:label="Replace authorised signatories"-->
+<!--                                             comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                             comm:fileErrorUrl="https://your-error-handler"-->
+<!--                                             comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">
-                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">
-                                    <comm:divElement
-                                            xsi:type="comm:fileUpload"
-                                            comm:name="{concat('requiredResolutionDoc_', position())}"
-                                            comm:label="Required Document"
-                                            comm:fileUploadUrl="https://your-upload-endpoint"
-                                            comm:fileErrorUrl="https://your-error-endpoint"
-                                            comm:showInput="true">
-                                        <comm:value>
-                                            <xsl:value-of select="."/>
-                                        </comm:value>
-                                    </comm:divElement>
-                                </xsl:for-each>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">-->
+<!--                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">-->
+<!--                                    <comm:divElement-->
+<!--                                            xsi:type="comm:fileUpload"-->
+<!--                                            comm:name="{concat('requiredResolutionDoc_', position())}"-->
+<!--                                            comm:label="Required Document"-->
+<!--                                            comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                            comm:fileErrorUrl="https://your-error-endpoint"-->
+<!--                                            comm:showInput="true">-->
+<!--                                        <comm:value>-->
+<!--                                            <xsl:value-of select="."/>-->
+<!--                                        </comm:value>-->
+<!--                                    </comm:divElement>-->
+<!--                                </xsl:for-each>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement
-                                    xsi:type="comm:button"
-                                    comm:id="addRequiredResolutionDoc"
-                                    comm:target="main"
-                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
-                                    comm:label="Add Required Document"
-                                    comm:width="3"
-                                    comm:formSubmit="false"
-                                    comm:type="primary"/>
+<!--                            <comm:divElement-->
+<!--                                    xsi:type="comm:button"-->
+<!--                                    comm:id="addRequiredResolutionDoc"-->
+<!--                                    comm:target="main"-->
+<!--                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"-->
+<!--                                    comm:label="Add Required Document"-->
+<!--                                    comm:width="3"-->
+<!--                                    comm:formSubmit="false"-->
+<!--                                    comm:type="primary"/>-->
 
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>
-                            </comm:divElement>
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>-->
+<!--                            </comm:divElement>-->
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>-->
+<!--                            </comm:divElement>-->
 
                             <comm:divElement xsi:type="comm:input"
                                              comm:name="confirmationCheckResolution"
@@ -501,12 +537,28 @@
                                              comm:unCheckedValue="No"
                                              comm:selected="false">
                                 <comm:value/>
-                                <comm:inputItem comm:id="confirmationCheckResolution"
+                                <comm:inputItem comm:id="confirmationCheckResolution_signatures"
                                                 comm:label="I confirm that the signatures of the provided documents align with the waiver requirements"
                                                 comm:type="checkbox"
                                                 comm:value="1"
                                                 comm:unCheckedValue="No"
                                                 comm:selected="false"/>
+                            </comm:divElement>
+
+                            <!-- Checkbox 2: Documents uploaded to Sigma -->
+                            <comm:divElement xsi:type="comm:input"
+                                             comm:name="confirmationCheckResolutionSigma"
+                                             comm:inputType="checkbox"
+                                             comm:unCheckedValue="No"
+                                             comm:selected="false">
+                                <comm:value/>
+                                <comm:inputItem
+                                        comm:id="confirmationCheckResolution_sigma"
+                                        comm:label="I confirm that the documents have been uploaded to sigma"
+                                        comm:type="checkbox"
+                                        comm:value="1"
+                                        comm:unCheckedValue="No"
+                                        comm:selected="false"/>
                             </comm:divElement>
                         </comm:symbol>
 
@@ -514,69 +566,69 @@
                         <comm:symbol xsi:type="comm:divContainer"
                                      comm:id="mandateResolutionDetails"
                                      comm:hidden="{not($IS_MANDATE and $IS_RESOLUTION)}">
-                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">
-                                <comm:value>Please attach the required mandate and resolution documents</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph" comm:subHeading="Required Documents">-->
+<!--                                <comm:value>Please attach the required mandate and resolution documents</comm:value>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:fileUpload"
-                                             comm:name="signatoriesMandateResolutionDoc"
-                                             comm:label="Replace authorised signatories"
-                                             comm:fileUploadUrl="https://your-upload-endpoint"
-                                             comm:fileErrorUrl="https://your-error-handler"
-                                             comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:fileUpload"-->
+<!--                                             comm:name="signatoriesMandateResolutionDoc"-->
+<!--                                             comm:label="Replace authorised signatories"-->
+<!--                                             comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                             comm:fileErrorUrl="https://your-error-handler"-->
+<!--                                             comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:fileUpload"
-                                             comm:name="signatureMandateResolutionCardDoc"
-                                             comm:label="Signature card"
-                                             comm:fileUploadUrl="https://your-upload-endpoint"
-                                             comm:fileErrorUrl="https://your-error-handler"
-                                             comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:fileUpload"-->
+<!--                                             comm:name="signatureMandateResolutionCardDoc"-->
+<!--                                             comm:label="Signature card"-->
+<!--                                             comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                             comm:fileErrorUrl="https://your-error-handler"-->
+<!--                                             comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:fileUpload"
-                                             comm:name="boardOfDirectorsMandateResolutionDoc"
-                                             comm:label="Resolutions of board of directors document"
-                                             comm:fileUploadUrl="https://your-upload-endpoint"
-                                             comm:fileErrorUrl="https://your-error-handler"
-                                             comm:showInput="true">
-                                <comm:value/>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:fileUpload"-->
+<!--                                             comm:name="boardOfDirectorsMandateResolutionDoc"-->
+<!--                                             comm:label="Resolutions of board of directors document"-->
+<!--                                             comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                             comm:fileErrorUrl="https://your-error-handler"-->
+<!--                                             comm:showInput="true">-->
+<!--                                <comm:value/>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">
-                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">
-                                    <comm:divElement
-                                            xsi:type="comm:fileUpload"
-                                            comm:name="{concat('requiredResolutionDoc_', position())}"
-                                            comm:label="Required Document"
-                                            comm:fileUploadUrl="https://your-upload-endpoint"
-                                            comm:fileErrorUrl="https://your-error-endpoint"
-                                            comm:showInput="true">
-                                        <comm:value>
-                                            <xsl:value-of select="."/>
-                                        </comm:value>
-                                    </comm:divElement>
-                                </xsl:for-each>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:divContainer" comm:id="resolutionUploadContainer">-->
+<!--                                <xsl:for-each select="/requestWrapper/request/resolutionDocs/resolutionDoc">-->
+<!--                                    <comm:divElement-->
+<!--                                            xsi:type="comm:fileUpload"-->
+<!--                                            comm:name="{concat('requiredResolutionDoc_', position())}"-->
+<!--                                            comm:label="Required Document"-->
+<!--                                            comm:fileUploadUrl="https://your-upload-endpoint"-->
+<!--                                            comm:fileErrorUrl="https://your-error-endpoint"-->
+<!--                                            comm:showInput="true">-->
+<!--                                        <comm:value>-->
+<!--                                            <xsl:value-of select="."/>-->
+<!--                                        </comm:value>-->
+<!--                                    </comm:divElement>-->
+<!--                                </xsl:for-each>-->
+<!--                            </comm:divElement>-->
 
-                            <comm:divElement
-                                    xsi:type="comm:button"
-                                    comm:id="addRequiredManResDoc"
-                                    comm:target="main"
-                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"
-                                    comm:label="Add Required Document"
-                                    comm:width="3"
-                                    comm:formSubmit="false"
-                                    comm:type="primary"/>
+<!--                            <comm:divElement-->
+<!--                                    xsi:type="comm:button"-->
+<!--                                    comm:id="addRequiredManResDoc"-->
+<!--                                    comm:target="main"-->
+<!--                                    comm:url="{concat('app-domain/mandates-and-resolutions/searchCompanyDetails?companyRegNumber=', /requestWrapper/request/registrationNumber, '&amp;resolutionDocCount=', count(/requestWrapper/request/resolutionDocs/resolutionDoc) + 1)}"-->
+<!--                                    comm:label="Add Required Document"-->
+<!--                                    comm:width="3"-->
+<!--                                    comm:formSubmit="false"-->
+<!--                                    comm:type="primary"/>-->
 
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>
-                            </comm:divElement>
-                            <comm:divElement xsi:type="comm:textParagraph">
-                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>
-                            </comm:divElement>
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Ensure that all fonts, text and pictures of documents supplied are legible.</comm:value>-->
+<!--                            </comm:divElement>-->
+<!--                            <comm:divElement xsi:type="comm:textParagraph">-->
+<!--                                <comm:value>Valid formats: PDF and JPG. Upload should not exceed 10MB.</comm:value>-->
+<!--                            </comm:divElement>-->
 
                             <comm:divElement xsi:type="comm:input"
                                              comm:name="confirmationCheckMandateResolution"
@@ -584,12 +636,28 @@
                                              comm:unCheckedValue="No"
                                              comm:selected="false">
                                 <comm:value/>
-                                <comm:inputItem comm:id="confirmationCheckMandateResolution"
+                                <comm:inputItem comm:id="confirmationCheckMandateResolution_signatures"
                                                 comm:label="I confirm that the signatures of the provided documents align with the waiver requirements"
                                                 comm:type="checkbox"
                                                 comm:value="1"
                                                 comm:unCheckedValue="No"
                                                 comm:selected="false"/>
+                            </comm:divElement>
+
+                            <!-- Checkbox 2: Documents uploaded to Sigma -->
+                            <comm:divElement xsi:type="comm:input"
+                                             comm:name="confirmationCheckMandateResolutionSigma"
+                                             comm:inputType="checkbox"
+                                             comm:unCheckedValue="No"
+                                             comm:selected="false">
+                                <comm:value/>
+                                <comm:inputItem
+                                        comm:id="confirmationCheckMandateResolution_sigma"
+                                        comm:label="I confirm that the documents have been uploaded to sigma"
+                                        comm:type="checkbox"
+                                        comm:value="1"
+                                        comm:unCheckedValue="No"
+                                        comm:selected="false"/>
                             </comm:divElement>
                         </comm:symbol>
 
@@ -628,7 +696,6 @@
                                  comm:formSubmit="true"/>
                 <comm:baseButton comm:id="backSearch" comm:target="main" comm:url="app-domain/mandates-and-resolutions/createRequest" comm:label="Back" comm:formSubmit="true"/>
             </symbol>
-
         </page>
     </xsl:template>
 </xsl:stylesheet>

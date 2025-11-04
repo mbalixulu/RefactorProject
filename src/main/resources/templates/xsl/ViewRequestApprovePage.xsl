@@ -18,9 +18,7 @@
             <xsl:choose>
                 <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>
                 <xsl:when test="contains($SUB_UP,'WINDEED VERIFICATION PENDING')">Verify for Windeed</xsl:when>
-                <!-- UI label "Hannis"; DAO is "Hanis" but label is just text -->
                 <xsl:when test="contains($SUB_UP,'HANNIS VERIFICATION PENDING') or contains($SUB_UP,'HANIS VERIFICATION PENDING')">Verify for Hannis</xsl:when>
-                <!-- accept legacy 'Admin Approval Pending' -->
                 <xsl:when test="contains($SUB_UP,'ADMIN VERIFICATION PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">Approve</xsl:when>
                 <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan</xsl:when>
                 <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Updated successfully</xsl:when>
@@ -76,31 +74,24 @@
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="boxDiv">
                             <comm:box xsi:type="comm:box">
 
-                                <comm:boxSymbol xsi:type="comm:textList" comm:subHeading="Instructions">
-                                    <comm:value/>
-                                    <comm:textListItem><comm:value>Log into System.</comm:value></comm:textListItem>
-                                    <comm:textListItem><comm:value>Search for the Company Registration Number.</comm:value></comm:textListItem>
-                                    <comm:textListItem><comm:value>Retrieve the UCN.</comm:value></comm:textListItem>
-                                    <comm:textListItem><comm:value>Confirm the company details are correct.</comm:value></comm:textListItem>
-                                    <comm:textListItem><comm:value>If details are valid, proceed.</comm:value></comm:textListItem>
-                                    <comm:textListItem><comm:value>Once checks are done, return to the system and click Confirm to move the CR to the next stage.</comm:value></comm:textListItem>
-                                </comm:boxSymbol>
-
-                                <comm:boxSymbol xsi:type="comm:input"
-                                                comm:name="confirmationCheckMandate"
-                                                comm:inputType="checkbox"
-                                                comm:unCheckedValue="No"
-                                                comm:selected="false"
-                                                comm:errorMessage="{/requestWrapper/approveRejectErrorModel/confirmationCheckMandate}">
-                                    <comm:value/>
-                                    <comm:inputItem comm:id="confirmationCheckMandate"
-                                                    comm:label="I confirm that the Instructions have been followed as mentioned above."
-                                                    comm:type="checkbox"
-                                                    comm:value="1"
-                                                    comm:unCheckedValue="No"
-                                                    comm:selected="false"/>
-                                </comm:boxSymbol>
-
+<!--                                &lt;!&ndash; ===== Dynamic Instructions from wrapper.lovs.instructions ===== &ndash;&gt;-->
+<!--                                <comm:boxSymbol xsi:type="comm:textList" comm:subHeading="Instructions">-->
+<!--                                    <comm:value/>-->
+<!--                                    <xsl:choose>-->
+<!--                                        &lt;!&ndash;Render list items when present&ndash;&gt;-->
+<!--                                        <xsl:when test="count(/requestWrapper/lovs/instructions/instruction) &gt; 0">-->
+<!--                                            <xsl:for-each select="/requestWrapper/lovs/instructions/instruction">-->
+<!--                                                <comm:textListItem><comm:value><xsl:value-of select="."/></comm:value></comm:textListItem>-->
+<!--                                            </xsl:for-each>-->
+<!--                                        </xsl:when>-->
+<!--                                        &lt;!&ndash;Fallback&ndash;&gt;-->
+<!--                                        <xsl:otherwise>-->
+<!--                                            <comm:textListItem>-->
+<!--                                                <comm:value>No specific instructions for this status.</comm:value>-->
+<!--                                            </comm:textListItem>-->
+<!--                                        </xsl:otherwise>-->
+<!--                                    </xsl:choose>-->
+<!--                                </comm:boxSymbol>-->
                                 <comm:boxSymbol xsi:type="comm:commentbox"
                                                 comm:name="commentbox"
                                                 comm:label="Comment"

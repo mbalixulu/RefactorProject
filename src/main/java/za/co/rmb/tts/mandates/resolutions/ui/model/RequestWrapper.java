@@ -56,5 +56,9 @@ public class RequestWrapper implements Serializable {
     @XmlElementWrapper(name = "instructions")
     @XmlElement(name = "instruction")
     private java.util.List<String> instructions = new java.util.ArrayList<>();
+
+    @XmlElementWrapper(name = "statuses")
+    @XmlElement(name = "status")
+    private java.util.List<String> statuses = new java.util.ArrayList<>();
   }
 }

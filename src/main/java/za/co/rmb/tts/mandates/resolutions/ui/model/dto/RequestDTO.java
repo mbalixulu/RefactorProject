@@ -156,7 +156,7 @@ public class RequestDTO implements Serializable {
     private String username;   //Posted value
 
     @XmlElement(name = "userRole")
-    private String userRole;   //Label text (E.G: Shown next to username)
+    private String userRole;
 
     public UserOption() {}
 

@@ -13,7 +13,7 @@
                 <ns1:view ns1:text="On hold"          ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/requestTableOnHold"/>
                 <ns1:view ns1:text="Completed"        ns1:type="active"   ns1:id="completed"       ns1:url="app-domain/mandates-and-resolutions/requestTableCompleted"/>
                 <ns1:view ns1:text="Draft"            ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/mandates-and-resolutions/requestTableDraft"/>
-                <ns1:view ns1:text="Profile"          ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>
+<!--                <ns1:view ns1:text="Profile"          ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/requestTableProfile"/>-->
             </symbol>
 
             <!--Table-->
@@ -48,16 +48,16 @@
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
                             <!--Columns (match Pending)-->
-                            <ns1:tableColumn ns1:id="requestID"    ns1:heading="Request ID"    ns1:fieldName="requestID"    ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="processId"    ns1:heading="Process ID"    ns1:fieldName="processId"    ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="assignedUser" ns1:heading="Assigned User" ns1:fieldName="assignedUser" ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="sla"          ns1:heading="SLA"           ns1:fieldName="sla"          ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="companyName"  ns1:heading="Company Name"  ns1:fieldName="companyName"  ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="status"       ns1:heading="Status"        ns1:fieldName="status"       ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="subStatus"    ns1:heading="Sub Status"    ns1:fieldName="subStatus"    ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="requestType"  ns1:heading="Request Type"  ns1:fieldName="requestType"  ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="dateCreated"  ns1:heading="Date Created"  ns1:fieldName="dateCreated"  ns1:disableSorting="true" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="view"         ns1:heading="View"          ns1:fieldName="view"         ns1:disableSorting="true" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="requestID"    ns1:heading="Request ID"    ns1:fieldName="requestID"    ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="processId"    ns1:heading="Process ID"    ns1:fieldName="processId"    ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="assignedUser" ns1:heading="Assigned User" ns1:fieldName="assignedUser" ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="sla"          ns1:heading="SLA"           ns1:fieldName="sla"          ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="companyName"  ns1:heading="Company Name"  ns1:fieldName="companyName"  ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="status"       ns1:heading="Status"        ns1:fieldName="status"       ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="subStatus"    ns1:heading="Sub Status"    ns1:fieldName="subStatus"    ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="requestType"  ns1:heading="Request Type"  ns1:fieldName="requestType"  ns1:disableSorting="false" ns1:widthPercent="9"/>
+                            <ns1:tableColumn ns1:id="dateCreated"  ns1:heading="Date Created"  ns1:fieldName="dateCreated"  ns1:disableSorting="false" ns1:widthPercent="9"/>
+<!--                            <ns1:tableColumn ns1:id="view"         ns1:heading="View"          ns1:fieldName="view"         ns1:disableSorting="true" ns1:widthPercent="9"/>-->
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
@@ -65,11 +65,15 @@
                             <xsl:for-each select="requests/request">
                                 <ns1:row ns1:groupId="rows">
 
-                                    <!-- Request ID (display id with fallback) -->
+                                    <!-- Request ID (now shows requestIdForDisplay when available) -->
                                     <ns1:cell ns1:col_id="requestID">
                                         <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Request ID">
-                                                <ns1:value>
+                                            <ns1:item
+                                                    xsi:type="ns1:hyperlink"
+                                                    ns1:target="main"
+                                                    ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}">
+                                                <!-- IMPORTANT: hyperlink text goes in the ns1:text attribute, not a child -->
+                                                <xsl:attribute name="ns1:text">
                                                     <xsl:choose>
                                                         <xsl:when test="normalize-space(requestIdForDisplay) != ''">
                                                             <xsl:value-of select="requestIdForDisplay"/>
@@ -78,7 +82,7 @@
                                                             <xsl:value-of select="requestId"/>
                                                         </xsl:otherwise>
                                                     </xsl:choose>
-                                                </ns1:value>
+                                                </xsl:attribute>
                                             </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
@@ -187,18 +191,18 @@
                                     </ns1:cell>
 
                                     <!-- View -->
-                                    <ns1:cell ns1:col_id="view">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:button"
-                                                      ns1:id="{concat('viewBtn_', requestId)}"
-                                                      ns1:type="action"
-                                                      ns1:width="2"
-                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}"
-                                                      ns1:target="main"
-                                                      ns1:formSubmit="false"
-                                                      ns1:label="View"/>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+<!--                                    <ns1:cell ns1:col_id="view">-->
+<!--                                        <ns1:cellItem>-->
+<!--                                            <ns1:item xsi:type="ns1:button"-->
+<!--                                                      ns1:id="{concat('viewBtn_', requestId)}"-->
+<!--                                                      ns1:type="action"-->
+<!--                                                      ns1:width="2"-->
+<!--                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}"-->
+<!--                                                      ns1:target="main"-->
+<!--                                                      ns1:formSubmit="false"-->
+<!--                                                      ns1:label="View"/>-->
+<!--                                        </ns1:cellItem>-->
+<!--                                    </ns1:cell>-->
                                 </ns1:row>
                             </xsl:for-each>
 

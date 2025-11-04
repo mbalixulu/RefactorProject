@@ -73,7 +73,7 @@
                                 <ns1:box xsi:type="ns1:box">
 
                                     <!-- Header -->
-                                    <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="3">
+                                    <ns1:boxSymbol xsi:type="ns1:textHeading">
                                         <ns1:value>
                                             <xsl:text>Account </xsl:text>
                                             <xsl:value-of select="$pos"/>
