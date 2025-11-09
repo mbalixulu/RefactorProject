@@ -866,12 +866,12 @@
                                         ns1:formSubmit="false" ns1:label="Back"/>
                     </xsl:when>
 
-                    <!-- Admin Approval Pending (match on either status OR subStatus): only Back -->
+                    <!-- Admin Approval Pending (match on either status OR subStatus): only Back
                     <xsl:when test="contains($STATUS_UP,'ADMIN APPROVAL PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">
                         <ns1:baseButton ns1:id="back"
                                         ns1:url="{$BACK_URL}" ns1:target="main"
                                         ns1:formSubmit="false" ns1:label="Back"/>
-                    </xsl:when>
+                    </xsl:when> -->
 
                     <!-- Otherwise: show full set -->
                     <xsl:otherwise>
