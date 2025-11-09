@@ -2088,7 +2088,7 @@ public class MandatesResolutionUIController {
     boolean removing =
         (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
     if (removing) {
-      directors.remove(removeDirectorAt);
+      directors.remove(1);
       if (directors.isEmpty()) {
         directors.add(new RequestDTO.Director());
       }
