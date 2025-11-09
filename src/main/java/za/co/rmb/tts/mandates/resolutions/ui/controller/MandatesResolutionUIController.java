@@ -1848,6 +1848,8 @@ public class MandatesResolutionUIController {
       HttpServletRequest request
   ) {
     // -------- Helpers --------
+    logger.error("==========***************============ Director position: {}", removeDirectorAt);
+    logger.error("==========***************============ Count: {}", directorCount);
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     java.util.function.Function<String, String> dedupeComma = s -> {
@@ -2086,7 +2088,7 @@ public class MandatesResolutionUIController {
     boolean removing =
         (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
     if (removing) {
-      directors.remove(removeDirectorAt - 1);
+      directors.remove(removeDirectorAt);
       if (directors.isEmpty()) {
         directors.add(new RequestDTO.Director());
       }
