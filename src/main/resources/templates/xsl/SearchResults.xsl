@@ -269,6 +269,7 @@
 
                             <!-- Render each director as editable row -->
                             <xsl:for-each select="/requestWrapper/request/directors/director">
+                              <xsl:variable name ="idx" select="position()"/>
                                 <comm:row xsi:type="comm:fullTableRow" comm:groupId="directors">
 
                                     <!-- Name input field -->
@@ -330,7 +331,7 @@
                                         <comm:cellItem>
                                             <comm:item
                                                     xsi:type="comm:button"
-                                                    comm:id="{concat('removeDirectorBtn_', position())}"
+                                                    comm:id="{concat('removeDirectorBtn_', $idx)}"
                                                     comm:type="paper"
                                                     comm:width="2"
                                                     comm:target="main"
@@ -340,7 +341,7 @@
                                                                       'app-domain/mandates-and-resolutions/searchCompanyDetails?',
                                                                       'pdfSessionId=', /requestWrapper/request/pdfSessionId,
                                                                       '&amp;companyRegNumber=', /requestWrapper/request/registrationNumber,
-                                                                      '&amp;removeDirectorAt=', position(),
+                                                                      '&amp;removeDirectorAt=', 1,
                                                                       '&amp;directorCount=', count(/requestWrapper/request/directors/director),
                                                                       '&amp;toolCount=', count(/requestWrapper/request/documentumTool),
                                                                       '#directorsTable'
