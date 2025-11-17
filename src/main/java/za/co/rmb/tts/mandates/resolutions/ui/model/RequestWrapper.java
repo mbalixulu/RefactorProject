@@ -6,6 +6,7 @@ import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
+import java.util.List;
 
 import lombok.Data;
 
@@ -19,11 +20,30 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel
 @Data
 @XmlRootElement(name = "requestWrapper")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class RequestWrapper implements Serializable {
-  private static final long serialVersionUID = 1L;
+public class RequestWrapper {
 
   @XmlElement(name = "request")
   private RequestDTO request;
+
+  private String requestType;
+  private String checkResolution;
+  private String checkMandates;
+  private String checkMandatesAndresolution;
+  private String checkCreate;
+  private String checkDirectorPage;
+  private String checkStyleOne;
+  private String checkStyleTwo;
+  private List<WaveModel> listOfWaveModel;
+  private List<DirectorModel> directorModels;
+  private List<DirectorModel> listOfDirectors;
+  private String checkDirectorEmpty;
+  private String checkWaiver;
+  private String checkRemoveTool;
+  private String accountCheck;
+  private List<AddAccountModel> listOfAddAccount;
+  private String checkAccountSection;
+  private String checkSignatureCard;
+  private String stepForSave;
 
   //Search Results
   @XmlElement(name = "searchResultsErrorModel")
