@@ -16,4 +16,8 @@ public class SearchResultsErrorModel {
   private String fullName;
   private String surname;
   private String designation;
+  private String regiNumber;
+  private String requestType;
+  private String checkStyleOne;
+  private String checkStyleTwo;
 }

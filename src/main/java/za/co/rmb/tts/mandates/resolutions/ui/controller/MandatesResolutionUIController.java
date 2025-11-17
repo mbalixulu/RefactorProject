@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,12 +42,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
+import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
+import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.WaveModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO;
@@ -58,10 +65,13 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SignatoryDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SubmissionPayload;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.DirectorErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesAutoFillErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesSignatureCardErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ResolutionsAutoFillErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.SignatoryErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.service.MandatesResolutionService;
 import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
 
 @RestController
@@ -69,7 +79,8 @@ import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
 public class MandatesResolutionUIController {
 
   private final XSLTProcessorService xsltProcessor;
-
+  private HttpSession httpSession;
+  private final MandatesResolutionService mandatesResolutionService;
   private final Map<String, RequestDTO> pdfExtractionDataCache = new HashMap<>();
 
   private static final String XML_PAGE_PATH = "/templates/xml/";
@@ -90,110 +101,1385 @@ public class MandatesResolutionUIController {
   @Value("${mandates-resolutions-dao}")
   private String mandatesResolutionsDaoURL; //e.g http://localhost:8083
 
-  public MandatesResolutionUIController(XSLTProcessorService xsltProcessor) {
+  public MandatesResolutionUIController(XSLTProcessorService xsltProcessor,
+                                        HttpSession httpSession,
+                                        MandatesResolutionService mandatesResolutionService) {
     this.xsltProcessor = xsltProcessor;
+    this.httpSession = httpSession;
+    this.mandatesResolutionService = mandatesResolutionService;
   }
 
-  // ============= Landing Page =============
-
-  //Landing page for when the user is logged in
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> mandateResolutionsLanding(HttpServletRequest request,
                                                           HttpSession session) {
     try {
-      //1) Reset any old session
-      if (session != null) {
-        try {
-          session.invalidate();
-        } catch (IllegalStateException ignore) {
-          // intentionally empty
-        }
-      }
+      session.invalidate();
       HttpSession newSession = request.getSession(true);
-
-      //2) Read gateway-provided identity
       final String employeeNumber =
           request.getParameter("bifrost.online.header.assisted.employeeNumber");
-      final String firstName = request.getParameter("bifrost.online.header.customer.firstNames");
-      final String lastName = request.getParameter("bifrost.online.header.customer.lastName");
-
       if (employeeNumber == null || employeeNumber.isBlank()) {
         return ResponseEntity.ok(generateErrorPage("Missing Employee Number."));
       }
-
-      //3) Call User API (UNMASKED) **by employee number**
-      // NOTE: Backend mapping is /api/user/unmasked/{username}.
-      // We need to create a /employeeNumber endpoint on the DAO layer.
-
       final String backendUrl = mandatesResolutionsDaoURL + "/api/user/unmasked/" + employeeNumber;
-
-      RestTemplate rt = new RestTemplate();
-      ResponseEntity<za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO> resp =
-          rt.exchange(backendUrl, HttpMethod.GET, null,
-              za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO.class);
-
+      ResponseEntity<UserDTO> resp =
+          restTemplate.exchange(backendUrl, HttpMethod.GET, null, UserDTO.class);
       if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
         return ResponseEntity.ok(generateErrorPage("Invalid Employee Number."));
       }
-
       UserDTO user = resp.getBody();
-
-      //4) Overlay names from headers if present
-      if (firstName != null && !firstName.isBlank()) {
-        user.setFirstName(firstName);
-      }
-      if (lastName != null && !lastName.isBlank()) {
-        user.setLastName(lastName);
-      }
-
-      // (Optional) If backend’s username isn’t the employee number but you still want to display
-      // the employee number everywhere, keep it on the DTO:
       if (user.getEmployeeNumber() == null || user.getEmployeeNumber().isBlank()) {
         user.setEmployeeNumber(employeeNumber);
       }
-
-      //5) Stash in session with your existing key
       newSession.setAttribute("currentUser", user);
-
-      //6) Role-based landing
       String roleUp = (user.getUserRole() == null) ? "" : user.getUserRole().trim().toUpperCase();
-//Debug to confirm what we got backoMN
       logger.info("Landing role resolved to: '{}'", roleUp);
-
       if (roleUp.contains("ADMIN")) {
-        return displayAdminApproval();   //Renders app-domain/mandates-and-resolutions/adminApproval
+        return displayAdminApproval();
       } else {
-        return goToDisplayRequestTable(); //Renders app-domain/mandates-and-resolutions/requestTable
+        return goToDisplayRequestTable();
       }
-
     } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
       return ResponseEntity.ok(generateErrorPage("Invalid Employee Number."));
     } catch (Exception e) {
-      e.printStackTrace();
       return ResponseEntity.ok(generateErrorPage("Landing page is unavailable at this moment."));
     }
   }
 
   @PostMapping(value = "/logout", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> logout(HttpServletRequest request) {
-    //Destorys the current session if it exists
     HttpSession s = request.getSession(false);
     if (s != null) {
-      try {
-        s.invalidate();
-      } catch (IllegalStateException ignore) {
-        // intentionally empty
-      }
+      s.invalidate();
     }
-
-    //Renders the Logout Page
     String page = xsltProcessor.generatePage(xslPagePath("LogoutPage"), new RequestWrapper());
     return ResponseEntity.ok(page);
   }
 
-  // ============= REQUEST ADMIN TABLES  =============
+  @PostMapping(
+      value = "/createRequest",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE }
+  )
+  public ResponseEntity<String> displayCreateRequest() {
+    RequestWrapper requestWrapper = new RequestWrapper();
+    requestWrapper.setCheckCreate("false");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
 
-  //Admin Approval/Landing Page
+  @PostMapping(value = "/searchCompanyDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> fetchMergedDetails(
+      @ModelAttribute RequestDTO requestDto,
+      @RequestParam Map<String, String> user,
+      HttpServletRequest request) {
+    boolean check = false;
+    String page = "";
+    RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    SearchResultsErrorModel searchResultsErrorModel = new SearchResultsErrorModel();
+    String registrationNumber = null;
+    if (user.get("companyRegNumber").isBlank() || user.get("companyRegNumber") == "") {
+      searchResultsErrorModel.setRegiNumber("Company Registration Number can't be empty !");
+      check = true;
+    } else {
+      registrationNumber = user.get("companyRegNumber");
+    }
+    Function<String, String> nz = s -> s == null ? "" : s.trim();
+    Function<String, String> dedupeComma = s -> {
+      String t = nz.apply(s);
+      if (t.isEmpty()) {
+        return t;
+      }
+      String[] parts = t.split("\\s*,\\s*");
+      if (parts.length <= 1) {
+        return t;
+      }
+      LinkedHashSet<String> set = new LinkedHashSet<>();
+      for (String p : parts) {
+        if (!p.isBlank()) {
+          set.add(p);
+        }
+      }
+      return String.join(", ", set);
+    };
+    Function<String, String> normReg = s -> {
+      String t = nz.apply(s);
+      return t.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+    };
+    String incomingReg = nz.apply(requestDto != null ? requestDto.getRegistrationNumber() : null);
+    if (incomingReg.isBlank()) {
+      incomingReg = nz.apply(registrationNumber);
+    }
+    boolean fromCreateSearch =
+        "POST".equalsIgnoreCase(request.getMethod())
+        && "create".equals(request.getParameter("origin"))
+        && request.getParameter("companyRegNumber") != null;
+    String daoName = null;
+    String daoAddr = null;
+    Map<String, Object> company = new HashMap<>();
+    if (fromCreateSearch && !incomingReg.isBlank()) {
+      String url = UriComponentsBuilder
+          .fromHttpUrl(mandatesResolutionsDaoURL)
+          .pathSegment("api", "company", "registration")
+          .queryParam("registrationNumber", incomingReg)
+          .toUriString();
+      try {
+        company = restTemplate.getForObject(url, Map.class);
+        if (company == null) {
+          return renderCreateRequestWithInline(incomingReg,
+              "Company Registration Number not found.", "NOT_FOUND");
+        }
+        Object n = company.get("name");
+        Object a = company.get("address");
+        daoName = n == null ? "" : n.toString().trim();
+        daoAddr = a == null ? "" : a.toString().trim();
+      } catch (HttpStatusCodeException ex) {
+        return renderCreateRequestWithInline(incomingReg,
+            "Company Registration Number not found.", "NOT_FOUND");
+      } catch (Exception ex) {
+        return renderCreateRequestWithInline(incomingReg,
+            "Company Registration Number not found.", "NOT_FOUND");
+      }
+    }
+    RequestDTO dto = new RequestDTO();
+    String currentReg = (dto != null) ? nz.apply(dto.getRegistrationNumber()) : "";
+    boolean regChanged = (!incomingReg.isBlank()
+                          && !normReg.apply(incomingReg).equals(normReg.apply(currentReg)));
+    if (regChanged) {
+      dto = new RequestDTO();
+      dto.setRegistrationNumber(incomingReg);
+    } else {
+      if (dto == null) {
+        dto = new RequestDTO();
+      }
+      if ((dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank())
+          && !incomingReg.isBlank()) {
+        dto.setRegistrationNumber(incomingReg);
+      }
+    }
+    if (requestDto != null) {
+      String nm = dedupeComma.apply(requestDto.getCompanyName());
+      if (!nm.isBlank()) {
+        dto.setCompanyName(nm);
+      }
+      String addr = dedupeComma.apply(requestDto.getCompanyAddress());
+      if (!addr.isBlank()) {
+        dto.setCompanyAddress(addr);
+      }
+      String regModel = nz.apply(requestDto.getRegistrationNumber());
+      if (!regModel.isBlank()
+          && normReg.apply(regModel).equals(normReg.apply(dto.getRegistrationNumber()))) {
+        dto.setRegistrationNumber(regModel);
+      }
+    }
+    if (fromCreateSearch) {
+      if (daoName != null && !daoName.isBlank()) {
+        dto.setCompanyName(daoName);
+      }
+      if (daoAddr != null && !daoAddr.isBlank()) {
+        dto.setCompanyAddress(daoAddr);
+      }
+    }
+    dto.setEditable(true);
+    wrapper.setRequest(dto);
+    List<WaveModel> listOfWave = wrapper.getListOfWaveModel();
+    if (listOfWave == null) {
+      wrapper.setCheckRemoveTool("false");
+    }
+    httpSession.setAttribute("requestData", dto);
+    httpSession.setAttribute("RequestWrapper", wrapper);
+    if (check) {
+      wrapper.setSearchResultsErrorModel(searchResultsErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    } else {
+      if (company != null) {
+        page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      } else {
+        page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+      }
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  private ResponseEntity<String> renderCreateRequestWithInline(String registrationNumber,
+                                                               String message, String code) {
+    RequestDTO dto = new RequestDTO();
+    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
+    dto.setErrorMessage(message);
+    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
+    RequestWrapper wrapper = new RequestWrapper();
+    wrapper.setRequest(dto);
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  private ResponseEntity<String> renderCreateRequestWithInline(
+      HttpSession session,
+      String registrationNumber,
+      String message
+  ) {
+    return renderCreateRequestWithInline(registrationNumber, message, null);
+  }
+
+  @PostMapping(value = "/backCreateReq", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backPopup() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyAddress(null);
+    dto.setCompanyName(null);
+    requestWrapper.setRequest(dto);
+    requestWrapper.setListOfWaveModel(null);
+    requestWrapper.setCheckWaiver("false");
+    requestWrapper.setCheckDirectorEmpty("false");
+    requestWrapper.setSearchResultsErrorModel(null);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("CreateRequest"),
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/wave", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> waveRequest(@RequestParam Map<String, String> wave) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<WaveModel> listOfWave = requestWrapper.getListOfWaveModel();
+    if (listOfWave == null) {
+      listOfWave = new ArrayList<>();
+    }
+    WaveModel waveModel = new WaveModel();
+    int size = listOfWave.size();
+    waveModel.setName(++size);
+    listOfWave.add(waveModel);
+    requestWrapper.setListOfWaveModel(listOfWave);
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyName(wave.get("companyName"));
+    dto.setCompanyAddress(wave.get("companyAddress"));
+    requestWrapper.setRequest(dto);
+    requestWrapper.setRequestType(wave.get("mandateResolution"));
+    requestWrapper.setCheckRemoveTool("true");
+    if (!wave.get("mandateResolution").isBlank()) {
+      requestWrapper.setCheckStyleOne(wave.get("check1"));
+      requestWrapper.setCheckStyleTwo(wave.get("check2"));
+    }
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/removeTool", consumes =
+      MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+      produces =
+          MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> removeTools(@RequestParam Map<String, String> wave) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<WaveModel> listOfWave = requestWrapper.getListOfWaveModel();
+    if (listOfWave != null && !listOfWave.isEmpty()) {
+      listOfWave.remove(listOfWave.size() - 1);
+    }
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyName(wave.get("companyName"));
+    dto.setCompanyAddress(wave.get("companyAddress"));
+    requestWrapper.setRequest(dto);
+    requestWrapper.setRequestType(wave.get("mandateResolution"));
+    if (!wave.get("mandateResolution").isBlank()) {
+      requestWrapper.setCheckStyleOne(wave.get("check1"));
+      requestWrapper.setCheckStyleTwo(wave.get("check2"));
+    }
+    requestWrapper.setListOfWaveModel(listOfWave);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/tablePopup", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> tablePopup(@RequestParam Map<String, String> wave) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyName(wave.get("companyName"));
+    dto.setCompanyAddress(wave.get("companyAddress"));
+    requestWrapper.setRequest(dto);
+    requestWrapper.setRequestType(wave.get("mandateResolution"));
+    if (!wave.get("mandateResolution").isBlank()) {
+      requestWrapper.setCheckStyleOne(wave.get("check1"));
+      requestWrapper.setCheckStyleTwo(wave.get("check2"));
+    }
+    if (requestWrapper.getListOfWaveModel() != null) {
+      mandatesResolutionService.updateWaveTools(wave);
+    }
+    requestWrapper.setCheckWaiver("false");
+    requestWrapper.setCheckDirectorEmpty("false");
+    requestWrapper.setSearchResultsErrorModel(null);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    DirectorModel directorModel = new DirectorModel();
+    directorModel.setButtonCheck("true");
+    directorModel.setPageCheck("false");
+    httpSession.setAttribute("Dirctors", directorModel);
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/tablePopupReso", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> tablePopupReso(@RequestParam Map<String, String> wave) {
+    String page = "";
+    DirectorModel directorModel = new DirectorModel();
+    directorModel.setButtonCheck("true");
+    directorModel.setPageCheck("true");
+    httpSession.setAttribute("DirctorsNew", directorModel);
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/backDirectorPopup", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backDirectorPopup() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setCheckWaiver("false");
+    requestWrapper.setCheckDirectorEmpty("false");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/backDirectorPopupReso", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backDirectorPopupReso() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("Resolutions"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/submitAdminDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitAdminDetails(@RequestParam Map<String, String> admin) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestWrapper.getDirectorModels();
+    if (directorModelList == null) {
+      directorModelList = new ArrayList<>();
+    }
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
+        "false");
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+
+    if (check) {
+      directorModel.setDirectorErrorModel(dirctorErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    } else {
+      int size = directorModelList.size();
+      directorModel.setUserInList(++size);
+      directorModelList.add(directorModel);
+      requestWrapper.setDirectorModels(directorModelList);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/submitAdminDetailsReso", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitAdminDetailsReso(@RequestParam Map<String, String> admin) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestWrapper.getListOfDirectors();
+    if (directorModelList == null) {
+      directorModelList = new ArrayList<>();
+    }
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
+        "true");
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("instructions").isBlank()
+        || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+
+    if (check) {
+      directorModel.setDirectorErrorModel(dirctorErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    } else {
+      int size = directorModelList.size();
+      directorModel.setUserInList(++size);
+      directorModelList.add(directorModel);
+      requestWrapper.setListOfDirectors(directorModelList);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/removeDirector/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> removeDirector(@PathVariable String userInList,
+                                               @RequestParam Map<String, String> user) {
+    String page = "";
+    mandatesResolutionService.removeSpecificAdmin(Integer.valueOf(userInList));
+    RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/removeDirectorReso/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> removeDirectorReso(@PathVariable String userInList,
+                                                   @RequestParam Map<String, String> user) {
+    String page = "";
+    mandatesResolutionService.removeSpecificAdminReso(Integer.valueOf(userInList));
+    RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    page = xsltProcessor.generatePage(xslPagePath("Resolutions"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/editDirector/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editDirector(@PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<DirectorModel> listOfDirector = requestWrapper.getDirectorModels();
+    DirectorModel directorModels = (DirectorModel) httpSession.getAttribute("Dirctors");
+    directorModels = mandatesResolutionService.getDirectorDetails(directorModels,
+        listOfDirector,
+        userInList);
+    directorModels.setButtonCheck("false");
+    directorModels.setPageCheck("false");
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/editDirectorReso/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editDirectorReso(@PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<DirectorModel> listOfDirector = requestWrapper.getListOfDirectors();
+    DirectorModel directorModels = (DirectorModel) httpSession.getAttribute("DirctorsNew");
+    directorModels = mandatesResolutionService.getDirectorDetailsReso(directorModels,
+        listOfDirector,
+        userInList);
+    directorModels.setButtonCheck("false");
+    directorModels.setPageCheck("true");
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateDirectors/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateDirectors(@RequestParam Map<String, String> admin,
+                                                @PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestWrapper.getDirectorModels();
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("Dirctors");
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+    directorModelList =
+        mandatesResolutionService.getUpdatedDirector(directorModelList, userInList, admin);
+    requestWrapper.setDirectorModels(directorModelList);
+    if (check) {
+      listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+    } else {
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateDirectorsReso/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateDirectorsReso(@RequestParam Map<String, String> admin,
+                                                    @PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestWrapper.getListOfDirectors();
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("instructions").isBlank()
+        || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+
+    directorModelList =
+        mandatesResolutionService.getUpdatedDirectorReso(directorModelList, userInList, admin);
+    requestWrapper.setDirectorModels(directorModelList);
+    if (check) {
+      listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+    } else {
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/requestType", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> requestType(@RequestParam Map<String, String> user) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+
+    if ("Mandate".equalsIgnoreCase(user.get("mandateResolution"))) {
+      requestWrapper.setCheckMandates("true");
+      requestWrapper.setCheckResolution("false");
+      requestWrapper.setCheckMandatesAndresolution("false");
+      requestWrapper.setCheckStyleOne("false");
+      requestWrapper.setCheckStyleTwo("false");
+    }
+
+    if ("Resolution".equalsIgnoreCase(user.get("mandateResolution"))) {
+      requestWrapper.setCheckResolution("true");
+      requestWrapper.setCheckMandates("false");
+      requestWrapper.setCheckMandatesAndresolution("false");
+      requestWrapper.setCheckStyleOne("false");
+      requestWrapper.setCheckStyleTwo("false");
+    }
+
+    if ("Mandate And Resolution".equalsIgnoreCase(user.get("mandateResolution"))) {
+      requestWrapper.setCheckMandatesAndresolution("true");
+      requestWrapper.setCheckMandates("false");
+      requestWrapper.setCheckResolution("false");
+      requestWrapper.setCheckStyleOne("false");
+      requestWrapper.setCheckStyleTwo("false");
+    }
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyName(user.get("companyName"));
+    dto.setCompanyAddress(user.get("companyAddress"));
+    requestWrapper.setRequest(dto);
+    requestWrapper.setRequestType(user.get("mandateResolution"));
+    if (requestWrapper.getListOfWaveModel() != null) {
+      mandatesResolutionService.updateWaveTools(user);
+    }
+    requestWrapper.setCheckWaiver("false");
+    requestWrapper.setCheckDirectorEmpty("false");
+    requestWrapper.setSearchResultsErrorModel(null);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/proceedToAccount",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE })
+  public ResponseEntity<String> proceedToAccount(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    SearchResultsErrorModel searchResultsErrorModel = new SearchResultsErrorModel();
+    boolean check = false;
+    String page = "";
+    requestWrapper = mandatesResolutionService.setSearchResult(user);
+    if (user.get("companyName").isBlank()) {
+      searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("companyAddress").isBlank()) {
+      searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
+      check = true;
+    }
+    List<DirectorModel> directors = requestWrapper.getDirectorModels();
+    if (directors == null || directors.isEmpty()) {
+      requestWrapper.setCheckDirectorEmpty("true");
+      check = true;
+    } else {
+      requestWrapper.setCheckDirectorEmpty("false");
+    }
+
+    List<WaveModel> waveModelList = requestWrapper.getListOfWaveModel();
+    if (waveModelList == null || waveModelList.isEmpty()) {
+      requestWrapper.setCheckWaiver("true");
+      check = true;
+    } else {
+      requestWrapper.setCheckWaiver("false");
+    }
+
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
+        user.get("mandateResolution"))) {
+      searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
+      check = true;
+    } else {
+      if (user.get("check1").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleOne("Select the Check box !");
+        check = true;
+      }
+      if (user.get("check2").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleTwo("Select the Check box !");
+        check = true;
+      }
+    }
+
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+
+    if (requestWrapper.getListOfWaveModel() != null) {
+      mandatesResolutionService.updateWaveTools(user);
+    }
+    requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    if (check) {
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    } else {
+      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return new ResponseEntity<>(page, HttpStatus.OK);
+  }
+
+  @PostMapping(value = "/proceedToAccountReso",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE })
+  public ResponseEntity<String> proceedToAccountReso(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    SearchResultsErrorModel searchResultsErrorModel = new SearchResultsErrorModel();
+    boolean check = false;
+    String page = "";
+    requestWrapper = mandatesResolutionService.setSearchResult(user);
+    if (user.get("companyName").isBlank()) {
+      searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("companyAddress").isBlank()) {
+      searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
+      check = true;
+    }
+    List<DirectorModel> directors = requestWrapper.getDirectorModels();
+    if (directors == null || directors.isEmpty()) {
+      requestWrapper.setCheckDirectorEmpty("true");
+      check = true;
+    } else {
+      requestWrapper.setCheckDirectorEmpty("false");
+    }
+
+    List<WaveModel> waveModelList = requestWrapper.getListOfWaveModel();
+    if (waveModelList == null || waveModelList.isEmpty()) {
+      requestWrapper.setCheckWaiver("true");
+      check = true;
+    } else {
+      requestWrapper.setCheckWaiver("false");
+    }
+
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
+        user.get("mandateResolution"))) {
+      searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
+      check = true;
+    } else {
+      if (user.get("check1").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleOne("Select the Check box !");
+        check = true;
+      }
+      if (user.get("check2").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleTwo("Select the Check box !");
+        check = true;
+      }
+    }
+
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+
+    if (requestWrapper.getListOfWaveModel() != null) {
+      mandatesResolutionService.updateWaveTools(user);
+    }
+    requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    if (check) {
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    } else {
+      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+    return new ResponseEntity<>(page, HttpStatus.OK);
+  }
+
+  @PostMapping(value = "/searchAccountSave",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE })
+  public ResponseEntity<String> searchAccountSave(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        requestWrapper = mandatesResolutionService.setSearchResult(user);
+    requestWrapper.setStepForSave("Step 1");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    mandatesResolutionService.sendRequestStaging();
+    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
+      return displayAdminApproval();
+    } else {
+      return goToDisplayRequestTable();
+    }
+  }
+
+  @PostMapping(value = "/backToAccountSearch", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backToAccountSearch() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setCheckWaiver("false");
+    requestWrapper.setCheckDirectorEmpty("false");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/addAccount", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> addAccount() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    AddAccountModel addAccountModel = new AddAccountModel();
+    addAccountModel.setButtonCheck("false");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+        (AddAccountModel) httpSession.getAttribute("Signatory"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/cancelAddAccount", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> cancelAddAccount() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    addAccountModel.setCheckSignatoryList("false");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/signatoryTablePopup", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> openSignatoryPopup(@RequestParam Map<String, String> user) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    addAccountModel.setAccountName(user.get("accountName"));
+    addAccountModel.setAccountNumber(user.get("accountNo"));
+    SignatoryModel signatoryModel = new SignatoryModel();
+    signatoryModel.setButtonCheck("true");
+    addAccountModel.setCheckSignatoryList("false");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/backToAddAccount", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backToAddAccount() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/submitSignatoryDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitSignatory(@RequestParam Map<String, String> user) {
+    String page = "";
+    boolean check = false;
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    if (user.get("fullName").isBlank()) {
+      signatoryErrorModel.setFullName("Full Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("idNumber").isBlank()) {
+      signatoryErrorModel.setIdNumber("Id number can't be empty !");
+      check = true;
+    }
+
+    if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
+        user.get("accountRef1"))) {
+      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    SignatoryModel signatoryModel = mandatesResolutionService.setSignatory(user);
+    List<SignatoryModel> signatoryModels = addAccountModel.getListOfSignatory();
+    if (signatoryModels == null) {
+      signatoryModels = new ArrayList<>();
+    }
+    int size = signatoryModels.size();
+    signatoryModel.setUserInList(++size);
+    signatoryModels.add(signatoryModel);
+    addAccountModel.setListOfSignatory(signatoryModels);
+    httpSession.setAttribute("Signatory", addAccountModel);
+    if (check) {
+      signatoryModel.setSignatoryErrorModel(signatoryErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    } else {
+      page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+          (AddAccountModel) httpSession.getAttribute("Signatory"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/SignatoryRemove/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> signatoryRemove(@PathVariable String userInList) {
+    String page = "";
+    mandatesResolutionService.removeSpecificSignatory(Integer.valueOf(userInList));
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/SignatoryEdit/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> signatoryEdit(@PathVariable String userInList) {
+    String page = "";
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    SignatoryModel signatoryModel = new SignatoryModel();
+    signatoryModel = mandatesResolutionService.getSignatory(signatoryModel,
+        addAccountModel.getListOfSignatory(), userInList);
+    signatoryModel.setButtonCheck("false");
+    page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/EditSignatoryDetails/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editSignatory(@RequestParam Map<String, String> user,
+                                              @PathVariable String userInList) {
+    String page = "";
+    boolean check = false;
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    if (user.get("fullName").isBlank()) {
+      signatoryErrorModel.setFullName("Full Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("idNumber").isBlank()) {
+      signatoryErrorModel.setIdNumber("Id number can't be empty !");
+      check = true;
+    }
+
+    if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
+        user.get("accountRef1"))) {
+      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    List<SignatoryModel> signatoryModels =
+        mandatesResolutionService.getUpdatedSignatory(addAccountModel.getListOfSignatory(),
+            userInList, user);
+    addAccountModel.setListOfSignatory(signatoryModels);
+    SignatoryModel signatoryModel = new SignatoryModel();
+    httpSession.setAttribute("Signatory", addAccountModel);
+    if (check) {
+      signatoryModel.setFullName(user.get("fullName"));
+      signatoryModel.setIdNumber(user.get("idNumber"));
+      signatoryModel.setInstruction(user.get("accountRef1"));
+      signatoryModel.setSignatoryErrorModel(signatoryErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    } else {
+      page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+          (AddAccountModel) httpSession.getAttribute("Signatory"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/addSignatoryWithAccount", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> addSignatoryWithAccount(@RequestParam Map<String, String> user) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<AddAccountModel> addAccountModelList = requestWrapper.getListOfAddAccount();
+    if (addAccountModelList == null) {
+      addAccountModelList = new ArrayList<>();
+    }
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    boolean check = false;
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    if (user.get("accountName").isBlank()) {
+      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("accountNo").isBlank()) {
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      check = true;
+    }
+
+    if (addAccountModel.getListOfSignatory() == null) {
+      addAccountModel.setCheckSignatoryList("true");
+      check = true;
+    } else {
+      addAccountModel.setCheckSignatoryList("false");
+    }
+    addAccountModel.setAccountName(user.get("accountName"));
+    addAccountModel.setAccountNumber(user.get("accountNo"));
+    int size = addAccountModelList.size();
+    addAccountModel.setUserInList(++size);
+    addAccountModelList.add(addAccountModel);
+    requestWrapper.setListOfAddAccount(addAccountModelList);
+    requestWrapper.setAccountCheck("true");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    if (check) {
+      addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
+      addAccountModel.setButtonCheck("false");
+      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    } else {
+      RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/saveAccounts",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE })
+  public ResponseEntity<String> saveAccounts(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setStepForSave("Step 2");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    mandatesResolutionService.sendRequestStaging();
+    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
+      return displayAdminApproval();
+    } else {
+      return goToDisplayRequestTable();
+    }
+  }
+
+  @PostMapping(value = "/editSignatoryWithAccount/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editSignatoryWithAccount(@RequestParam Map<String, String> user,
+                                                         @PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    AddAccountModel addAccountModel =
+        mandatesResolutionService.getAccount(requestWrapper.getListOfAddAccount(), userInList);
+    addAccountModel.setButtonCheck("true");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+        (AddAccountModel) httpSession.getAttribute("Signatory"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateSignatoryWithAccount/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateSignatoryWithAccount(@RequestParam Map<String, String> user,
+                                                           @PathVariable String userInList) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<AddAccountModel> addAccountModelList =
+        mandatesResolutionService.updateAccount(requestWrapper.getListOfAddAccount(), userInList,
+            user);
+    AddAccountModel addAccountModel =
+        mandatesResolutionService.updateAccountSingle(requestWrapper.getListOfAddAccount(),
+            userInList,
+            user);
+    boolean check = false;
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    if (user.get("accountName").isBlank()) {
+      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("accountNo").isBlank()) {
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      check = true;
+    }
+
+    if (addAccountModel.getListOfSignatory() == null || addAccountModel.getListOfSignatory()
+        .isEmpty()) {
+      addAccountModel.setCheckSignatoryList("true");
+      check = true;
+    } else {
+      addAccountModel.setCheckSignatoryList("false");
+    }
+
+    if (check) {
+      addAccountModel.setAccountName(user.get("accountName"));
+      addAccountModel.setAccountNumber(user.get("accountNo"));
+      addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
+      addAccountModel.setButtonCheck("true");
+      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    } else {
+      requestWrapper.setListOfAddAccount(addAccountModelList);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    }
+
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/deleteSignatoryWithAccount/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> deleteSignatoryWithAccount(@PathVariable String userInList) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<AddAccountModel> listOfAddAccount = requestWrapper.getListOfAddAccount();
+    int originalSize = listOfAddAccount.size();
+    boolean removed = listOfAddAccount.removeIf(
+        account -> userInList.equalsIgnoreCase(String.valueOf(account.getUserInList()))
+    );
+    if (removed) {
+      requestWrapper.setListOfAddAccount(listOfAddAccount);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+    }
+    String page = xsltProcessor.generatePage(
+        xslPagePath("MandatesAutoFill"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/proceedToSignaturePage",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> proceedToSignaturePage() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    List<AddAccountModel> addAccountModelList =
+        mandatesResolutionService.getAllAddSignator(requestWrapper.getListOfAddAccount());
+    if (requestWrapper.getListOfAddAccount() == null || requestWrapper.getListOfAddAccount()
+        .isEmpty()) {
+      requestWrapper.setAccountCheck("false");
+      page = xsltProcessor.generatePage(
+          xslPagePath("MandatesAutoFill"), requestWrapper);
+    } else {
+      RequestWrapper requestWrapperData = new RequestWrapper();
+      requestWrapperData.setListOfAddAccount(addAccountModelList);
+      requestWrapperData.setRequestType(requestWrapper.getRequestType());
+      httpSession.setAttribute("RequestWrapperData", requestWrapperData);
+      page = xsltProcessor.generatePage(
+          xslPagePath("MandatesSignatureCard"), requestWrapperData);
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/cancelToSignaturePage",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> cancelToSignaturePage() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    page = xsltProcessor.generatePage(
+        xslPagePath("MandatesAutoFill"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/proceedSignatureCard",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> proceedSignatureCard(@RequestParam Map<String, String> user) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    requestWrapper.setCheckResolution("false");
+    boolean check = false;
+    for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
+      for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
+        if (user.get("capacity" + signatoryModel.getUserInList()).isBlank()) {
+          requestWrapper.setCheckSignatureCard("true");
+          check = true;
+        } else if (user.get("Group" + signatoryModel.getUserInList()).isBlank()) {
+          requestWrapper.setCheckSignatureCard("true");
+          check = true;
+        } else {
+          requestWrapper.setCheckSignatureCard("false");
+        }
+      }
+    }
+
+    if (check) {
+      page = xsltProcessor.generatePage(
+          xslPagePath("MandatesSignatureCard"), requestWrapper);
+    } else {
+      page = xsltProcessor.generatePage(
+          xslPagePath("Resolutions"), requestWrapper);
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/saveSignatureCard",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> saveSignatureCard() {
+    String page = "";
+    mandatesResolutionService.sendRequestSignatureCard();
+    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
+      return displayAdminApproval();
+    } else {
+      return goToDisplayRequestTable();
+    }
+  }
+
+  @PostMapping(value = "/backSignatureCard",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backSignatureCard() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    page = xsltProcessor.generatePage(
+        xslPagePath("MandatesSignatureCard"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/editAddedSignatory/{userInList}/{userInAccount}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editAddedSignatory(@PathVariable String userInList,
+                                                   @PathVariable String userInAccount) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    SignatoryModel signatoryModel =
+        mandatesResolutionService.getSignatoryData(requestWrapper.getListOfAddAccount(),
+            userInList, userInAccount);
+    signatoryModel.setCheckDocConfirm("false");
+    httpSession.setAttribute("signatory", signatoryModel);
+    page = xsltProcessor.generatePage(
+        xslPagePath("SignatoryGroup"), signatoryModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateAddedSignatory/{userInList}/{userInAccount}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateAddedSignatory(@PathVariable String userInList,
+                                                     @PathVariable String userInAccount,
+                                                     @RequestParam Map<String, String> user) {
+
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    boolean check = false;
+    if (user.get("capacity").isBlank()) {
+      signatoryErrorModel.setCapacity("Capacity can't be empty !");
+      check = true;
+    }
+
+    if (user.get("Group").isBlank()) {
+      signatoryErrorModel.setGroup("Group can't be empty !");
+      check = true;
+    }
+
+    if (user.get("confirm").equalsIgnoreCase("false")) {
+      signatoryErrorModel.setCheckDocConfirm("Please Confirm the check box !");
+      check = true;
+    }
+
+    if (check) {
+      SignatoryModel model = (SignatoryModel) httpSession.getAttribute("signatory");
+      model.setGroup(user.get("Group"));
+      model.setCapacity(user.get("capacity"));
+      model.setSignatoryErrorModel(signatoryErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("SignatoryGroup"), model);
+    } else {
+      List<AddAccountModel> listOfAddAccount =
+          mandatesResolutionService.getAddAccountList(requestWrapper.getListOfAddAccount(),
+              userInList, userInAccount, user);
+      requestWrapper.setListOfAddAccount(listOfAddAccount);
+      httpSession.setAttribute("RequestWrapperData", requestWrapper);
+      page = xsltProcessor.generatePage(
+          xslPagePath("MandatesSignatureCard"), requestWrapper);
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/backSignature",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> backSignature() {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    page = xsltProcessor.generatePage(
+        xslPagePath("MandatesSignatureCard"), requestWrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/saveAppointedDirectors",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> saveAppointedDirectors() {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setStepForSave("Step 4");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    mandatesResolutionService.sendRequestStaging();
+    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
+      return displayAdminApproval();
+    } else {
+      return goToDisplayRequestTable();
+    }
+  }
+
+  @PostMapping(value = "/submitFinalRecord",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitFinalRecord() {
+    mandatesResolutionService.createRequest();
+    RequestWrapper wrapper = new RequestWrapper();
+    String page = xsltProcessor.generatePage(
+        xslPagePath("ViewRequestSuccessPage"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/submitResoFinalRecord",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitResoFinalRecord() {
+    mandatesResolutionService.createRequestReso();
+    RequestWrapper wrapper = new RequestWrapper();
+    String page = xsltProcessor.generatePage(
+        xslPagePath("ViewRequestSuccessPage"), wrapper);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/submitMandateFinalRecord",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> submitMandateFinalRecord(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+    requestWrapper.setCheckResolution("false");
+    boolean check = false;
+    String page = "";
+    for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
+      for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
+        if (user.get("capacity" + signatoryModel.getUserInList()).isBlank()) {
+          requestWrapper.setCheckSignatureCard("true");
+          check = true;
+        } else if (user.get("Group" + signatoryModel.getUserInList()).isBlank()) {
+          requestWrapper.setCheckSignatureCard("true");
+          check = true;
+        } else {
+          requestWrapper.setCheckSignatureCard("false");
+        }
+      }
+    }
+
+    if (check) {
+      page = xsltProcessor.generatePage(
+          xslPagePath("MandatesSignatureCard"), requestWrapper);
+    } else {
+      mandatesResolutionService.createRequestMandates();
+      RequestWrapper wrapper = new RequestWrapper();
+      page = xsltProcessor.generatePage(
+          xslPagePath("ViewRequestSuccessPage"), requestWrapper);
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/finish",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> finish() {
+    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
+      return displayAdminApproval();
+    } else {
+      return goToDisplayRequestTable();
+    }
+  }
+
   @PostMapping(value = "/adminApproval", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminApproval() {
     try {
@@ -1653,36 +2939,6 @@ public class MandatesResolutionUIController {
     return new ResponseEntity<>(bytes, out, org.springframework.http.HttpStatus.OK);
   }
 
-  // ============= CREATION PAGES =============
-
-  //Create a request page
-  @PostMapping(
-      value = "/createRequest",
-      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
-  )
-  public ResponseEntity<String> displayCreateRequest(HttpSession session) {
-    //Drop previous working state (but not the whole security session)
-    String old = (String) session.getAttribute("pdfSessionId");
-    if (old != null) {
-      pdfExtractionDataCache.remove(old);
-    }
-    session.removeAttribute("requestData");
-
-    String freshId = java.util.UUID.randomUUID().toString();
-    session.setAttribute("pdfSessionId", freshId);
-
-    //Id visible to the page
-    RequestDTO dto = new RequestDTO();
-    dto.setPdfSessionId(freshId);
-
-    RequestWrapper wrapper = new RequestWrapper();
-    wrapper.setRequest(dto);
-
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
-    return ResponseEntity.ok(page);
-  }
-
-  //Cancel from Create Request (ADMIN vs USER)
   @PostMapping(
       value = "/cancelCreateRequest",
       produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
@@ -1797,7 +3053,7 @@ public class MandatesResolutionUIController {
     //    - Else if no field was posted AND both query param and session are empty -> block.
     if ((hasPostedParam && posted.isEmpty())
         || (!hasPostedParam && queryReg.isEmpty() && regFromSession.isEmpty())) {
-      return renderCreateRequestWithInline(session, "", "This field is required.", "REQUIRED");
+      return renderCreateRequestWithInlines(session, "", "This field is required.", "REQUIRED");
     }
 
     // 5) Choose effective registration number: POST > query > session
@@ -1835,302 +3091,26 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/searchCompanyDetails", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> fetchMergedDetails(
-      @ModelAttribute RequestDTO requestDto,
-      @RequestParam(value = "companyRegNumber", required = false) String registrationNumber,
-      @RequestParam(value = "removeDirectorAt", required = false) Integer removeDirectorAt,
-      @RequestParam(value = "directorCount", required = false) Integer directorCount,
-      @RequestParam(value = "resolutionDocCount", required = false) Integer resolutionDocCount,
-      @RequestParam(value = "toolCount", required = false) Integer toolCount,
-      @RequestParam(value = "action", required = false) String action,
-      HttpSession session,
-      HttpServletRequest request
+  private ResponseEntity<String> renderCreateRequestWithInlines(
+      HttpSession session, String registrationNumber, String message, String code
   ) {
-    // -------- Helpers --------
-    logger.error("==========***************============ Director position: {}", removeDirectorAt);
-    logger.error("==========***************============ Count: {}", directorCount);
-    java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
-
-    java.util.function.Function<String, String> dedupeComma = s -> {
-      String t = nz.apply(s);
-      if (t.isEmpty()) {
-        return t;
-      }
-      String[] parts = t.split("\\s*,\\s*");
-      if (parts.length <= 1) {
-        return t;
-      }
-      java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
-      for (String p : parts) {
-        if (!p.isBlank()) {
-          set.add(p);
-        }
-      }
-      return String.join(", ", set);
-    };
-
-    java.util.function.Function<String, String> normReg = s -> {
-      String t = nz.apply(s);
-      return t.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
-    };
-
-    // -------- Work out incoming reg + origin (CreateRequest vs others) --------
-    String incomingReg = nz.apply(requestDto != null ? requestDto.getRegistrationNumber() : null);
-    if (incomingReg.isBlank()) {
-      incomingReg = nz.apply(registrationNumber);
-    }
-
-    boolean fromCreateSearch =
-        "POST".equalsIgnoreCase(request.getMethod())
-            && "create".equals(request.getParameter("origin"))
-            && request.getParameter("companyRegNumber") != null;
-
-    String daoName = null;
-    String daoAddr = null;
-
-    // If CreateRequest search and a reg was typed,
-    // try DAO; on "not found" -> re-render CreateRequest
-    if (fromCreateSearch && !incomingReg.isBlank()) {
-      String url = org.springframework.web.util.UriComponentsBuilder
-          .fromHttpUrl(mandatesResolutionsDaoURL)
-          .pathSegment("api", "company", "registration")
-          .queryParam("registrationNumber", incomingReg)
-          .toUriString();
-
-      org.springframework.web.client.RestTemplate rt = new
-          org.springframework.web.client.RestTemplate();
-      try {
-        @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> company = rt.getForObject(url, java.util.Map.class);
-        if (company == null) {
-          return renderCreateRequestWithInline(session, incomingReg,
-              "Company Registration Number not found.", "NOT_FOUND");
-        }
-        Object n = company.get("name");
-        Object a = company.get("address");
-        daoName = n == null ? "" : n.toString().trim();
-        daoAddr = a == null ? "" : a.toString().trim();
-      } catch (org.springframework.web.client.HttpStatusCodeException ex) {
-        return renderCreateRequestWithInline(session, incomingReg,
-            "Company Registration Number not found.", "NOT_FOUND");
-      } catch (Exception ex) {
-        return renderCreateRequestWithInline(session, incomingReg,
-            "Company Registration Number not found.", "NOT_FOUND");
-      }
-    }
-
-    // -------- Load current DTO via session id (may rotate if reg changed) --------
-    String currentSessionId = (String) session.getAttribute("pdfSessionId");
-    RequestDTO dto = (currentSessionId != null)
-        ?
-        pdfExtractionDataCache.get(currentSessionId) : null;
-    String currentReg = (dto != null) ? nz.apply(dto.getRegistrationNumber()) : "";
-
-    boolean regChanged = (!incomingReg.isBlank()
-        && !normReg.apply(incomingReg).equals(normReg.apply(currentReg)));
-    if (regChanged) {
-      String newId = java.util.UUID.randomUUID().toString();
-      session.setAttribute("pdfSessionId", newId);
-
-      dto = new RequestDTO();
-      dto.setRegistrationNumber(incomingReg);
-      dto.setDirectors(new java.util.ArrayList<>());
-      dto.setDocumentumTools(new java.util.ArrayList<>());
-      dto.setResolutionDocs(new java.util.ArrayList<>());
-    } else {
-      if (dto == null) {
-        dto = new RequestDTO();
-      }
-      if (dto.getDirectors() == null) {
-        dto.setDirectors(new java.util.ArrayList<>());
-      }
-      if (dto.getDocumentumTools() == null) {
-        dto.setDocumentumTools(new java.util.ArrayList<>());
-      }
-      if (dto.getResolutionDocs() == null) {
-        dto.setResolutionDocs(new java.util.ArrayList<>());
-      }
-      if ((dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank())
-          && !incomingReg.isBlank()) {
-        dto.setRegistrationNumber(incomingReg);
-      }
-    }
-
-    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
-
-    // -------- Merge company fields from model (non-blank only) --------
-    if (requestDto != null) {
-      String nm = dedupeComma.apply(requestDto.getCompanyName());
-      if (!nm.isBlank()) {
-        dto.setCompanyName(nm);
-      }
-
-      String addr = dedupeComma.apply(requestDto.getCompanyAddress());
-      if (!addr.isBlank()) {
-        dto.setCompanyAddress(addr);
-      }
-
-      String regModel = nz.apply(requestDto.getRegistrationNumber());
-      if (!regModel.isBlank()
-          && normReg.apply(regModel).equals(normReg.apply(dto.getRegistrationNumber()))) {
-        dto.setRegistrationNumber(regModel);
-      }
-    }
-
-    // Prefer DAO name/address if we came from CreateRequest search and DAO returned values
-    if (fromCreateSearch) {
-      if (daoName != null && !daoName.isBlank()) {
-        dto.setCompanyName(daoName);
-      }
-      if (daoAddr != null && !daoAddr.isBlank()) {
-        dto.setCompanyAddress(daoAddr);
-      }
-    }
-
-    // -------- MERGE: Tools from @ModelAttribute or raw request params --------
-    {
-      java.util.List<String> mergedTools = new java.util.ArrayList<>();
-
-      if (requestDto != null && requestDto.getDocumentumTools() != null) {
-        for (String t : requestDto.getDocumentumTools()) {
-          mergedTools.add(nz.apply(t));
-        }
-      } else {
-        for (int i = 0; ; i++) {
-          String v = request.getParameter("documentumTools[" + i + "]");
-          if (v == null) {
-            break;
-          }
-          mergedTools.add(nz.apply(v));
-        }
-      }
-
-      if (!mergedTools.isEmpty()) {
-        if (dto.getDocumentumTools() == null) {
-          dto.setDocumentumTools(new java.util.ArrayList<>());
-        }
-        //Expand dto list to match mergedTools size
-        while (dto.getDocumentumTools().size() < mergedTools.size()) {
-          dto.getDocumentumTools().add("");
-        }
-        for (int i = 0; i < mergedTools.size(); i++) {
-          String v = mergedTools.get(i);
-          //Only overwrite when v is non-blank
-          if (!v.isBlank()) {
-            dto.getDocumentumTools().set(i, v);
-          }
-        }
-      }
-    }
-
-    // -------- MERGE: Directors from @ModelAttribute or raw request params --------
-    {
-      java.util.List<RequestDTO.Director> incoming = null;
-
-      if (requestDto != null && requestDto.getDirectors() != null
-          && !requestDto.getDirectors().isEmpty()) {
-        incoming = requestDto.getDirectors();
-      } else {
-        java.util.List<RequestDTO.Director> built = new java.util.ArrayList<>();
-        for (int i = 0; ; i++) {
-          String n = request.getParameter("directors[" + i + "].name");
-          String s = request.getParameter("directors[" + i + "].surname");
-          String d = request.getParameter("directors[" + i + "].designation");
-          if (n == null && s == null && d == null) {
-            break;
-          }
-          RequestDTO.Director rd = new RequestDTO.Director();
-          rd.setName(nz.apply(n));
-          rd.setSurname(nz.apply(s));
-          rd.setDesignation(nz.apply(d));
-          built.add(rd);
-        }
-        if (!built.isEmpty()) {
-          incoming = built;
-        }
-      }
-
-      if (incoming != null && !incoming.isEmpty()) {
-        if (dto.getDirectors() == null) {
-          dto.setDirectors(new java.util.ArrayList<>());
-        }
-        while (dto.getDirectors().size() < incoming.size()) {
-          dto.getDirectors().add(new RequestDTO.Director());
-        }
-        for (int i = 0; i < incoming.size(); i++) {
-          var in = incoming.get(i);
-          var ex = dto.getDirectors().get(i);
-          if (in.getName() != null && !in.getName().isBlank()) {
-            ex.setName(in.getName().trim());
-          }
-          if (in.getSurname() != null && !in.getSurname().isBlank()) {
-            ex.setSurname(in.getSurname().trim());
-          }
-          if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
-            ex.setDesignation(in.getDesignation().trim());
-          }
-        }
-      }
-
-      if (dto.getDirectors() == null || dto.getDirectors().isEmpty()) {
-        dto.setDirectors(new java.util.ArrayList<>());
-        dto.getDirectors().add(new RequestDTO.Director());
-      }
-    }
-
-    // -------- Handle remove / counts (after merge so values persist) --------
-    java.util.List<RequestDTO.Director> directors = dto.getDirectors();
-    if (directors.isEmpty()) {
-      directors.add(new RequestDTO.Director());
-    }
-
-    boolean removing =
-        (removeDirectorAt != null && removeDirectorAt >= 1 && removeDirectorAt <= directors.size());
-    if (removing) {
-      directors.remove(1);
-      if (directors.isEmpty()) {
-        directors.add(new RequestDTO.Director());
-      }
-    } else if (directorCount != null && directorCount > directors.size()) {
-      for (int i = directors.size(); i < directorCount; i++) {
-        directors.add(new RequestDTO.Director());
-      }
-    }
-    dto.setDirectors(directors);
-
-    if (toolCount != null) {
-      if (dto.getDocumentumTools() == null) {
-        dto.setDocumentumTools(new java.util.ArrayList<>());
-      }
-      while (dto.getDocumentumTools().size() < toolCount) {
-        dto.getDocumentumTools().add("");
-      }
-    }
-
-    if (resolutionDocCount != null && resolutionDocCount > 0) {
-      if (dto.getResolutionDocs() == null) {
-        dto.setResolutionDocs(new java.util.ArrayList<>());
-      }
-      while (dto.getResolutionDocs().size() < resolutionDocCount) {
-        dto.getResolutionDocs().add("");
-      }
-    }
-
-    // -------- Persist + render --------
-    dto.setPdfSessionId(pdfSessionId);
-    dto.setEditable(true);
-
-    if (pdfSessionId != null) {
-      pdfExtractionDataCache.put(pdfSessionId, dto);
-    }
-    session.setAttribute("requestData", dto);
-
+    RequestDTO dto = new RequestDTO();
+    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
+    dto.setErrorMessage(message);
+    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-
-    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
     return ResponseEntity.ok(page);
+  }
+
+  //Convenience overload so callers don't have to supply a code every time
+  private ResponseEntity<String> renderCreateRequestWithInlines(
+      HttpSession session,
+      String registrationNumber,
+      String message
+  ) {
+    return renderCreateRequestWithInlines(session, registrationNumber, message, null);
   }
 
   @GetMapping(
@@ -9615,31 +10595,6 @@ public class MandatesResolutionUIController {
     }
   }
 
-
-  //Create request validation rule
-  private ResponseEntity<String> renderCreateRequestWithInline(
-      HttpSession session, String registrationNumber, String message, String code
-  ) {
-    RequestDTO dto = new RequestDTO();
-    dto.setRegistrationNumber(registrationNumber == null ? "" : registrationNumber.trim());
-    dto.setErrorMessage(message);
-    dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
-    RequestWrapper wrapper = new RequestWrapper();
-    wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
-    return ResponseEntity.ok(page);
-  }
-
-  //Convenience overload so callers don't have to supply a code every time
-  private ResponseEntity<String> renderCreateRequestWithInline(
-      HttpSession session,
-      String registrationNumber,
-      String message
-  ) {
-    return renderCreateRequestWithInline(session, registrationNumber, message, null);
-  }
-
-  // ======================= HTTP helper: POST to backend /api/submission =======================
   private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
       postSnapshotToBackend(SubmissionPayload payload) {
 
