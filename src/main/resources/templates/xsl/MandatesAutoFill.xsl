@@ -70,33 +70,27 @@
                                                                  comm:formSubmit="false"
                                                                  comm:type="paper"/>
                                         </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="accountName{userInList}"
-                                                        comm:label="Account Name"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="accountName"/>
-                                            </comm:value>
+                                        <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                        comm:width="50">
+                                            <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                 comm:subHeading="Account Name:"
+                                                                 comm:color="ghostmedium">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="accountName"/>
+                                                </comm:value>
+                                            </comm:boxSplitSymbol>
                                         </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="accountNo{userInList}"
-                                                        comm:label="Account No"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="accountNumber"/>
-                                            </comm:value>
+                                        <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                        comm:width="50">
+                                            <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                 comm:subHeading="Account Number:"
+                                                                 comm:color="ghostmedium">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="accountNumber"/>
+                                                </comm:value>
+                                            </comm:boxSplitSymbol>
                                         </comm:boxSymbol>
                                     </comm:box>
                                 </comm:symbol>
@@ -144,10 +138,7 @@
                                                        comm:col_id="fullName">
                                                 <comm:cellItem
                                                         xsi:type="comm:cellItem">
-                                                    <comm:item
-                                                            xsi:type="comm:input"
-                                                            comm:readonly="true"
-                                                            comm:name="fullName">
+                                                    <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                         <comm:value>
                                                             <xsl:value-of
                                                                     select="fullName"/>
@@ -159,10 +150,7 @@
                                                        comm:col_id="idNumber">
                                                 <comm:cellItem
                                                         xsi:type="comm:cellItem">
-                                                    <comm:item
-                                                            xsi:type="comm:input"
-                                                            comm:readonly="true"
-                                                            comm:name="idNumber">
+                                                    <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                         <comm:value>
                                                             <xsl:value-of
                                                                     select="idNumber"/>
@@ -174,10 +162,7 @@
                                                        comm:col_id="instruction">
                                                 <comm:cellItem
                                                         xsi:type="comm:cellItem">
-                                                    <comm:item
-                                                            xsi:type="comm:input"
-                                                            comm:readonly="true"
-                                                            comm:name="instruction">
+                                                    <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                         <comm:value>
                                                             <xsl:value-of
                                                                     select="instruction"/>
