@@ -66,18 +66,10 @@
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               id="viewRequest" title="View Request" template="main" version="1">
 
-            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolution"/>
+            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="View Request"/>
 
             <symbol xsi:type="ns1:formLayout">
                 <ns1:form ns1:action="http://localhost:8080/bifrost/" ns1:name="salesForm">
-
-                    <!-- ===== Header ===== -->
-                    <ns1:sections ns1:align="left" ns1:width="full">
-                        <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
-                            <ns1:value>View Request</ns1:value>
-                        </ns1:symbol>
-                    </ns1:sections>
-
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="headerBox">
                             <ns1:box xsi:type="ns1:box">
@@ -833,10 +825,16 @@
                     <xsl:when test="contains($SUB_UP,'ADMIN APPROVAL PENDING')">app-domain/mandates-and-resolutions/adminApproval</xsl:when>
 
                     <!-- status buckets -->
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/mandates-and-resolutions/adminCompleted</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/mandates-and-resolutions/adminOnHold</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">
+                        app-domain/mandates-and-resolutions/completedRequests
+                    </xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">
+                        app-domain/mandates-and-resolutions/onHoldRequests
+                    </xsl:when>
                     <xsl:when test="contains($STATUS_UP,'BREACH') or contains($STATUS_UP,'BREACHED')">app-domain/mandates-and-resolutions/adminBreach</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')">app-domain/mandates-and-resolutions/adminInProgress</xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')">
+                        app-domain/mandates-and-resolutions/inProgressRequests
+                    </xsl:when>
                     <!-- default -->
                     <xsl:otherwise>app-domain/mandates-and-resolutions/adminAll</xsl:otherwise>
                 </xsl:choose>
@@ -881,7 +879,8 @@
                     <xsl:otherwise>
                         <ns1:baseButton ns1:id="reassignBtn"
                                         ns1:url="app-domain/mandates-and-resolutions/adminReassign"
-                                        ns1:target="panel" ns1:formSubmit="false" ns1:label="Re Assign"/>
+                                        ns1:target="main" ns1:formSubmit="false"
+                                        ns1:label="Re Assign"/>
 
                         <ns1:baseButton ns1:id="editBtn"
                                         ns1:url="{concat('app-domain/mandates-and-resolutions/adminEditRequest/', $REQ/*[local-name()='requestId'])}"

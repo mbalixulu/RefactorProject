@@ -4,5 +4,7 @@ public interface XSLTProcessorService {
 
   String generatePage(String xsl, Object dataSource);
 
+  String generatePages(String xsl, Object dataSource);
+
   String returnPage(String xml);
 }

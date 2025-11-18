@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import javax.xml.XMLConstants;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -72,6 +73,39 @@ public class XSLTProcessorImpl implements XSLTProcessorService {
 
     // 4) Replace domain placeholder
     if (page != null) {
+      page = page.replace("app-domain", appDomain);
+    }
+    return page;
+  }
+
+  @Override
+  public String generatePages(String xsl, Object dataSource) {
+    String page;
+    try {
+      JAXBContext jaxbContext = JAXBContext.newInstance(dataSource.getClass());
+      Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
+      jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+
+      StringWriter xmlWriter = new StringWriter();
+      jaxbMarshaller.marshal(dataSource, xmlWriter);
+
+      InputStream inputStream = getClass().getResourceAsStream(xsl);
+      StreamSource styleSource = new StreamSource(inputStream);
+
+      TransformerFactory transformerFactory = TransformerFactory.newInstance();
+      Transformer transformer = transformerFactory.newTransformer(styleSource);
+
+      StringReader xmlReader = new StringReader(xmlWriter.toString());
+      StreamSource xmlSource = new StreamSource(xmlReader);
+
+      StringWriter pageWriter = new StringWriter();
+      transformer.transform(xmlSource, new StreamResult(pageWriter));
+      page = pageWriter.toString();
+    } catch (TransformerException | JAXBException e) {
+      LOGGER.error("Exception:", e);
+      page = e.getMessage();
+    }
+    if (Optional.ofNullable(page).isPresent()) {
       page = page.replace("app-domain", appDomain);
     }
     return page;

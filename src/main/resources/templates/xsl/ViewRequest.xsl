@@ -66,18 +66,10 @@
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               id="viewRequest" title="View Request" template="main" version="1">
 
-            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="Mandates and resolution"/>
+            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="View Request"/>
 
             <symbol xsi:type="ns1:formLayout">
                 <ns1:form ns1:action="http://localhost:8080/bifrost/" ns1:name="salesForm">
-
-                    <!-- ===== Header ===== -->
-                    <ns1:sections ns1:align="left" ns1:width="full">
-                        <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
-                            <ns1:value>View Request</ns1:value>
-                        </ns1:symbol>
-                    </ns1:sections>
-
                     <ns1:sections ns1:align="left" ns1:width="full">
                         <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="headerBox">
                             <ns1:box xsi:type="ns1:box">
@@ -135,8 +127,6 @@
                         </ns1:symbol>
                     </ns1:sections>
 
-                    <!-- ================= Mandates ================= -->
-                    <!-- (UNCHANGED FROM YOUR LAST WORKING COPY) -->
                     <xsl:if test="$SHOW_MANDATES">
                         <ns1:sections ns1:align="left" ns1:width="full">
                             <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
@@ -351,20 +341,6 @@
                                                                         <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(idNumber|id|identificationNumber)[1]"/></ns1:value></ns1:item>
                                                                     </ns1:cellItem>
                                                                 </ns1:cell>
-                                                                <!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="capacity">-->
-                                                                <!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
-                                                                <!--                                                                        <ns1:item xsi:type="ns1:simpleText">-->
-                                                                <!--                                                                            <ns1:value><xsl:value-of select="(*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]"/></ns1:value>-->
-                                                                <!--                                                                        </ns1:item>-->
-                                                                <!--                                                                    </ns1:cellItem>-->
-                                                                <!--                                                                </ns1:cell>-->
-                                                                <!--                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="group">-->
-                                                                <!--                                                                    <ns1:cellItem xsi:type="ns1:cellItem">-->
-                                                                <!--                                                                        <ns1:item xsi:type="ns1:simpleText">-->
-                                                                <!--                                                                            <ns1:value><xsl:value-of select="(*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]"/></ns1:value>-->
-                                                                <!--                                                                        </ns1:item>-->
-                                                                <!--                                                                    </ns1:cellItem>-->
-                                                                <!--                                                                </ns1:cell>-->
                                                                 <ns1:cell xsi:type="ns1:cell" ns1:col_id="instructions">
                                                                     <ns1:cellItem xsi:type="ns1:cellItem">
                                                                         <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(instructions|instruction)[1]"/></ns1:value></ns1:item>
@@ -388,9 +364,6 @@
                             </xsl:choose>
                         </ns1:sections>
                     </xsl:if>
-                    <!-- /Mandates -->
-
-                    <!-- ================= Resolutions: Appointed Directors (Added/Removed + Instruction) ================= -->
                     <xsl:if test="$SHOW_RESOLUTIONS">
                         <xsl:variable name="D" select="$DIR_SRC"/>
 
@@ -708,7 +681,7 @@
                                                  | @createdOn | *[local-name()='createdOn']
                                                  | @timestamp | *[local-name()='timestamp']
                                                  | *[local-name()='dateTime'] | *[local-name()='datetime'] )[1]))"
-                                                                              data-type="text" order="descending"/>
+                                                      data-type="text" order="descending"/>
 
                                             <!-- Extract fields -->
                                             <xsl:variable name="vCreator" select="normalize-space(string(
@@ -823,19 +796,22 @@
             <xsl:variable name="SUB_RAW" select="normalize-space($REQ/*[local-name()='subStatus'])"/>
             <xsl:variable name="SUB_UP"  select="translate($SUB_RAW, $LOWER, $UPPER)"/>
             <xsl:variable name="STATUS_UP" select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
-            <xsl:variable name="BACK_URL">
+            <!--<xsl:variable name="BACK_URL">
                 <xsl:choose>
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">app-domain/mandates-and-resolutions/requestTableCompleted</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">app-domain/mandates-and-resolutions/requestTableOnHold</xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">app-domain/mandates-and-resolutions/requestTable</xsl:when>
-                    <!-- default safety: go back to pending table -->
-                    <xsl:otherwise>app-domain/mandates-and-resolutions/requestTable</xsl:otherwise>
+                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">
+                        app-domain/mandates-and-resolutions/completedRequests
+                    </xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">
+                        app-domain/mandates-and-resolutions/onHoldRequests
+                    </xsl:when>
+                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">
+                        app-domain/mandates-and-resolutions/inProgressRequests
+                    </xsl:when>
+                    &lt;!&ndash; default safety: go back to pending table &ndash;&gt;
+                    <xsl:otherwise>app-domain/mandates-and-resolutions/inProgressRequests
+                    </xsl:otherwise>
                 </xsl:choose>
-            </xsl:variable>
-
-            <!-- If you want to gate by status=In Progress, set this and AND it into the whens -->
-            <!-- <xsl:variable name="IS_INPROGRESS" select="contains($STATUS_UP,'IN') and contains($STATUS_UP,'PROGRESS')"/> -->
-
+            </xsl:variable>-->
             <xsl:variable name="LAB_APPROVE">
                 <xsl:choose>
                     <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>
@@ -856,37 +832,30 @@
                 </xsl:choose>
             </xsl:variable>
 
-            <!-- ===== Footer ===== -->
-            <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer"
+                    ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <xsl:choose>
                     <!-- Completed: only Back -->
                     <xsl:when test="contains($STATUS_UP,'COMPLETED')">
                         <ns1:baseButton ns1:id="back"
-                                        ns1:url="{$BACK_URL}" ns1:target="main"
+                                        ns1:url="app-domain/mandates-and-resolutions/finish" ns1:target="main"
                                         ns1:formSubmit="false" ns1:label="Back"/>
                     </xsl:when>
-
-                    <!-- Admin Approval Pending (match on either status OR subStatus): only Back
-                    <xsl:when test="contains($STATUS_UP,'ADMIN APPROVAL PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">
-                        <ns1:baseButton ns1:id="back"
-                                        ns1:url="{$BACK_URL}" ns1:target="main"
-                                        ns1:formSubmit="false" ns1:label="Back"/>
-                    </xsl:when> -->
-
-                    <!-- Otherwise: show full set -->
                     <xsl:otherwise>
+                        <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                            <ns1:baseButton ns1:id="reassignBtn"
+                                            ns1:url="app-domain/mandates-and-resolutions/adminReassign"
+                                            ns1:target="main" ns1:formSubmit="false"
+                                            ns1:label="Re Assign"/>
+                        </xsl:if>
                         <ns1:baseButton ns1:id="editBtn"
                                         ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
                                         ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
-
-                        <!-- Hold appears only when not On Hold -->
                         <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
                             <ns1:baseButton ns1:id="hold"
                                             ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
                                             ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
                         </xsl:if>
-
-                        <!-- UnHold appears only when On Hold -->
                         <xsl:if test="contains($STATUS_UP,'ON HOLD')">
                             <ns1:baseButton ns1:id="unHold"
                                             ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"
@@ -902,11 +871,13 @@
                                         ns1:url="app-domain/mandates-and-resolutions/reject-validate"
                                         ns1:target="main" ns1:formSubmit="true" ns1:label="{$LAB_REJECT}"/>
                         <ns1:baseButton ns1:id="back"
-                                        ns1:url="{$BACK_URL}" ns1:target="main"
+                                        ns1:url="app-domain/mandates-and-resolutions/finish"
+                                        ns1:target="main"
                                         ns1:formSubmit="false" ns1:label="Back"/>
                     </xsl:otherwise>
                 </xsl:choose>
             </symbol>
+
         </page>
     </xsl:template>
 </xsl:stylesheet>

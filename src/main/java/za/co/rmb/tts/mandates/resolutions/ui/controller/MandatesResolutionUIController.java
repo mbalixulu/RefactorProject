@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -134,7 +136,7 @@ public class MandatesResolutionUIController {
       String roleUp = (user.getUserRole() == null) ? "" : user.getUserRole().trim().toUpperCase();
       logger.info("Landing role resolved to: '{}'", roleUp);
       if (roleUp.contains("ADMIN")) {
-        return displayAdminApproval();
+        return displayAdminAll();
       } else {
         return goToDisplayRequestTable();
       }
@@ -1474,7 +1476,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> finish() {
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
-      return displayAdminApproval();
+      return displayAdminAll();
     } else {
       return goToDisplayRequestTable();
     }
@@ -1669,7 +1671,7 @@ public class MandatesResolutionUIController {
 
 
   //Admin In Progress Page
-  @PostMapping(value = "/adminInProgress", produces = MediaType.APPLICATION_XML_VALUE)
+/*  @PostMapping(value = "/adminInProgress", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminInProgress() {
     try {
       RestTemplate restTemplate = new RestTemplate();
@@ -1724,10 +1726,332 @@ public class MandatesResolutionUIController {
           """;
       return ResponseEntity.ok(fallbackError);
     }
+  }*/
+
+  @PostMapping(value = "/inProgressRequests", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayInProgressRequests(HttpSession session,
+                                                          HttpServletRequest request) {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
+
+      // Fetch all requests
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
+      }
+
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      // Filter in-progress requests
+      List<RequestTableDTO> inProgress = Arrays.stream(all)
+          .filter(
+              r -> r.getStatus() != null && "In Progress".equalsIgnoreCase(r.getStatus().trim()))
+          .filter(r -> admin || (r.getAssignedUser() != null
+                                 && !r.getAssignedUser().trim().isEmpty()
+                                 && r.getAssignedUser().trim().equalsIgnoreCase(me)))
+          .peek(r -> {
+            try {
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+              r.setCompanyName(companyResponse.getStatusCode().is2xxSuccessful()
+                               && companyResponse.getBody() != null
+                  ? companyResponse.getBody().getName()
+                  : "Unknown");
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      RequestDTO requestDTO = new RequestDTO();
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+      if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
+      }
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(inProgress);
+      wrapper.setRequestDTO(requestDTO);
+
+      // Always use LandingPage XSLT
+      String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching in-progress requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load in-progress requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  @PostMapping(value = "/completedRequests", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayCompletedRequests(HttpSession session,
+                                                         HttpServletRequest request) {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
+
+      // Fetch all requests
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0]; // No requests found
+      }
+
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      List<RequestTableDTO> completedRequests = Arrays.stream(all)
+          .filter(r -> "Completed".equalsIgnoreCase(r.getStatus()))
+          // Admin sees all; normal user sees only assigned requests
+          .filter(r -> admin || (r.getAssignedUser() != null && r.getAssignedUser()
+              .trim()
+              .equalsIgnoreCase(me)))
+          .peek(r -> {
+            // Ensure display ID
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
+              r.setRequestIdForDisplay(
+                  r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
+            }
+            // Enrich company name
+            try {
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+              r.setCompanyName(companyResponse.getStatusCode().is2xxSuccessful()
+                               && companyResponse.getBody() != null
+                  ? companyResponse.getBody().getName()
+                  : "Unknown");
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      RequestDTO requestDTO = new RequestDTO();
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+      if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      }
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(completedRequests);
+      wrapper.setRequestDTO(requestDTO);
+
+      // Use unified XSLT
+      String page = xsltProcessor.generatePage(xslPagePath("CompletedRequests"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching completed requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load completed requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  @PostMapping(value = "/onHoldRequests", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayOnHoldRequests(HttpSession session,
+                                                      HttpServletRequest request) {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
+
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
+      }
+
+      final boolean admin = isAdmin(session); // check user role
+      final String me = loggedInUsername(session, request);
+
+      List<RequestTableDTO> onHoldRequests = Arrays.stream(all)
+          .filter(r -> "On Hold".equalsIgnoreCase(r.getStatus()))
+          .filter(
+              r -> admin || (r.getAssignedUser() != null && !r.getAssignedUser().trim().isEmpty()
+                             && r.getAssignedUser().trim().equalsIgnoreCase(me)))
+          .peek(r -> {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
+              r.setRequestIdForDisplay(
+                  r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
+            }
+            try {
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+              r.setCompanyName(companyResponse.getStatusCode().is2xxSuccessful()
+                               && companyResponse.getBody() != null ? companyResponse.getBody()
+                  .getName() : "Unknown");
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+      RequestDTO requestDTO = new RequestDTO();
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+      if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      }
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(onHoldRequests);
+      wrapper.setRequestDTO(requestDTO);
+
+      // use same XSL page for both roles
+      String page = xsltProcessor.generatePage(xslPagePath("OnHoldRequests"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching on-hold requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load on-hold requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
+  }
+
+  @PostMapping(value = "/draftRequests", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayDraftRequests(HttpSession session,
+                                                     HttpServletRequest request) {
+    try {
+      final String base = mandatesResolutionsDaoURL;
+      final RestTemplate rt = new RestTemplate();
+
+      // Fetch all draft requests
+      RequestStagingDTO[] raws =
+          rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
+      List<RequestStagingDTO> list = (raws == null) ? List.of() : Arrays.asList(raws);
+
+      final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+      final ObjectMapper OM = new ObjectMapper().findAndRegisterModules();
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      List<RequestTableDTO> rows = new ArrayList<>();
+
+      // Determine user info
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+      final boolean admin = user != null && "ADMIN".equalsIgnoreCase(user.getUserRole());
+      final String me = (user != null) ? user.getEmployeeNumber() : "";
+
+      RequestDTO requestDTO = new RequestDTO();
+      for (RequestStagingDTO d : list) {
+        // Filter: non-admins only see their own assigned requests
+        if (!admin && (d.getAssignedUser() == null || !d.getAssignedUser().equalsIgnoreCase(me))) {
+          continue;
+        }
+
+        RequestStagingDTO src = d;
+        String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
+        // If blank, fetch raw JSON and search for created-like field
+        if (createdStr.isBlank()) {
+          try {
+            ResponseEntity<String> resp =
+                rt.getForEntity(base + "/api/request-staging/{id}", String.class, d.getStagingId());
+            String body = resp.getBody();
+            if (body != null && !body.isBlank()) {
+              try {
+                JsonNode root = OM.readTree(body);
+                String raw = findCreatedAnyCase(root);
+                if (raw != null && !raw.isBlank()) {
+                  if (isAllDigits(raw)) {
+                    createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
+                  } else {
+                    createdStr = tryFormatIso(raw, FMT);
+                  }
+                }
+              } catch (Exception ignore) {
+                //
+              }
+            }
+          } catch (Exception ignore) {
+            //
+          }
+        }
+
+        if (createdStr.isBlank() && src.getCreated() != null) {
+          createdStr = src.getCreated().format(FMT);
+        }
+
+        UserDTO users = (UserDTO) session.getAttribute("currentUser");
+        System.out.println("=======Print role========" + users.getUserRole());
+        if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+          requestDTO.setSubStatus("Admin");
+        } else {
+          requestDTO.setSubStatus("User");
+        }
+
+
+        // Build table row
+        RequestTableDTO r = new RequestTableDTO();
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(createdStr);
+        r.setUpdated(null);
+        r.setAssignedUser(src.getAssignedUser());
+
+        rows.add(r);
+      }
+      wrapper.setRequest(rows);
+      wrapper.setRequestDTO(requestDTO);
+
+      // Use single XSLT for all draft requests
+      String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+
+    } catch (Exception e) {
+      logger.error("Error loading draft requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load drafts.</error>
+          </page>
+          """;
+      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(fallbackError);
+    }
   }
 
   //Admin On Hold Page
-  @PostMapping(value = "/adminOnHold", produces = MediaType.APPLICATION_XML_VALUE)
+/*  @PostMapping(value = "/adminOnHold", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminOnHold() {
     try {
       RestTemplate restTemplate = new RestTemplate();
@@ -1781,10 +2105,10 @@ public class MandatesResolutionUIController {
           """;
       return ResponseEntity.ok(fallbackError);
     }
-  }
+  }*/
 
   //Admin Completed Page
-  @PostMapping(value = "/adminCompleted", produces = MediaType.APPLICATION_XML_VALUE)
+/*  @PostMapping(value = "/adminCompleted", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminCompleted() {
     try {
       RestTemplate restTemplate = new RestTemplate();
@@ -1838,7 +2162,7 @@ public class MandatesResolutionUIController {
           """;
       return ResponseEntity.ok(fallbackError);
     }
-  }
+  }*/
 
   //Admin Draft Page
   @PostMapping(value = "/adminDraft", produces = MediaType.APPLICATION_XML_VALUE)
@@ -1921,7 +2245,7 @@ public class MandatesResolutionUIController {
       }
 
       wrapper.setRequest(rows);
-      String page = xsltProcessor.generatePage(xslPagePath("AdminDraft"), wrapper);
+      String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
 
     } catch (Exception e) {
@@ -2298,8 +2622,17 @@ public class MandatesResolutionUIController {
         );
         wrapper.setApproveRejectErrorModel(em);
       }
+      UserDTO users = (UserDTO) session.getAttribute("currentUser");
+      System.out.println("=====User Role==== " + users.getUserRole());
+      RequestDTO requestDTO = new RequestDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
+      }
+      wrapper.setRequestDTO(requestDTO);
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminViewRequest"), wrapper);
+      String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2346,7 +2679,7 @@ public class MandatesResolutionUIController {
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(model);
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminReassign"), wrapper);
+      String page = xsltProcessor.generatePage(xslPagePath("ReassignScreen"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
 
     } catch (Exception e) {
@@ -2509,9 +2842,14 @@ public class MandatesResolutionUIController {
             }
           })
           .toList();
-
+      RequestDTO requestDTO = new RequestDTO();
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+      if ("USER".equalsIgnoreCase(user.getUserRole())) {
+        requestDTO.setSubStatus("User");
+      }
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(inProgress);
+      wrapper.setRequestDTO(requestDTO);
 
       String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), wrapper);
       return ResponseEntity.ok(page);
@@ -2769,7 +3107,7 @@ public class MandatesResolutionUIController {
     }
 
     wrapper.setRequest(rows);
-    String page = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -3628,7 +3966,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
 
-    String pageXml = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+    String pageXml = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(pageXml);
   }
 
@@ -6137,9 +6475,18 @@ public class MandatesResolutionUIController {
         );
         wrapper.setApproveRejectErrorModel(em);
       }
+      UserDTO users = (UserDTO) session.getAttribute("currentUser");
+      System.out.println("=====User Role==== " + users.getUserRole());
+      RequestDTO requestDTO = new RequestDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
+      }
 
-    // Render
-      String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), wrapper);
+
+      // Render
+      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -9187,7 +9534,7 @@ public class MandatesResolutionUIController {
         (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
     HttpServletRequest req = (attrs == null) ? null : attrs.getRequest();
     HttpSession sess = (req == null) ? null : req.getSession(false);
-    return displayRequestTable(sess, req); // delegate to the annotated method
+    return displayInProgressRequests(sess, req); // delegate to the annotated method
   }
 
   // /requestTableOnHold

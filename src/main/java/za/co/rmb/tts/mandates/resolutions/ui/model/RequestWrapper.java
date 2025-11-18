@@ -45,6 +45,7 @@ public class RequestWrapper {
   private String checkSignatureCard;
   private String stepForSave;
 
+
   //Search Results
   @XmlElement(name = "searchResultsErrorModel")
   private SearchResultsErrorModel searchResultsErrorModel;

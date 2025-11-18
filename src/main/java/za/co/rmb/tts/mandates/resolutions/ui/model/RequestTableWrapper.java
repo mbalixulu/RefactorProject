@@ -9,6 +9,7 @@ import java.util.List;
 
 import lombok.Data;
 
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel;
 
@@ -18,6 +19,8 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel
 public class RequestTableWrapper {
   @XmlElement(name = "request")
   private List<RequestTableDTO> request;
+
+  private RequestDTO requestDTO;
 
   // Inline error model for the checkbox on ViewRequest.xsl
   @XmlElement(name = "approveRejectErrorModel")
