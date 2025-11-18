@@ -118,10 +118,7 @@
                                                comm:col_id="fullName">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="fullName">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="fullName"/>
@@ -133,10 +130,7 @@
                                                comm:col_id="idNumber">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="idNumber">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="idNumber"/>
@@ -148,10 +142,7 @@
                                                comm:col_id="instruction">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="instruction">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="instruction"/>
@@ -219,7 +210,7 @@
                                      comm:label="Add Signatory"
                                      comm:width="5"
                                      comm:formSubmit="true"
-                                     comm:type="primary"/>
+                                     comm:type="highlight"/>
                     </comm:sections>
                     <xsl:if test="addAccountModel/checkSignatoryList = 'true'">
                         <comm:sections comm:width="full">

@@ -40,7 +40,7 @@
                                                 comm:tooltip="Enter Phone Number include Country code"
                                                 comm:selected="true"
                                                 comm:required="true"
-                                                comm:errorMessage="{directorModel/directorErrorModel/designation}"
+                                                comm:errorMessage="{directorModel/directorErrorModel/surname}"
                                                 comm:maxlength="50">
                                     <comm:value>
                                         <xsl:value-of
@@ -54,7 +54,7 @@
                                                 comm:unCheckedValue="No"
                                                 comm:selected="true"
                                                 comm:required="true"
-                                                comm:errorMessage="{directorModel/directorErrorModel/surname}"
+                                                comm:errorMessage="{directorModel/directorErrorModel/designation}"
                                                 comm:maxlength="50">
                                     <comm:value>
                                         <xsl:value-of

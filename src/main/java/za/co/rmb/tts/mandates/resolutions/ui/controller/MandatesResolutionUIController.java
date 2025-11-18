@@ -629,13 +629,15 @@ public class MandatesResolutionUIController {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
-    directorModelList =
-        mandatesResolutionService.getUpdatedDirector(directorModelList, userInList, admin);
-    requestWrapper.setDirectorModels(directorModelList);
+
     if (check) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      listofDirectors.setButtonCheck("false");
       page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
     } else {
+      directorModelList =
+          mandatesResolutionService.getUpdatedDirector(directorModelList, userInList, admin);
+      requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
@@ -675,13 +677,14 @@ public class MandatesResolutionUIController {
       check = true;
     }
 
-    directorModelList =
-        mandatesResolutionService.getUpdatedDirectorReso(directorModelList, userInList, admin);
-    requestWrapper.setDirectorModels(directorModelList);
     if (check) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      listofDirectors.setButtonCheck("false");
       page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
     } else {
+      directorModelList =
+          mandatesResolutionService.getUpdatedDirectorReso(directorModelList, userInList, admin);
+      requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
@@ -981,6 +984,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> submitSignatory(@RequestParam Map<String, String> user) {
     String page = "";
     boolean check = false;
+    SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("fullName").isBlank()) {
       signatoryErrorModel.setFullName("Full Name can't be empty !");
@@ -997,22 +1001,26 @@ public class MandatesResolutionUIController {
       signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
     }
-    AddAccountModel addAccountModel =
-        (AddAccountModel) httpSession.getAttribute("Signatory");
-    SignatoryModel signatoryModel = mandatesResolutionService.setSignatory(user);
-    List<SignatoryModel> signatoryModels = addAccountModel.getListOfSignatory();
-    if (signatoryModels == null) {
-      signatoryModels = new ArrayList<>();
-    }
-    int size = signatoryModels.size();
-    signatoryModel.setUserInList(++size);
-    signatoryModels.add(signatoryModel);
-    addAccountModel.setListOfSignatory(signatoryModels);
-    httpSession.setAttribute("Signatory", addAccountModel);
     if (check) {
       signatoryModel.setSignatoryErrorModel(signatoryErrorModel);
+      signatoryModel.setButtonCheck("true");
+      signatoryModel.setFullName(user.get("fullName"));
+      signatoryModel.setIdNumber(user.get("idNumber"));
+      signatoryModel.setInstruction(user.get("accountRef1"));
       page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
     } else {
+      AddAccountModel addAccountModel =
+          (AddAccountModel) httpSession.getAttribute("Signatory");
+      List<SignatoryModel> signatoryModels = addAccountModel.getListOfSignatory();
+      if (signatoryModels == null) {
+        signatoryModels = new ArrayList<>();
+      }
+      SignatoryModel signatoryModelData = mandatesResolutionService.setSignatory(user);
+      int size = signatoryModels.size();
+      signatoryModelData.setUserInList(++size);
+      signatoryModels.add(signatoryModelData);
+      addAccountModel.setListOfSignatory(signatoryModels);
+      httpSession.setAttribute("Signatory", addAccountModel);
       page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
           (AddAccountModel) httpSession.getAttribute("Signatory"));
     }
@@ -1048,6 +1056,7 @@ public class MandatesResolutionUIController {
                                               @PathVariable String userInList) {
     String page = "";
     boolean check = false;
+    SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("fullName").isBlank()) {
       signatoryErrorModel.setFullName("Full Name can't be empty !");
@@ -1064,21 +1073,21 @@ public class MandatesResolutionUIController {
       signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
     }
-    AddAccountModel addAccountModel =
-        (AddAccountModel) httpSession.getAttribute("Signatory");
-    List<SignatoryModel> signatoryModels =
-        mandatesResolutionService.getUpdatedSignatory(addAccountModel.getListOfSignatory(),
-            userInList, user);
-    addAccountModel.setListOfSignatory(signatoryModels);
-    SignatoryModel signatoryModel = new SignatoryModel();
-    httpSession.setAttribute("Signatory", addAccountModel);
     if (check) {
       signatoryModel.setFullName(user.get("fullName"));
       signatoryModel.setIdNumber(user.get("idNumber"));
       signatoryModel.setInstruction(user.get("accountRef1"));
+      signatoryModel.setButtonCheck("false");
       signatoryModel.setSignatoryErrorModel(signatoryErrorModel);
       page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
     } else {
+      AddAccountModel addAccountModel =
+          (AddAccountModel) httpSession.getAttribute("Signatory");
+      List<SignatoryModel> signatoryModels =
+          mandatesResolutionService.getUpdatedSignatory(addAccountModel.getListOfSignatory(),
+              userInList, user);
+      addAccountModel.setListOfSignatory(signatoryModels);
+      httpSession.setAttribute("Signatory", addAccountModel);
       page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
           (AddAccountModel) httpSession.getAttribute("Signatory"));
     }

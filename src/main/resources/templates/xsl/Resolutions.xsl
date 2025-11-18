@@ -100,10 +100,7 @@
                                                comm:col_id="title">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="title">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="name"/>
@@ -115,10 +112,7 @@
                                                comm:col_id="fullName">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="fullName">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="surname"/>
@@ -130,10 +124,7 @@
                                                comm:col_id="idPassport">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="idPassport">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="designation"/>
@@ -145,10 +136,7 @@
                                                comm:col_id="instruction">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item
-                                                    xsi:type="comm:input"
-                                                    comm:readonly="true"
-                                                    comm:name="idPassport">
+                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="instructions"/>
