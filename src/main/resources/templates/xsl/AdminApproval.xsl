@@ -14,14 +14,20 @@
 
             <!--View Switcher-->
             <symbol xsi:type="ns1:viewGroup" ns1:align="left">
-                <ns1:view ns1:text="Approvals"      ns1:type="active" ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/adminApproval"/>
-                <ns1:view ns1:text="Breached"       ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/adminBreach"/>
-                <ns1:view ns1:text="All"            ns1:type="inactive" ns1:id="all"             ns1:url="app-domain/mandates-and-resolutions/adminAll"/>
-                <ns1:view ns1:text="In Progress"    ns1:type="inactive"   ns1:id="pendingRequests" ns1:url="app-domain/mandates-and-resolutions/adminInProgress"/>
-                <ns1:view ns1:text="On Hold"        ns1:type="inactive" ns1:id="onHold"          ns1:url="app-domain/mandates-and-resolutions/adminOnHold"/>
-                <ns1:view ns1:text="Completed"      ns1:type="inactive" ns1:id="completed"       ns1:url="app-domain/mandates-and-resolutions/adminCompleted"/>
-                <ns1:view ns1:text="Draft"          ns1:type="inactive" ns1:id="draft"           ns1:url="app-domain/mandates-and-resolutions/adminDraft"/>
-<!--                <ns1:view ns1:text="Profile"        ns1:type="inactive" ns1:id="profile"         ns1:url="app-domain/mandates-and-resolutions/adminProfile"/>-->
+                <ns1:view ns1:text="All" ns1:type="inactive" ns1:id="all"
+                          ns1:url="app-domain/mandates-and-resolutions/adminAll"/>
+                <ns1:view ns1:text="Approvals" ns1:type="active" ns1:id="pendingRequests"
+                          ns1:url="app-domain/mandates-and-resolutions/adminApproval"/>
+                <ns1:view ns1:text="Breached" ns1:type="inactive" ns1:id="onHold"
+                          ns1:url="app-domain/mandates-and-resolutions/adminBreach"/>
+                <ns1:view ns1:text="In Progress" ns1:type="inactive" ns1:id="pendingRequests"
+                          ns1:url="app-domain/mandates-and-resolutions/inProgressRequests"/>
+                <ns1:view ns1:text="On Hold" ns1:type="inactive" ns1:id="onHold"
+                          ns1:url="app-domain/mandates-and-resolutions/onHoldRequests"/>
+                <ns1:view ns1:text="Completed" ns1:type="inactive" ns1:id="completed"
+                          ns1:url="app-domain/mandates-and-resolutions/completedRequests"/>
+                <ns1:view ns1:text="Draft" ns1:type="inactive" ns1:id="draft"
+                          ns1:url="app-domain/mandates-and-resolutions/draftRequests"/>
             </symbol>
 
             <!--Table-->
@@ -71,7 +77,7 @@
 
                             <!--Columns-->
                             <ns1:tableColumn ns1:id="requestID"     ns1:heading="Request ID"     ns1:fieldName="requestID"     ns1:disableSorting="false" ns1:widthPercent="9"/>
-<!--                            <ns1:tableColumn ns1:id="processId"     ns1:heading="Process ID"     ns1:fieldName="processId"     ns1:disableSorting="true" ns1:widthPercent="9"/>-->
+                            <!--                            <ns1:tableColumn ns1:id="processId"     ns1:heading="Process ID"     ns1:fieldName="processId"     ns1:disableSorting="true" ns1:widthPercent="9"/>-->
                             <ns1:tableColumn ns1:id="assignedUser"  ns1:heading="Assigned User"  ns1:fieldName="assignedUser"  ns1:disableSorting="false" ns1:widthPercent="9"/>
                             <ns1:tableColumn ns1:id="sla"           ns1:heading="SLA"            ns1:fieldName="sla"           ns1:disableSorting="false" ns1:widthPercent="9"/>
                             <ns1:tableColumn ns1:id="companyName"   ns1:heading="Company"        ns1:fieldName="companyName"   ns1:disableSorting="false" ns1:widthPercent="9"/>
@@ -79,7 +85,7 @@
                             <ns1:tableColumn ns1:id="subStatus"     ns1:heading="Sub Status"     ns1:fieldName="subStatus"     ns1:disableSorting="false" ns1:widthPercent="9"/>
                             <ns1:tableColumn ns1:id="requestType"   ns1:heading="Request Type"   ns1:fieldName="requestType"   ns1:disableSorting="false" ns1:widthPercent="9"/>
                             <ns1:tableColumn ns1:id="dateCreated"   ns1:heading="Date"           ns1:fieldName="dateCreated"   ns1:disableSorting="false" ns1:widthPercent="9"/>
-<!--                            <ns1:tableColumn ns1:id="view"          ns1:heading="View"           ns1:fieldName="view"          ns1:disableSorting="true" ns1:widthPercent="9"/>-->
+                            <!--                            <ns1:tableColumn ns1:id="view"          ns1:heading="View"           ns1:fieldName="view"          ns1:disableSorting="true" ns1:widthPercent="9"/>-->
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
@@ -109,20 +115,20 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-<!--                                    <ns1:cell ns1:col_id="processId">-->
-<!--                                        <ns1:cellItem>-->
-<!--                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Process ID">-->
-<!--                                                <ns1:value>-->
-<!--                                                    <xsl:choose>-->
-<!--                                                        <xsl:when test="normalize-space(processId) != ''">-->
-<!--                                                            <xsl:value-of select="processId"/>-->
-<!--                                                        </xsl:when>-->
-<!--                                                        <xsl:otherwise>—</xsl:otherwise>-->
-<!--                                                    </xsl:choose>-->
-<!--                                                </ns1:value>-->
-<!--                                            </ns1:item>-->
-<!--                                        </ns1:cellItem>-->
-<!--                                    </ns1:cell>-->
+                                    <!--                                    <ns1:cell ns1:col_id="processId">-->
+                                    <!--                                        <ns1:cellItem>-->
+                                    <!--                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Process ID">-->
+                                    <!--                                                <ns1:value>-->
+                                    <!--                                                    <xsl:choose>-->
+                                    <!--                                                        <xsl:when test="normalize-space(processId) != ''">-->
+                                    <!--                                                            <xsl:value-of select="processId"/>-->
+                                    <!--                                                        </xsl:when>-->
+                                    <!--                                                        <xsl:otherwise>—</xsl:otherwise>-->
+                                    <!--                                                    </xsl:choose>-->
+                                    <!--                                                </ns1:value>-->
+                                    <!--                                            </ns1:item>-->
+                                    <!--                                        </ns1:cellItem>-->
+                                    <!--                                    </ns1:cell>-->
 
                                     <!--Assigned User -->
                                     <ns1:cell ns1:col_id="assignedUser">
@@ -216,18 +222,18 @@
                                     </ns1:cell>
 
                                     <!-- View -->
-<!--                                    <ns1:cell ns1:col_id="view">-->
-<!--                                        <ns1:cellItem>-->
-<!--                                            <ns1:item xsi:type="ns1:button"-->
-<!--                                                      ns1:id="{concat('viewBtn_', requestId)}"-->
-<!--                                                      ns1:type="action"-->
-<!--                                                      ns1:width="2"-->
-<!--                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', requestId)}"-->
-<!--                                                      ns1:target="main"-->
-<!--                                                      ns1:formSubmit="false"-->
-<!--                                                      ns1:label="View"/>-->
-<!--                                        </ns1:cellItem>-->
-<!--                                    </ns1:cell>-->
+                                    <!--                                    <ns1:cell ns1:col_id="view">-->
+                                    <!--                                        <ns1:cellItem>-->
+                                    <!--                                            <ns1:item xsi:type="ns1:button"-->
+                                    <!--                                                      ns1:id="{concat('viewBtn_', requestId)}"-->
+                                    <!--                                                      ns1:type="action"-->
+                                    <!--                                                      ns1:width="2"-->
+                                    <!--                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', requestId)}"-->
+                                    <!--                                                      ns1:target="main"-->
+                                    <!--                                                      ns1:formSubmit="false"-->
+                                    <!--                                                      ns1:label="View"/>-->
+                                    <!--                                        </ns1:cellItem>-->
+                                    <!--                                    </ns1:cell>-->
                                 </ns1:row>
                             </xsl:for-each>
                             <ns1:tableNavigator ns1:pageSize="10"/>

@@ -12,6 +12,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class RequestStagingDTO {
   private Long stagingId;
 
+  private String assignedUser;
+
+
   //Company
   private String companyRegistrationNumber;
   private String companyName;
