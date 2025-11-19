@@ -55,7 +55,7 @@
                                                                  comm:target="main"
                                                                  comm:url="app-domain/mandates-and-resolutions/editSignatoryWithAccount/{userInList}"
                                                                  comm:label="Edit"
-                                                                 comm:width="4"
+                                                                 comm:width="3"
                                                                  comm:formSubmit="false"
                                                                  comm:type="paper"/>
                                         </comm:boxSymbol>
@@ -66,7 +66,7 @@
                                                                  comm:target="main"
                                                                  comm:url="app-domain/mandates-and-resolutions/deleteSignatoryWithAccount/{userInList}"
                                                                  comm:label="Delete"
-                                                                 comm:width="4"
+                                                                 comm:width="3"
                                                                  comm:formSubmit="false"
                                                                  comm:type="paper"/>
                                         </comm:boxSymbol>

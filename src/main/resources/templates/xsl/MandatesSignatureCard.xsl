@@ -70,7 +70,7 @@
                                                                  comm:target="main"
                                                                  comm:url="app-domain/mandates-and-resolutions/editAddedSignatory/{userInList}/{userInAccount}"
                                                                  comm:label="Edit"
-                                                                 comm:width="4"
+                                                                 comm:width="3"
                                                                  comm:formSubmit="false"
                                                                  comm:type="paper"/>
                                         </comm:boxSymbol>
