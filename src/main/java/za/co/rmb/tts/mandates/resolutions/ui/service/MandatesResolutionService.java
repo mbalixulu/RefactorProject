@@ -408,8 +408,8 @@ public class MandatesResolutionService {
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
     if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
       payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("sigma_confirm_check", requestWrapper.getCheckStyleOne());
-      payload.put("waiver_confirm_check", requestWrapper.getCheckStyleTwo());
+      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleTwo()));
+      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleOne()));
     }
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", requestWrapper.getStepForSave());
@@ -500,8 +500,8 @@ public class MandatesResolutionService {
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
     if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
       payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("sigma_confirm_check", requestWrapper.getCheckStyleOne());
-      payload.put("waiver_confirm_check", requestWrapper.getCheckStyleTwo());
+      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleTwo()));
+      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleOne()));
     }
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", "Step 3");
@@ -538,6 +538,8 @@ public class MandatesResolutionService {
         signatory.put("instructions", appointedModel.getInstruction());
         signatory.put("capacity", appointedModel.getCapacity());
         signatory.put("groupCategory", appointedModel.getGroup());
+        signatory.put("signatoryConfirmCheck",
+            Boolean.valueOf(appointedModel.getCheckDocConfirm()));
         signatory.put("isActive", appointedModel.getCheckDocConfirm());
         signatory.put("creator", user.getUsername());
         signatoriesE.add(signatory);
@@ -583,8 +585,8 @@ public class MandatesResolutionService {
     request.put("sla", 3);
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("sigma_confirm_check", wrapper.getCheckStyleOne());
-      request.put("waiver_confirm_check", wrapper.getCheckStyleTwo());
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -623,7 +625,9 @@ public class MandatesResolutionService {
         signatory.put("instructions", appointedModel.getInstruction());
         signatory.put("capacity", appointedModel.getCapacity());
         signatory.put("groupCategory", appointedModel.getGroup());
-        signatory.put("isActive", appointedModel.getCheckDocConfirm());
+        signatory.put("isActive", true);
+        signatory.put("signatoryConfirmCheck",
+            Boolean.valueOf(appointedModel.getCheckDocConfirm()));
         signatory.put("creator", user.getUsername());
         signatoriesE.add(signatory);
       }
@@ -685,8 +689,8 @@ public class MandatesResolutionService {
     request.put("sla", 3);
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("sigma_confirm_check", wrapper.getCheckStyleOne());
-      request.put("waiver_confirm_check", wrapper.getCheckStyleTwo());
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -761,8 +765,8 @@ public class MandatesResolutionService {
     request.put("sla", 3);
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("sigma_confirm_check", wrapper.getCheckStyleOne());
-      request.put("waiver_confirm_check", wrapper.getCheckStyleTwo());
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -801,7 +805,9 @@ public class MandatesResolutionService {
         signatory.put("instructions", appointedModel.getInstruction());
         signatory.put("capacity", appointedModel.getCapacity());
         signatory.put("groupCategory", appointedModel.getGroup());
-        signatory.put("isActive", appointedModel.getCheckDocConfirm());
+        signatory.put("isActive", true);
+        signatory.put("signatoryConfirmCheck",
+            Boolean.valueOf(appointedModel.getCheckDocConfirm()));
         signatory.put("creator", user.getUsername());
         signatoriesE.add(signatory);
       }

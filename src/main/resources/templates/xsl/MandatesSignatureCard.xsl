@@ -148,13 +148,13 @@
                                  comm:url="app-domain/mandates-and-resolutions/saveSignatureCard"
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="Save"/>
-                <xsl:if test="requestWrapper/requestType = 'Mandates'">
+                <xsl:if test="requestWrapper/requestType = 'Mandate'">
                     <comm:baseButton comm:id="next"
                                      comm:url="app-domain/mandates-and-resolutions/submitMandateFinalRecord"
                                      comm:target="main" comm:formSubmit="true" comm:tooltip=""
                                      comm:label="Submit"/>
                 </xsl:if>
-                <xsl:if test="requestWrapper/requestType != 'Mandates'">
+                <xsl:if test="requestWrapper/requestType != 'Mandate'">
                     <comm:baseButton comm:id="next"
                                      comm:url="app-domain/mandates-and-resolutions/proceedSignatureCard"
                                      comm:target="main" comm:formSubmit="true" comm:tooltip=""
