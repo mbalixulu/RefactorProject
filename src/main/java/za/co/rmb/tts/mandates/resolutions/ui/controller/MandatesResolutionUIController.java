@@ -122,7 +122,7 @@ public class MandatesResolutionUIController {
       if (employeeNumber == null || employeeNumber.isBlank()) {
         return ResponseEntity.ok(generateErrorPage("Missing Employee Number."));
       }
-      final String backendUrl = mandatesResolutionsDaoURL + "/api/user/unmasked/" + employeeNumber;
+      final String backendUrl = mandatesResolutionsDaoURL + "/api/user/username/" + employeeNumber;
       ResponseEntity<UserDTO> resp =
           restTemplate.exchange(backendUrl, HttpMethod.GET, null, UserDTO.class);
       if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
