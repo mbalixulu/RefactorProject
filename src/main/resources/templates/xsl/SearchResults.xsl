@@ -276,7 +276,7 @@
 
                             <comm:label>Mandate And Resolution</comm:label>
                             <comm:value xsi:type="comm:eventValue">
-                                <comm:value>Mandate And Resolution</comm:value>
+                                <comm:value>Mandate and Resolution</comm:value>
                             </comm:value>
                         </comm:symbol>
                         <xsl:if test="requestWrapper/checkMandates = 'true'">
