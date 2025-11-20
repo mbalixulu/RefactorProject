@@ -5,7 +5,7 @@
     <xsl:template match="/">
         <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="adminBreachPage" title="Admin Breach Page" template="main" layout="" version="1">
+              id="adminAllPage" title="Admin All Page" template="main" layout="" version="1">
 
             <!--Heading-->
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -32,7 +32,8 @@
 
             <!--Table-->
             <symbol xsi:type="ns1:formLayout" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                <ns1:form ns1:action="app-domain/mandates-and-resolutions" ns1:name="fetchTicketForm">
+                <ns1:form ns1:action="app-domain/mandates-and-resolutions/adminAll"
+                          ns1:name="fetchTicketForm">
                     <ns1:sections ns1:id="tableSection" ns1:align="center" ns1:width="full" ns1:tooltip="">
                         <xsl:attribute name="ns1:label">
                             <xsl:choose>
@@ -92,25 +93,6 @@
                             <!--Rows-->
                             <xsl:for-each select="requests/request">
                                 <ns1:row ns1:groupId="rows">
-
-                                    <!-- Request ID (now shows requestIdForDisplay when available) -->
-                                    <!--                                    <ns1:cell ns1:col_id="requestID">-->
-                                    <!--                                        <ns1:cellItem>-->
-                                    <!--                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Request ID">-->
-                                    <!--                                                <ns1:value>-->
-                                    <!--                                                    <xsl:choose>-->
-                                    <!--                                                        <xsl:when test="normalize-space(requestIdForDisplay) != ''">-->
-                                    <!--                                                            <xsl:value-of select="requestIdForDisplay"/>-->
-                                    <!--                                                        </xsl:when>-->
-                                    <!--                                                        <xsl:otherwise>-->
-                                    <!--                                                            <xsl:value-of select="requestId"/>-->
-                                    <!--                                                        </xsl:otherwise>-->
-                                    <!--                                                    </xsl:choose>-->
-                                    <!--                                                </ns1:value>-->
-                                    <!--                                            </ns1:item>-->
-                                    <!--                                        </ns1:cellItem>-->
-                                    <!--                                    </ns1:cell>-->
-
                                     <!-- Request ID (now shows requestIdForDisplay when available) -->
                                     <ns1:cell ns1:col_id="requestID">
                                         <ns1:cellItem>
@@ -133,21 +115,6 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!--                                    <ns1:cell ns1:col_id="processId">-->
-                                    <!--                                        <ns1:cellItem>-->
-                                    <!--                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Process ID">-->
-                                    <!--                                                <ns1:value>-->
-                                    <!--                                                    <xsl:choose>-->
-                                    <!--                                                        <xsl:when test="normalize-space(processId) != ''">-->
-                                    <!--                                                            <xsl:value-of select="processId"/>-->
-                                    <!--                                                        </xsl:when>-->
-                                    <!--                                                        <xsl:otherwise>—</xsl:otherwise>-->
-                                    <!--                                                    </xsl:choose>-->
-                                    <!--                                                </ns1:value>-->
-                                    <!--                                            </ns1:item>-->
-                                    <!--                                        </ns1:cellItem>-->
-                                    <!--                                    </ns1:cell>-->
-
                                     <!--Assigned User -->
                                     <ns1:cell ns1:col_id="assignedUser">
                                         <ns1:cellItem>
@@ -164,10 +131,14 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!-- SLA icon (pending) -->
-                                    <ns1:cell ns1:col_id="sla" ns1:align="left">
+                                    <!-- SLA (pending) -->
+                                    <ns1:cell ns1:col_id="sla">
                                         <ns1:cellItem>
-                                            <ns1:value><xsl:value-of select="sla"/></ns1:value>
+                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
+                                                <ns1:value>
+                                                    <xsl:value-of select="sla"/>
+                                                </ns1:value>
+                                            </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
 
@@ -198,7 +169,7 @@
                                         </ns1:cellItem>
                                     </ns1:cell>
 
-                                    <!-- NEW: Request Type -->
+                                    <!--Request Type -->
                                     <ns1:cell ns1:col_id="requestType">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Request Type">
@@ -236,49 +207,10 @@
                                             </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
-
-                                    <!-- View -->
-                                    <!--                                    <ns1:cell ns1:col_id="view">-->
-                                    <!--                                        <ns1:cellItem>-->
-                                    <!--                                            <ns1:item xsi:type="ns1:button"-->
-                                    <!--                                                      ns1:id="{concat('viewBtn_', requestId)}"-->
-                                    <!--                                                      ns1:type="action"-->
-                                    <!--                                                      ns1:width="2"-->
-                                    <!--                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', requestId)}"-->
-                                    <!--                                                      ns1:target="main"-->
-                                    <!--                                                      ns1:formSubmit="false"-->
-                                    <!--                                                      ns1:label="View"/>-->
-                                    <!--                                        </ns1:cellItem>-->
-                                    <!--                                    </ns1:cell>-->
                                 </ns1:row>
                             </xsl:for-each>
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
-                    </ns1:sections>
-
-
-
-                    <ns1:sections ns1:align="left" ns1:width="full">
-
-                        <ns1:symbol xsi:type="ns1:button"
-                                    ns1:id="exportCSV"
-                                    ns1:target="main"
-                                    ns1:url="app-domain/mandates-and-resolutions/exportCSV"
-                                    ns1:label="Export As CSV"
-                                    ns1:width="12"
-                                    ns1:formSubmit="false"
-                                    ns1:align="right"
-                                    ns1:type="primary"/>
-
-                        <ns1:symbol xsi:type="ns1:button"
-                                    ns1:id="createRequestbtn"
-                                    ns1:target="main"
-                                    ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                    ns1:label="Create Request"
-                                    ns1:width="12"
-                                    ns1:formSubmit="false"
-                                    ns1:align="right"
-                                    ns1:type="primary"/>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
