@@ -8,7 +8,7 @@
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                     xsi:type="comm:formLayout">
                 <comm:form
-                        comm:action="app-domain/mandates-and-resolutions/tablePopup"
+                        comm:action=""
                         comm:name="WrapupLandingForm">
                     <comm:sections comm:width="full">
                         <comm:symbol xsi:type="comm:boxContainer"
@@ -145,6 +145,12 @@
                             <comm:rowGroup xsi:type="comm:rowGroup"
                                            comm:groupId="xxxx"
                                            comm:groupHeaderLabel="Label XXXXX">
+                                <comm:groupTableButton xsi:type="comm:imageButton"
+                                                       comm:tooltip="true"
+                                                       comm:formName="WrapupLandingForm"
+                                                       comm:tip="" comm:target="main"
+                                                       comm:url="app-domain/mandates-and-resolutions/tablePopup"
+                                                       comm:id="gp1"/>
                             </comm:rowGroup>
 
                             <xsl:for-each
@@ -155,7 +161,8 @@
                                                comm:col_id="title">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="name"/>
@@ -167,7 +174,8 @@
                                                comm:col_id="fullName">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of select="surname"/>
                                                 </comm:value>
@@ -178,7 +186,8 @@
                                                comm:col_id="idPassport">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="designation"/>
@@ -240,14 +249,6 @@
                             </xsl:for-each>
                             <comm:tableNavigator comm:pageSize="10"/>
                         </comm:symbol>
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id="termsAndConditionsPDFa"
-                                     comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/tablePopup"
-                                     comm:label="Add +"
-                                     comm:width="5"
-                                     comm:formSubmit="true"
-                                     comm:type="highlight"/>
                     </comm:sections>
                     <xsl:if test="requestWrapper/checkDirectorEmpty = 'true'">
                         <comm:sections comm:width="full">

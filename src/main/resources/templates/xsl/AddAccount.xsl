@@ -9,7 +9,7 @@
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                     xsi:type="comm:formLayout">
                 <comm:form comm:name="searchResults"
-                           comm:action="app-domain/mandates-and-resolutions/signatoryTablePopup">
+                           comm:action="">
                     <comm:sections comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading"
                                      comm:size="4">
@@ -108,6 +108,12 @@
                             <comm:rowGroup xsi:type="comm:rowGroup"
                                            comm:groupId="directors"
                                            comm:groupHeaderLabel="Directors List">
+                                <comm:groupTableButton xsi:type="comm:imageButton"
+                                                       comm:tooltip="true"
+                                                       comm:formName="searchResults"
+                                                       comm:tip="" comm:target="main"
+                                                       comm:url="app-domain/mandates-and-resolutions/signatoryTablePopup"
+                                                       comm:id="gp1"/>
                             </comm:rowGroup>
 
                             <!-- Render each director as editable row -->
@@ -199,18 +205,9 @@
                                                     comm:url="app-domain/mandates-and-resolutions/SignatoryRemove/{userInList}"/>
                                         </comm:cellItem>
                                     </comm:cell>
-
                                 </comm:row>
                             </xsl:for-each>
                         </comm:symbol>
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id="termsAndConditionsPDFa"
-                                     comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/signatoryTablePopup"
-                                     comm:label="Add Signatory"
-                                     comm:width="5"
-                                     comm:formSubmit="true"
-                                     comm:type="highlight"/>
                     </comm:sections>
                     <xsl:if test="addAccountModel/checkSignatoryList = 'true'">
                         <comm:sections comm:width="full">
