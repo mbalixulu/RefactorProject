@@ -213,23 +213,6 @@ public class MandatesResolutionService {
     return listSignatory;
   }
 
-  public void updateWaveTools(Map<String, String> user) {
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-
-    Optional.ofNullable(requestWrapper)
-        .map(RequestWrapper::getListOfWaveModel)
-        .orElse(Collections.emptyList())
-        .forEach(wave -> {
-          String toolValue = user.get("tool" + wave.getName());
-          if (toolValue != null) {
-            wave.setWaveTool(toolValue);
-          }
-        });
-
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
-  }
-
   public RequestWrapper setSearchResult(Map<String, String> user) {
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
@@ -237,7 +220,25 @@ public class MandatesResolutionService {
     createModel.setCompanyName(user.get("companyName"));
     createModel.setCompanyAddress(user.get("companyAddress"));
     requestWrapper.setRequest(createModel);
-    requestWrapper.setRequestType(user.get("companyAddress"));
+    if (!user.get("toolOne").isBlank()) {
+      requestWrapper.setToolOne(user.get("toolOne"));
+    }
+
+    if (!user.get("toolTwo").isBlank()) {
+      requestWrapper.setToolTwo(user.get("toolTwo"));
+    }
+
+    if (!user.get("toolThree").isBlank()) {
+      requestWrapper.setToolThree(user.get("toolThree"));
+    }
+
+    if (!user.get("toolFour").isBlank()) {
+      requestWrapper.setToolFour(user.get("toolFour"));
+    }
+
+    if (!user.get("toolFive").isBlank()) {
+      requestWrapper.setToolFive(user.get("toolFive"));
+    }
     requestWrapper.setRequestType(user.get("mandateResolution"));
     if (!user.get("mandateResolution").isBlank()) {
       requestWrapper.setCheckStyleOne(user.get("check1"));
@@ -414,17 +415,14 @@ public class MandatesResolutionService {
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", requestWrapper.getStepForSave());
     payload.put("waiverUcn", "UCN-7788");
-    if (requestWrapper.getListOfWaveModel() != null
-        && !requestWrapper.getListOfWaveModel().isEmpty()) {
-
-      String toolString = requestWrapper.getListOfWaveModel()
-          .stream()
-          .map(WaveModel::getWaveTool)
-          .filter(Objects::nonNull)
-          .collect(Collectors.joining(","));
-
-      payload.put("waiverPermittedTools", toolString);
-    }
+    String tools = String.join(",",
+        requestWrapper.getToolOne(),
+        requestWrapper.getToolTwo(),
+        requestWrapper.getToolThree(),
+        requestWrapper.getToolFour(),
+        requestWrapper.getToolFive()
+    );
+    payload.put("waiverPermittedTools", tools);
     String currentDateTime = LocalDateTime.now()
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
     payload.put("waiverLastFetched", currentDateTime);
@@ -506,17 +504,14 @@ public class MandatesResolutionService {
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", "Step 3");
     payload.put("waiverUcn", "UCN-7788");
-    if (requestWrapper.getListOfWaveModel() != null
-        && !requestWrapper.getListOfWaveModel().isEmpty()) {
-
-      String toolString = requestWrapper.getListOfWaveModel()
-          .stream()
-          .map(WaveModel::getWaveTool)
-          .filter(Objects::nonNull)
-          .collect(Collectors.joining(","));
-
-      payload.put("waiverPermittedTools", toolString);
-    }
+    String tools = String.join(",",
+        requestWrapper.getToolOne(),
+        requestWrapper.getToolTwo(),
+        requestWrapper.getToolThree(),
+        requestWrapper.getToolFour(),
+        requestWrapper.getToolFive()
+    );
+    payload.put("waiverPermittedTools", tools);
     String currentDateTime = LocalDateTime.now()
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
     payload.put("waiverLastFetched", currentDateTime);
@@ -596,16 +591,14 @@ public class MandatesResolutionService {
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
     waiver.put("permittedTools", "ToolA,ToolB");
-    if (wrapper.getListOfWaveModel() != null
-        && !wrapper.getListOfWaveModel().isEmpty()) {
-      String toolString = wrapper.getListOfWaveModel()
-          .stream()
-          .map(WaveModel::getWaveTool)
-          .filter(Objects::nonNull)
-          .collect(Collectors.joining(","));
-
-      waiver.put("permittedTools", toolString);
-    }
+    String tools = String.join(",",
+        wrapper.getToolOne(),
+        wrapper.getToolTwo(),
+        wrapper.getToolThree(),
+        wrapper.getToolFour(),
+        wrapper.getToolFive()
+    );
+    waiver.put("permittedTools", tools);
     waiver.put("lastFetched", "2025-08-25T12:00:00");
     waiver.put("creator", user.getUsername());
     List<AddAccountModel> listOFAddAccount = getListAddAccount(wrapper.getListOfAddAccount(),
@@ -674,8 +667,6 @@ public class MandatesResolutionService {
 
   public String createRequestReso() {
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    RequestWrapper wrapperData =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
     UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     String url = mandatesResolutionsDaoURL + "/api/submission";
     Map<String, Object> requestBody = new HashMap<>();
@@ -700,16 +691,14 @@ public class MandatesResolutionService {
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
     waiver.put("permittedTools", "ToolA,ToolB");
-    if (wrapper.getListOfWaveModel() != null
-        && !wrapper.getListOfWaveModel().isEmpty()) {
-      String toolString = wrapper.getListOfWaveModel()
-          .stream()
-          .map(WaveModel::getWaveTool)
-          .filter(Objects::nonNull)
-          .collect(Collectors.joining(","));
-
-      waiver.put("permittedTools", toolString);
-    }
+    String tools = String.join(",",
+        wrapper.getToolOne(),
+        wrapper.getToolTwo(),
+        wrapper.getToolThree(),
+        wrapper.getToolFour(),
+        wrapper.getToolFive()
+    );
+    waiver.put("permittedTools", tools);
     waiver.put("lastFetched", "2025-08-25T12:00:00");
     waiver.put("creator", user.getUsername());
     List<Map<String, Object>> authorities = new ArrayList<>();
@@ -776,16 +765,14 @@ public class MandatesResolutionService {
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
     waiver.put("permittedTools", "ToolA,ToolB");
-    if (wrapper.getListOfWaveModel() != null
-        && !wrapper.getListOfWaveModel().isEmpty()) {
-      String toolString = wrapper.getListOfWaveModel()
-          .stream()
-          .map(WaveModel::getWaveTool)
-          .filter(Objects::nonNull)
-          .collect(Collectors.joining(","));
-
-      waiver.put("permittedTools", toolString);
-    }
+    String tools = String.join(",",
+        wrapper.getToolOne(),
+        wrapper.getToolTwo(),
+        wrapper.getToolThree(),
+        wrapper.getToolFour(),
+        wrapper.getToolFive()
+    );
+    waiver.put("permittedTools", tools);
     waiver.put("lastFetched", "2025-08-25T12:00:00");
     waiver.put("creator", user.getUsername());
     List<AddAccountModel> listOFAddAccount = getListAddAccount(wrapper.getListOfAddAccount(),

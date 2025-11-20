@@ -283,10 +283,6 @@ public class MandatesResolutionUIController {
     }
     dto.setEditable(true);
     wrapper.setRequest(dto);
-    List<WaveModel> listOfWave = wrapper.getListOfWaveModel();
-    if (listOfWave == null) {
-      wrapper.setCheckRemoveTool("false");
-    }
     httpSession.setAttribute("requestData", dto);
     httpSession.setAttribute("RequestWrapper", wrapper);
     if (check) {
@@ -331,71 +327,10 @@ public class MandatesResolutionUIController {
     dto.setCompanyAddress(null);
     dto.setCompanyName(null);
     requestWrapper.setRequest(dto);
-    requestWrapper.setListOfWaveModel(null);
-    requestWrapper.setCheckWaiver("false");
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("CreateRequest"),
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
-    return ResponseEntity.ok(page);
-  }
-
-  @PostMapping(value = "/wave", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces =
-      MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> waveRequest(@RequestParam Map<String, String> wave) {
-    String page = "";
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    List<WaveModel> listOfWave = requestWrapper.getListOfWaveModel();
-    if (listOfWave == null) {
-      listOfWave = new ArrayList<>();
-    }
-    WaveModel waveModel = new WaveModel();
-    int size = listOfWave.size();
-    waveModel.setName(++size);
-    listOfWave.add(waveModel);
-    requestWrapper.setListOfWaveModel(listOfWave);
-    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
-    dto.setCompanyName(wave.get("companyName"));
-    dto.setCompanyAddress(wave.get("companyAddress"));
-    requestWrapper.setRequest(dto);
-    requestWrapper.setRequestType(wave.get("mandateResolution"));
-    requestWrapper.setCheckRemoveTool("true");
-    if (!wave.get("mandateResolution").isBlank()) {
-      requestWrapper.setCheckStyleOne(wave.get("check1"));
-      requestWrapper.setCheckStyleTwo(wave.get("check2"));
-    }
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
-    return ResponseEntity.ok(page);
-  }
-
-  @PostMapping(value = "/removeTool", consumes =
-      MediaType.APPLICATION_FORM_URLENCODED_VALUE,
-      produces =
-          MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> removeTools(@RequestParam Map<String, String> wave) {
-    String page = "";
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    List<WaveModel> listOfWave = requestWrapper.getListOfWaveModel();
-    if (listOfWave != null && !listOfWave.isEmpty()) {
-      listOfWave.remove(listOfWave.size() - 1);
-    }
-    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
-    dto.setCompanyName(wave.get("companyName"));
-    dto.setCompanyAddress(wave.get("companyAddress"));
-    requestWrapper.setRequest(dto);
-    requestWrapper.setRequestType(wave.get("mandateResolution"));
-    if (!wave.get("mandateResolution").isBlank()) {
-      requestWrapper.setCheckStyleOne(wave.get("check1"));
-      requestWrapper.setCheckStyleTwo(wave.get("check2"));
-    }
-    requestWrapper.setListOfWaveModel(listOfWave);
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
         (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     return ResponseEntity.ok(page);
   }
@@ -409,15 +344,30 @@ public class MandatesResolutionUIController {
     dto.setCompanyName(wave.get("companyName"));
     dto.setCompanyAddress(wave.get("companyAddress"));
     requestWrapper.setRequest(dto);
+    if (!wave.get("toolOne").isBlank()) {
+      requestWrapper.setToolOne(wave.get("toolOne"));
+    }
+
+    if (!wave.get("toolTwo").isBlank()) {
+      requestWrapper.setToolTwo(wave.get("toolTwo"));
+    }
+
+    if (!wave.get("toolThree").isBlank()) {
+      requestWrapper.setToolThree(wave.get("toolThree"));
+    }
+
+    if (!wave.get("toolFour").isBlank()) {
+      requestWrapper.setToolFour(wave.get("toolFour"));
+    }
+
+    if (!wave.get("toolFive").isBlank()) {
+      requestWrapper.setToolFive(wave.get("toolFive"));
+    }
     requestWrapper.setRequestType(wave.get("mandateResolution"));
     if (!wave.get("mandateResolution").isBlank()) {
       requestWrapper.setCheckStyleOne(wave.get("check1"));
       requestWrapper.setCheckStyleTwo(wave.get("check2"));
     }
-    if (requestWrapper.getListOfWaveModel() != null) {
-      mandatesResolutionService.updateWaveTools(wave);
-    }
-    requestWrapper.setCheckWaiver("false");
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
@@ -445,7 +395,6 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    requestWrapper.setCheckWaiver("false");
     requestWrapper.setCheckDirectorEmpty("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
@@ -727,11 +676,26 @@ public class MandatesResolutionUIController {
     dto.setCompanyName(user.get("companyName"));
     dto.setCompanyAddress(user.get("companyAddress"));
     requestWrapper.setRequest(dto);
-    requestWrapper.setRequestType(user.get("mandateResolution"));
-    if (requestWrapper.getListOfWaveModel() != null) {
-      mandatesResolutionService.updateWaveTools(user);
+    if (!user.get("toolOne").isBlank()) {
+      requestWrapper.setToolOne(user.get("toolOne"));
     }
-    requestWrapper.setCheckWaiver("false");
+
+    if (!user.get("toolTwo").isBlank()) {
+      requestWrapper.setToolTwo(user.get("toolTwo"));
+    }
+
+    if (!user.get("toolThree").isBlank()) {
+      requestWrapper.setToolThree(user.get("toolThree"));
+    }
+
+    if (!user.get("toolFour").isBlank()) {
+      requestWrapper.setToolFour(user.get("toolFour"));
+    }
+
+    if (!user.get("toolFive").isBlank()) {
+      requestWrapper.setToolFive(user.get("toolFive"));
+    }
+    requestWrapper.setRequestType(user.get("mandateResolution"));
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
@@ -758,20 +722,20 @@ public class MandatesResolutionUIController {
       searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
       check = true;
     }
+
+    if (user.get("toolOne").isBlank() && user.get("toolTwo").isBlank()
+        && user.get("toolThree").isBlank() && user.get("toolFour").isBlank()
+        && user.get("toolFive").isBlank()) {
+      searchResultsErrorModel.setToolOne("At least One Waiver tool need for the Request !");
+      check = true;
+    }
+
     List<DirectorModel> directors = requestWrapper.getDirectorModels();
     if (directors == null || directors.isEmpty()) {
       requestWrapper.setCheckDirectorEmpty("true");
       check = true;
     } else {
       requestWrapper.setCheckDirectorEmpty("false");
-    }
-
-    List<WaveModel> waveModelList = requestWrapper.getListOfWaveModel();
-    if (waveModelList == null || waveModelList.isEmpty()) {
-      requestWrapper.setCheckWaiver("true");
-      check = true;
-    } else {
-      requestWrapper.setCheckWaiver("false");
     }
 
     if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
@@ -795,9 +759,6 @@ public class MandatesResolutionUIController {
       requestWrapper.setAccountCheck("true");
     }
 
-    if (requestWrapper.getListOfWaveModel() != null) {
-      mandatesResolutionService.updateWaveTools(user);
-    }
     requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
@@ -836,14 +797,6 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckDirectorEmpty("false");
     }
 
-    List<WaveModel> waveModelList = requestWrapper.getListOfWaveModel();
-    if (waveModelList == null || waveModelList.isEmpty()) {
-      requestWrapper.setCheckWaiver("true");
-      check = true;
-    } else {
-      requestWrapper.setCheckWaiver("false");
-    }
-
     if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
         user.get("mandateResolution"))) {
       searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
@@ -865,9 +818,6 @@ public class MandatesResolutionUIController {
       requestWrapper.setAccountCheck("true");
     }
 
-    if (requestWrapper.getListOfWaveModel() != null) {
-      mandatesResolutionService.updateWaveTools(user);
-    }
     requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
@@ -901,7 +851,6 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    requestWrapper.setCheckWaiver("false");
     requestWrapper.setCheckDirectorEmpty("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);

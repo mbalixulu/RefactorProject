@@ -33,17 +33,19 @@ public class RequestWrapper {
   private String checkDirectorPage;
   private String checkStyleOne;
   private String checkStyleTwo;
-  private List<WaveModel> listOfWaveModel;
   private List<DirectorModel> directorModels;
   private List<DirectorModel> listOfDirectors;
   private String checkDirectorEmpty;
-  private String checkWaiver;
-  private String checkRemoveTool;
   private String accountCheck;
   private List<AddAccountModel> listOfAddAccount;
   private String checkAccountSection;
   private String checkSignatureCard;
   private String stepForSave;
+  private String toolOne;
+  private String toolTwo;
+  private String toolThree;
+  private String toolFour;
+  private String toolFive;
 
 
   //Search Results

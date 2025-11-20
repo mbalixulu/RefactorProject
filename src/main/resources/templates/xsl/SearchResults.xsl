@@ -50,29 +50,51 @@
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="waiverBox">
                             <comm:box xsi:type="comm:box">
                                 <comm:boxSymbol xsi:type="comm:textHeading" comm:size="4">
-                                    <comm:value>Company waiver</comm:value>
+                                    <comm:value>Company waiver *</comm:value>
                                 </comm:boxSymbol>
-                                <xsl:for-each
-                                        select="requestWrapper/listOfWaveModel">
                                     <comm:boxSymbol xsi:type="comm:input"
-                                                    comm:name="tool{name}"
-                                                    comm:label="Tool {position()}">
+                                                    comm:name="toolOne"
+                                                    comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                    comm:label="Tool 1">
                                         <comm:value>
-                                            <xsl:value-of select="waveTool"/>
+                                            <xsl:value-of select="requestWrapper/toolOne"/>
                                         </comm:value>
                                     </comm:boxSymbol>
-                                </xsl:for-each>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="toolTwo"
+                                                comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                comm:label="Tool 2">
+                                    <comm:value>
+                                        <xsl:value-of select="requestWrapper/toolTwo"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="toolThree"
+                                                comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                comm:label="Tool 3">
+                                    <comm:value>
+                                        <xsl:value-of select="requestWrapper/toolThree"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="toolFour"
+                                                comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                comm:label="Tool 4">
+                                    <comm:value>
+                                        <xsl:value-of select="requestWrapper/toolFour"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="toolFive"
+                                                comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                comm:label="Tool 5">
+                                    <comm:value>
+                                        <xsl:value-of select="requestWrapper/toolFive"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
-                    <xsl:if test="requestWrapper/checkWaiver = 'true'">
-                        <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
-                                <comm:value>At least one Waiver Tool is required for this request !
-                                </comm:value>
-                            </comm:symbol>
-                        </comm:sections>
-                    </xsl:if>
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:fullTable"
                                      comm:id="MyTable2"
@@ -401,14 +423,6 @@
                 <comm:baseButton comm:id="backSearch" comm:target="main"
                                  comm:url="app-domain/mandates-and-resolutions/backCreateReq"
                                  comm:label="Back" comm:formSubmit="true"/>
-                <comm:baseButton comm:id="wave" comm:target="main"
-                                 comm:url="app-domain/mandates-and-resolutions/wave"
-                                 comm:label="Add Waiver Tool +" comm:formSubmit="true"/>
-                <xsl:if test="requestWrapper/checkRemoveTool = 'true'">
-                    <comm:baseButton comm:id="waveRemove" comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/removeTool"
-                                     comm:label="Remove Waiver Tool" comm:formSubmit="true"/>
-                </xsl:if>
                 <comm:baseButton comm:id="save"
                                  comm:target="main"
                                  comm:url="app-domain/mandates-and-resolutions/searchAccountSave"

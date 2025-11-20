@@ -20,4 +20,5 @@ public class SearchResultsErrorModel {
   private String requestType;
   private String checkStyleOne;
   private String checkStyleTwo;
+  private String toolOne;
 }
