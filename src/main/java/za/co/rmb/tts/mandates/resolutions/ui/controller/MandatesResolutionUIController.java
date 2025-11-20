@@ -1806,6 +1806,8 @@ public class MandatesResolutionUIController {
       UserDTO user = (UserDTO) session.getAttribute("currentUser");
       if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
         requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
       }
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(completedRequests);
@@ -1876,6 +1878,8 @@ public class MandatesResolutionUIController {
       UserDTO user = (UserDTO) session.getAttribute("currentUser");
       if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
         requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
       }
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(onHoldRequests);
@@ -1922,7 +1926,7 @@ public class MandatesResolutionUIController {
       RequestDTO requestDTO = new RequestDTO();
       for (RequestStagingDTO d : list) {
         // Filter: non-admins only see their own assigned requests
-        if (!admin && (d.getAssignedUser() == null || !d.getAssignedUser().equalsIgnoreCase(me))) {
+        if (!admin && (d.getCreator() == null || !d.getCreator().equalsIgnoreCase(me))) {
           continue;
         }
 
@@ -1965,8 +1969,6 @@ public class MandatesResolutionUIController {
         } else {
           requestDTO.setSubStatus("User");
         }
-
-
         // Build table row
         RequestTableDTO r = new RequestTableDTO();
         r.setRequestId(src.getStagingId());

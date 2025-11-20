@@ -87,7 +87,7 @@
 
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
-                            <xsl:for-each select="request">
+                            <xsl:for-each select="requests/request">
                                 <ns1:row ns1:groupId="rows">
                                     <ns1:cell ns1:col_id="stagingId">
                                         <ns1:cellItem>
