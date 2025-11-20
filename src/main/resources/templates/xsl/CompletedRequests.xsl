@@ -44,99 +44,100 @@
                             </xsl:choose>
                         </xsl:attribute>
 
-                        <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable"
-                                    ns1:headingColor="primary" ns1:showTotal="true">
-                            <xsl:attribute name="ns1:heading">
-                                <xsl:choose>
-                                    <xsl:when test="status = 'onhold'">On hold</xsl:when>
-                                    <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                    <xsl:otherwise>Completed tickets</xsl:otherwise>
-                                </xsl:choose>
-                            </xsl:attribute>
+                        <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                            <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable"
+                                        ns1:headingColor="primary" ns1:showTotal="true">
+                                <xsl:attribute name="ns1:heading">
+                                    <xsl:choose>
+                                        <xsl:when test="status = 'onhold'">On hold</xsl:when>
+                                        <xsl:when test="status = 'completed'">Completed</xsl:when>
+                                        <xsl:otherwise>Completed tickets</xsl:otherwise>
+                                    </xsl:choose>
+                                </xsl:attribute>
 
-                            <!--Create Request Button-->
-                            <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
-                                           ns1:id="createRequestbtn" ns1:label="Create Request"
-                                           ns1:tooltip="true" ns1:tip="tip"
-                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                           ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
-                                                        ns1:id="createRequestbtn">
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:target="main"
-                                                           ns1:label="Create Request"
-                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                    <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                <!--Create Request Button-->
+                                <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
+                                               ns1:id="createRequestbtn" ns1:label="Create Request"
+                                               ns1:tooltip="true" ns1:tip="tip"
+                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                               ns1:formName="ticketForm">
+                                    <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                            ns1:id="createRequestbtn">
+                                        <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                               ns1:target="main"
+                                                               ns1:label="Create Request"
+                                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
                                         <ns1:hyperlinkListItem ns1:label="Export CSV"
                                                                ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                    </xsl:if>
-                                </ns1:imageButtonOptions>
-                            </ns1:addButton>
+                                    </ns1:imageButtonOptions>
+                                </ns1:addButton>
 
-                            <!--Search-->
-                            <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
+                                <!--Search-->
+                                <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
-                            <!--Columns (match Pending)-->
-                            <ns1:tableColumn ns1:id="requestID" ns1:heading="Request ID"
-                                             ns1:fieldName="requestID" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                <!--Columns (match Pending)-->
+                                <ns1:tableColumn ns1:id="requestID" ns1:heading="Request ID"
+                                                 ns1:fieldName="requestID"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="assignedUser" ns1:heading="Assigned User"
                                                  ns1:fieldName="assignedUser"
                                                  ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
-                            </xsl:if>
-                            <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
-                                             ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
-                                             ns1:fieldName="companyName" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="status" ns1:heading="Status"
-                                             ns1:fieldName="status" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="subStatus" ns1:heading="Sub Status"
-                                             ns1:fieldName="subStatus" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="requestType" ns1:heading="Request Type"
-                                             ns1:fieldName="requestType" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="dateCreated" ns1:heading="Date Created"
-                                             ns1:fieldName="dateCreated" ns1:disableSorting="false"
-                                             ns1:widthPercent="9"/>
-                            <!--                            <ns1:tableColumn ns1:id="view"         ns1:heading="View"          ns1:fieldName="view"         ns1:disableSorting="true" ns1:widthPercent="9"/>-->
+                                <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
+                                                 ns1:disableSorting="false" ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
+                                                 ns1:fieldName="companyName"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="status" ns1:heading="Status"
+                                                 ns1:fieldName="status" ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="subStatus" ns1:heading="Sub Status"
+                                                 ns1:fieldName="subStatus"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="requestType" ns1:heading="Request Type"
+                                                 ns1:fieldName="requestType"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="dateCreated" ns1:heading="Date Created"
+                                                 ns1:fieldName="dateCreated"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <!--                            <ns1:tableColumn ns1:id="view"         ns1:heading="View"          ns1:fieldName="view"         ns1:disableSorting="true" ns1:widthPercent="9"/>-->
 
-                            <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
+                                <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
-                            <!--Rows-->
-                            <xsl:for-each select="requests/request">
-                                <ns1:row ns1:groupId="rows">
+                                <!--Rows-->
+                                <xsl:for-each select="requests/request">
+                                    <ns1:row ns1:groupId="rows">
 
-                                    <!-- Request ID (now shows requestIdForDisplay when available) -->
-                                    <ns1:cell ns1:col_id="requestID">
-                                        <ns1:cellItem>
-                                            <ns1:item
-                                                    xsi:type="ns1:hyperlink"
-                                                    ns1:target="main"
-                                                    ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}">
-                                                <!-- IMPORTANT: hyperlink text goes in the ns1:text attribute, not a child -->
-                                                <xsl:attribute name="ns1:text">
-                                                    <xsl:choose>
-                                                        <xsl:when
-                                                                test="normalize-space(requestIdForDisplay) != ''">
-                                                            <xsl:value-of
-                                                                    select="requestIdForDisplay"/>
-                                                        </xsl:when>
-                                                        <xsl:otherwise>
-                                                            <xsl:value-of select="requestId"/>
-                                                        </xsl:otherwise>
-                                                    </xsl:choose>
-                                                </xsl:attribute>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- Request ID (now shows requestIdForDisplay when available) -->
+                                        <ns1:cell ns1:col_id="requestID">
+                                            <ns1:cellItem>
+                                                <ns1:item
+                                                        xsi:type="ns1:hyperlink"
+                                                        ns1:target="main"
+                                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}">
+                                                    <!-- IMPORTANT: hyperlink text goes in the ns1:text attribute, not a child -->
+                                                    <xsl:attribute name="ns1:text">
+                                                        <xsl:choose>
+                                                            <xsl:when
+                                                                    test="normalize-space(requestIdForDisplay) != ''">
+                                                                <xsl:value-of
+                                                                        select="requestIdForDisplay"/>
+                                                            </xsl:when>
+                                                            <xsl:otherwise>
+                                                                <xsl:value-of select="requestId"/>
+                                                            </xsl:otherwise>
+                                                        </xsl:choose>
+                                                    </xsl:attribute>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Assigned User -->
-                                    <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                        <!-- Assigned User -->
                                         <ns1:cell ns1:col_id="assignedUser">
                                             <ns1:cellItem>
                                                 <ns1:item xsi:type="ns1:simpleText"
@@ -154,123 +155,297 @@
                                                 </ns1:item>
                                             </ns1:cellItem>
                                         </ns1:cell>
-                                    </xsl:if>
 
-                                    <!-- SLA (success icon looks nice for completed) -->
-                                    <ns1:cell ns1:col_id="sla">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
-                                                <ns1:value>
-                                                    <xsl:value-of select="sla"/>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- SLA (success icon looks nice for completed) -->
+                                        <ns1:cell ns1:col_id="sla">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="sla"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Company Name -->
-                                    <ns1:cell ns1:col_id="companyName">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText"
-                                                      ns1:label="Company Name">
-                                                <ns1:value>
-                                                    <xsl:value-of select="companyName"/>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- Company Name -->
+                                        <ns1:cell ns1:col_id="companyName">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Company Name">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="companyName"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Status -->
-                                    <ns1:cell ns1:col_id="status">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText" ns1:label="Status">
-                                                <ns1:value>
-                                                    <xsl:value-of select="status"/>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- Status -->
+                                        <ns1:cell ns1:col_id="status">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Status">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="status"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Sub Status -->
-                                    <ns1:cell ns1:col_id="subStatus">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText"
-                                                      ns1:label="Sub Status">
-                                                <ns1:value>
-                                                    <xsl:value-of select="subStatus"/>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- Sub Status -->
+                                        <ns1:cell ns1:col_id="subStatus">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Sub Status">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="subStatus"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Request Type (same mapping as Pending) -->
-                                    <ns1:cell ns1:col_id="requestType">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText"
-                                                      ns1:label="Request Type">
-                                                <ns1:value>
-                                                    <xsl:choose>
-                                                        <xsl:when
-                                                                test="normalize-space(mandateResolution)='1'">
-                                                            Mandate
-                                                        </xsl:when>
-                                                        <xsl:when
-                                                                test="normalize-space(mandateResolution)='2'">
-                                                            Resolution
-                                                        </xsl:when>
-                                                        <xsl:when
-                                                                test="normalize-space(mandateResolution)='3'">
-                                                            Mandate and resolution
-                                                        </xsl:when>
+                                        <!-- Request Type (same mapping as Pending) -->
+                                        <ns1:cell ns1:col_id="requestType">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Request Type">
+                                                    <ns1:value>
+                                                        <xsl:choose>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='1'">
+                                                                Mandate
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='2'">
+                                                                Resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='3'">
+                                                                Mandate and resolution
+                                                            </xsl:when>
 
-                                                        <xsl:when
-                                                                test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'BOTH')">
-                                                            Mandate and resolution
-                                                        </xsl:when>
-                                                        <xsl:when
-                                                                test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'RESOLUTION')">
-                                                            Resolution
-                                                        </xsl:when>
-                                                        <xsl:when
-                                                                test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'MANDATE')">
-                                                            Mandate
-                                                        </xsl:when>
-                                                        <xsl:otherwise>—</xsl:otherwise>
-                                                    </xsl:choose>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'BOTH')">
+                                                                Mandate and resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'RESOLUTION')">
+                                                                Resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'MANDATE')">
+                                                                Mandate
+                                                            </xsl:when>
+                                                            <xsl:otherwise>—</xsl:otherwise>
+                                                        </xsl:choose>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
 
-                                    <!-- Date Created -->
-                                    <ns1:cell ns1:col_id="dateCreated">
-                                        <ns1:cellItem>
-                                            <ns1:item xsi:type="ns1:simpleText"
-                                                      ns1:label="Date Created">
-                                                <ns1:value>
-                                                    <xsl:value-of select="created"/>
-                                                </ns1:value>
-                                            </ns1:item>
-                                        </ns1:cellItem>
-                                    </ns1:cell>
+                                        <!-- Date Created -->
+                                        <ns1:cell ns1:col_id="dateCreated">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Date Created">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="created"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+                                    </ns1:row>
+                                </xsl:for-each>
 
-                                    <!-- View -->
-                                    <!--                                    <ns1:cell ns1:col_id="view">-->
-                                    <!--                                        <ns1:cellItem>-->
-                                    <!--                                            <ns1:item xsi:type="ns1:button"-->
-                                    <!--                                                      ns1:id="{concat('viewBtn_', requestId)}"-->
-                                    <!--                                                      ns1:type="action"-->
-                                    <!--                                                      ns1:width="2"-->
-                                    <!--                                                      ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}"-->
-                                    <!--                                                      ns1:target="main"-->
-                                    <!--                                                      ns1:formSubmit="false"-->
-                                    <!--                                                      ns1:label="View"/>-->
-                                    <!--                                        </ns1:cellItem>-->
-                                    <!--                                    </ns1:cell>-->
-                                </ns1:row>
-                            </xsl:for-each>
+                                <ns1:tableNavigator ns1:pageSize="10"/>
+                            </ns1:symbol>
+                        </xsl:if>
+                        <xsl:if test="requests/requestDTO/subStatus = 'User'">
+                            <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable"
+                                        ns1:headingColor="primary" ns1:showTotal="true">
+                                <xsl:attribute name="ns1:heading">
+                                    <xsl:choose>
+                                        <xsl:when test="status = 'onhold'">On hold</xsl:when>
+                                        <xsl:when test="status = 'completed'">Completed</xsl:when>
+                                        <xsl:otherwise>Completed tickets</xsl:otherwise>
+                                    </xsl:choose>
+                                </xsl:attribute>
 
-                            <ns1:tableNavigator ns1:pageSize="10"/>
-                        </ns1:symbol>
+                                <!--Create Request Button-->
+                                <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
+                                               ns1:id="createRequestbtn" ns1:label="Create Request"
+                                               ns1:tooltip="true" ns1:tip="tip"
+                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                               ns1:formName="ticketForm">
+                                    <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                            ns1:id="createRequestbtn">
+                                        <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                               ns1:target="main"
+                                                               ns1:label="Create Request"
+                                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                    </ns1:imageButtonOptions>
+                                </ns1:addButton>
+
+                                <!--Search-->
+                                <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
+
+                                <!--Columns (match Pending)-->
+                                <ns1:tableColumn ns1:id="requestID" ns1:heading="Request ID"
+                                                 ns1:fieldName="requestID"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
+                                                 ns1:disableSorting="false" ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
+                                                 ns1:fieldName="companyName"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="status" ns1:heading="Status"
+                                                 ns1:fieldName="status" ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="subStatus" ns1:heading="Sub Status"
+                                                 ns1:fieldName="subStatus"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="requestType" ns1:heading="Request Type"
+                                                 ns1:fieldName="requestType"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="dateCreated" ns1:heading="Date Created"
+                                                 ns1:fieldName="dateCreated"
+                                                 ns1:disableSorting="false"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
+
+                                <!--Rows-->
+                                <xsl:for-each select="requests/request">
+                                    <ns1:row ns1:groupId="rows">
+
+                                        <!-- Request ID (now shows requestIdForDisplay when available) -->
+                                        <ns1:cell ns1:col_id="requestID">
+                                            <ns1:cellItem>
+                                                <ns1:item
+                                                        xsi:type="ns1:hyperlink"
+                                                        ns1:target="main"
+                                                        ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', requestId)}">
+                                                    <!-- IMPORTANT: hyperlink text goes in the ns1:text attribute, not a child -->
+                                                    <xsl:attribute name="ns1:text">
+                                                        <xsl:choose>
+                                                            <xsl:when
+                                                                    test="normalize-space(requestIdForDisplay) != ''">
+                                                                <xsl:value-of
+                                                                        select="requestIdForDisplay"/>
+                                                            </xsl:when>
+                                                            <xsl:otherwise>
+                                                                <xsl:value-of select="requestId"/>
+                                                            </xsl:otherwise>
+                                                        </xsl:choose>
+                                                    </xsl:attribute>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+                                        <!-- SLA (success icon looks nice for completed) -->
+                                        <ns1:cell ns1:col_id="sla">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText" ns1:label="SLA">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="sla"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+
+                                        <!-- Company Name -->
+                                        <ns1:cell ns1:col_id="companyName">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Company Name">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="companyName"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+
+                                        <!-- Status -->
+                                        <ns1:cell ns1:col_id="status">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Status">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="status"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+
+                                        <!-- Sub Status -->
+                                        <ns1:cell ns1:col_id="subStatus">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Sub Status">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="subStatus"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+
+                                        <!-- Request Type (same mapping as Pending) -->
+                                        <ns1:cell ns1:col_id="requestType">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Request Type">
+                                                    <ns1:value>
+                                                        <xsl:choose>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='1'">
+                                                                Mandate
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='2'">
+                                                                Resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="normalize-space(mandateResolution)='3'">
+                                                                Mandate and resolution
+                                                            </xsl:when>
+
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'BOTH')">
+                                                                Mandate and resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'RESOLUTION')">
+                                                                Resolution
+                                                            </xsl:when>
+                                                            <xsl:when
+                                                                    test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'MANDATE')">
+                                                                Mandate
+                                                            </xsl:when>
+                                                            <xsl:otherwise>—</xsl:otherwise>
+                                                        </xsl:choose>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+
+                                        <!-- Date Created -->
+                                        <ns1:cell ns1:col_id="dateCreated">
+                                            <ns1:cellItem>
+                                                <ns1:item xsi:type="ns1:simpleText"
+                                                          ns1:label="Date Created">
+                                                    <ns1:value>
+                                                        <xsl:value-of select="created"/>
+                                                    </ns1:value>
+                                                </ns1:item>
+                                            </ns1:cellItem>
+                                        </ns1:cell>
+                                    </ns1:row>
+                                </xsl:for-each>
+
+                                <ns1:tableNavigator ns1:pageSize="10"/>
+                            </ns1:symbol>
+                        </xsl:if>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
