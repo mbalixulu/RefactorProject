@@ -9,7 +9,7 @@
             <symbol xsi:type="comm:subTabGroup" comm:subTabGroupHeading="Mandates and resolutions"/>
             <symbol xsi:type="comm:formLayout">
                 <comm:form comm:name="selectRequirementsForm"
-                           comm:action="app-domain/mandates-and-resolutions/tablePopupReso">
+                           comm:action="">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:fullTable"
                                      comm:id="MyTable2"
@@ -90,6 +90,12 @@
                             <comm:rowGroup xsi:type="comm:rowGroup"
                                            comm:groupId="xxxx"
                                            comm:groupHeaderLabel="Label XXXXX">
+                                <comm:groupTableButton xsi:type="comm:imageButton"
+                                                       comm:tooltip="true"
+                                                       comm:formName="selectRequirementsForm"
+                                                       comm:tip="" comm:target="main"
+                                                       comm:url="app-domain/mandates-and-resolutions/tablePopupReso"
+                                                       comm:id="gp1"/>
                             </comm:rowGroup>
 
                             <xsl:for-each
@@ -198,14 +204,6 @@
                             </xsl:for-each>
                             <comm:tableNavigator comm:pageSize="10"/>
                         </comm:symbol>
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id="termsAndConditionsPDFa"
-                                     comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/tablePopupReso"
-                                     comm:label="Add +"
-                                     comm:width="5"
-                                     comm:formSubmit="true"
-                                     comm:type="highlight"/>
                     </comm:sections>
                 </comm:form>
             </symbol>
