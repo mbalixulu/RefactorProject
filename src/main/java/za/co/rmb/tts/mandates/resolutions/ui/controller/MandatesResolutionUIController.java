@@ -55,7 +55,6 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
-import za.co.rmb.tts.mandates.resolutions.ui.model.WaveModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO;
@@ -1506,10 +1505,81 @@ public class MandatesResolutionUIController {
 
   //Admin Breach Page
   @PostMapping(value = "/adminBreach", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminBreach() {
-    String page = xsltProcessor.generatePage(xslPagePath("AdminBreach"), new RequestWrapper());
-    return new ResponseEntity<>(page, HttpStatus.OK);
+  public ResponseEntity<String> displayAdminBreach(HttpSession session,
+                                                   HttpServletRequest request) {
+    try {
+      RestTemplate restTemplate = new RestTemplate();
+      String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
+
+      // Fetch all requests
+      RequestTableDTO[] all;
+      try {
+        ResponseEntity<RequestTableDTO[]> response =
+            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            ? response.getBody()
+            : new RequestTableDTO[0];
+      } catch (HttpClientErrorException.NotFound nf) {
+        all = new RequestTableDTO[0];
+      }
+
+      final boolean admin = isAdmin(session);
+      final String me = loggedInUsername(session, request);
+
+      // Filter BREACHED requests
+      List<RequestTableDTO> breached = Arrays.stream(all)
+          .filter(r -> r.getStatus() != null
+                       && "Breached".equalsIgnoreCase(r.getStatus().trim()))
+          .filter(r -> admin || (r.getAssignedUser() != null
+                                 && !r.getAssignedUser().trim().isEmpty()
+                                 && r.getAssignedUser().trim().equalsIgnoreCase(me)))
+          .peek(r -> {
+            try {
+              String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
+              ResponseEntity<CompanyDTO> companyResponse =
+                  restTemplate.getForEntity(companyUrl, CompanyDTO.class);
+              r.setCompanyName(companyResponse.getStatusCode().is2xxSuccessful()
+                               && companyResponse.getBody() != null
+                  ? companyResponse.getBody().getName()
+                  : "Unknown");
+            } catch (Exception ex) {
+              logger.error("Error fetching company name for companyId {}: {}", r.getCompanyId(),
+                  ex.getMessage());
+              r.setCompanyName("Unknown");
+            }
+          })
+          .toList();
+
+      // Set DTO role
+      RequestDTO requestDTO = new RequestDTO();
+      UserDTO user = (UserDTO) session.getAttribute("currentUser");
+
+      if ("ADMIN".equalsIgnoreCase(user.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
+      }
+
+      RequestTableWrapper wrapper = new RequestTableWrapper();
+      wrapper.setRequest(breached);
+      wrapper.setRequestDTO(requestDTO);
+
+      // Load AdminBreach page
+      String page = xsltProcessor.generatePage(xslPagePath("AdminBreach"), wrapper);
+      return ResponseEntity.ok(page);
+
+    } catch (Exception e) {
+      logger.error("Error fetching breached requests: {}", e.getMessage(), e);
+      String fallbackError = """
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page>
+              <error>Unable to load breached requests.</error>
+          </page>
+          """;
+      return ResponseEntity.ok(fallbackError);
+    }
   }
+
 
   //Admin All Page
   @RequestMapping(value = "/adminAll", method = {RequestMethod.GET, RequestMethod.POST}, produces
