@@ -51,6 +51,7 @@
                                                 comm:unCheckedValue="No"
                                                 comm:selected="true"
                                                 comm:required="true"
+                                                comm:readonly="true"
                                                 comm:maxlength="50">
                                     <comm:value>
                                         <xsl:value-of

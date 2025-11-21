@@ -18,10 +18,9 @@
                                                 comm:size="4">
                                     <comm:value>Search Result</comm:value>
                                 </comm:boxSymbol>
-                                <comm:boxSymbol xsi:type="comm:input"
-                                                comm:name="companyRegiNumber"
-                                                comm:label="Registration number"
-                                                comm:readonly="true">
+                                <comm:boxSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Registration Number:"
+                                                     comm:color="ghostmedium">
                                     <comm:value>
                                         <xsl:value-of
                                                 select="requestWrapper/request/registrationNumber"/>
