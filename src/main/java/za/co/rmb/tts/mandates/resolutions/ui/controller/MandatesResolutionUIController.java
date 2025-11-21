@@ -956,7 +956,7 @@ public class MandatesResolutionUIController {
     }
 
     if (!screenValidation.validateSaIdNumber(user.get("idNumber"))) {
-      signatoryErrorModel.setIdNumber("Provide your Correct SA Id Number !");
+      signatoryErrorModel.setIdNumber("Provide Valid SA Id Number !");
       check = true;
     }
 
@@ -1033,7 +1033,7 @@ public class MandatesResolutionUIController {
     }
 
     if (!screenValidation.validateSaIdNumber(user.get("idNumber"))) {
-      signatoryErrorModel.setIdNumber("Provide your Correct SA Id Number !");
+      signatoryErrorModel.setIdNumber("Provide Valid SA Id Number !");
       check = true;
     }
 
