@@ -21,119 +21,120 @@
                     </xsl:if>
                     <xsl:for-each
                             select="requestWrapper/listOfAddAccount">
-                        <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
-                                <comm:value>Account
-                                    <xsl:value-of select="position()"/>
-                                    :<xsl:value-of select="accountName"/>, (<xsl:value-of
-                                            select="accountNumber"/>)
-                                </comm:value>
-                            </comm:symbol>
-                            <xsl:if test="checkRemoveSignatory = 'true'">
+                            <comm:sections comm:width="full">
                                 <comm:symbol xsi:type="comm:textHeading" comm:size="4">
-                                    <comm:value>"No Signatory were added"</comm:value>
+                                    <comm:value>Account
+                                        <xsl:value-of select="position()"/>
+                                        :<xsl:value-of select="accountName"/>, (<xsl:value-of
+                                                select="accountNumber"/>)
+                                    </comm:value>
                                 </comm:symbol>
-                            </xsl:if>
-                            <xsl:for-each
-                                    select="listOfSignatory">
-                                <comm:symbol xsi:type="comm:boxContainer"
-                                             comm:id="boxDiv">
-                                    <comm:box xsi:type="comm:box">
-                                        <comm:boxSymbol xsi:type="comm:textHeading"
-                                                        comm:size="4">
-                                            <comm:value>Added Signatories</comm:value>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:boxSplit" comm:width="25">
-                                            <comm:boxSplitSymbol xsi:type="comm:textReadout"
-                                                                 comm:subHeading=""
-                                                                 comm:color="ghostmedium">
-                                                <comm:value></comm:value>
-                                            </comm:boxSplitSymbol>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:boxSplit" comm:width="25">
-                                            <comm:boxSplitSymbol xsi:type="comm:textReadout"
-                                                                 comm:subHeading=""
-                                                                 comm:color="ghostmedium">
-                                                <comm:value></comm:value>
-                                            </comm:boxSplitSymbol>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:boxSplit" comm:width="25">
-                                            <comm:boxSplitSymbol xsi:type="comm:textReadout"
-                                                                 comm:subHeading=""
-                                                                 comm:color="ghostmedium">
-                                                <comm:value></comm:value>
-                                            </comm:boxSplitSymbol>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:boxSplit" comm:width="25">
-                                            <comm:boxSplitSymbol xsi:type="comm:button"
-                                                                 comm:id="assignee"
-                                                                 comm:target="main"
-                                                                 comm:url="app-domain/mandates-and-resolutions/editAddedSignatory/{userInList}/{userInAccount}"
-                                                                 comm:label="Edit"
-                                                                 comm:width="3"
-                                                                 comm:formSubmit="false"
-                                                                 comm:type="paper"/>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="fullName{userInList}"
-                                                        comm:label="Full Name *"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="fullName"/>
-                                            </comm:value>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="capacity{userInList}"
-                                                        comm:label="Capacity *"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="capacity"/>
-                                            </comm:value>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="idNumber{userInList}"
-                                                        comm:label="ID Number *"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="idNumber"/>
-                                            </comm:value>
-                                        </comm:boxSymbol>
-                                        <comm:boxSymbol xsi:type="comm:input"
-                                                        comm:name="Group{userInList}"
-                                                        comm:label="Group *"
-                                                        comm:inputType="text" comm:message=""
-                                                        comm:unCheckedValue="No"
-                                                        comm:selected="true"
-                                                        comm:required="true"
-                                                        comm:readonly="true"
-                                                        comm:maxlength="50">
-                                            <comm:value>
-                                                <xsl:value-of
-                                                        select="group"/>
-                                            </comm:value>
-                                        </comm:boxSymbol>
-                                    </comm:box>
-                                </comm:symbol>
-                            </xsl:for-each>
-                        </comm:sections>
+                                <xsl:for-each
+                                        select="listOfSignatory">
+                                    <xsl:if test="instruction = 'Add'">
+                                    <comm:symbol xsi:type="comm:boxContainer"
+                                                 comm:id="boxDiv">
+                                        <comm:box xsi:type="comm:box">
+                                            <comm:boxSymbol xsi:type="comm:textHeading"
+                                                            comm:size="4">
+                                                <comm:value>Added Signatories</comm:value>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                            comm:width="25">
+                                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                     comm:subHeading=""
+                                                                     comm:color="ghostmedium">
+                                                    <comm:value></comm:value>
+                                                </comm:boxSplitSymbol>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                            comm:width="25">
+                                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                     comm:subHeading=""
+                                                                     comm:color="ghostmedium">
+                                                    <comm:value></comm:value>
+                                                </comm:boxSplitSymbol>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                            comm:width="25">
+                                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                                     comm:subHeading=""
+                                                                     comm:color="ghostmedium">
+                                                    <comm:value></comm:value>
+                                                </comm:boxSplitSymbol>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                                            comm:width="25">
+                                                <comm:boxSplitSymbol xsi:type="comm:button"
+                                                                     comm:id="assignee"
+                                                                     comm:target="main"
+                                                                     comm:url="app-domain/mandates-and-resolutions/editAddedSignatory/{userInList}/{userInAccount}"
+                                                                     comm:label="Edit"
+                                                                     comm:width="3"
+                                                                     comm:formSubmit="false"
+                                                                     comm:type="paper"/>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:input"
+                                                            comm:name="fullName"
+                                                            comm:label="Full Name *"
+                                                            comm:inputType="text" comm:message=""
+                                                            comm:unCheckedValue="No"
+                                                            comm:selected="true"
+                                                            comm:required="true"
+                                                            comm:readonly="true"
+                                                            comm:maxlength="50">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="fullName"/>
+                                                </comm:value>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:input"
+                                                            comm:name="capacity{userInList}{userInAccount}"
+                                                            comm:label="Capacity *"
+                                                            comm:inputType="text" comm:message=""
+                                                            comm:unCheckedValue="No"
+                                                            comm:selected="true"
+                                                            comm:required="true"
+                                                            comm:readonly="true"
+                                                            comm:maxlength="50">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="capacity"/>
+                                                </comm:value>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:input"
+                                                            comm:name="idNumber"
+                                                            comm:label="ID Number *"
+                                                            comm:inputType="text" comm:message=""
+                                                            comm:unCheckedValue="No"
+                                                            comm:selected="true"
+                                                            comm:required="true"
+                                                            comm:readonly="true"
+                                                            comm:maxlength="50">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="idNumber"/>
+                                                </comm:value>
+                                            </comm:boxSymbol>
+                                            <comm:boxSymbol xsi:type="comm:input"
+                                                            comm:name="Group{userInList}{userInAccount}"
+                                                            comm:label="Group *"
+                                                            comm:inputType="text" comm:message=""
+                                                            comm:unCheckedValue="No"
+                                                            comm:selected="true"
+                                                            comm:required="true"
+                                                            comm:readonly="true"
+                                                            comm:maxlength="50">
+                                                <comm:value>
+                                                    <xsl:value-of
+                                                            select="group"/>
+                                                </comm:value>
+                                            </comm:boxSymbol>
+                                        </comm:box>
+                                    </comm:symbol>
+                                    </xsl:if>
+                                </xsl:for-each>
+                            </comm:sections>
                     </xsl:for-each>
                 </comm:form>
             </symbol>

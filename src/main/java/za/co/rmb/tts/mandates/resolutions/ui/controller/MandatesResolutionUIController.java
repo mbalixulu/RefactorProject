@@ -14,8 +14,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,11 +58,11 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
-import za.co.rmb.tts.mandates.resolutions.ui.model.WaveModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
@@ -75,6 +78,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.SignatoryErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.service.MandatesResolutionService;
 import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
+import za.co.rmb.tts.mandates.resolutions.ui.util.ScreenValidation;
 
 @RestController
 @RequestMapping("/mandates-and-resolutions")
@@ -83,6 +87,7 @@ public class MandatesResolutionUIController {
   private final XSLTProcessorService xsltProcessor;
   private HttpSession httpSession;
   private final MandatesResolutionService mandatesResolutionService;
+  private final ScreenValidation screenValidation;
   private final Map<String, RequestDTO> pdfExtractionDataCache = new HashMap<>();
 
   private static final String XML_PAGE_PATH = "/templates/xml/";
@@ -105,10 +110,12 @@ public class MandatesResolutionUIController {
 
   public MandatesResolutionUIController(XSLTProcessorService xsltProcessor,
                                         HttpSession httpSession,
-                                        MandatesResolutionService mandatesResolutionService) {
+                                        MandatesResolutionService mandatesResolutionService,
+                                        ScreenValidation screenValidation) {
     this.xsltProcessor = xsltProcessor;
     this.httpSession = httpSession;
     this.mandatesResolutionService = mandatesResolutionService;
+    this.screenValidation = screenValidation;
   }
 
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
@@ -931,7 +938,8 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/submitSignatoryDetails", produces = MediaType.APPLICATION_XML_VALUE)
+  @PostMapping(value = "/submitSignatoryDetails", produces =
+      MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitSignatory(@RequestParam Map<String, String> user) {
     String page = "";
     boolean check = false;
@@ -944,6 +952,11 @@ public class MandatesResolutionUIController {
 
     if (user.get("idNumber").isBlank()) {
       signatoryErrorModel.setIdNumber("Id number can't be empty !");
+      check = true;
+    }
+
+    if (!screenValidation.validateSaIdNumber(user.get("idNumber"))) {
+      signatoryErrorModel.setIdNumber("Provide your Correct SA Id Number !");
       check = true;
     }
 
@@ -1019,6 +1032,11 @@ public class MandatesResolutionUIController {
       check = true;
     }
 
+    if (!screenValidation.validateSaIdNumber(user.get("idNumber"))) {
+      signatoryErrorModel.setIdNumber("Provide your Correct SA Id Number !");
+      check = true;
+    }
+
     if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
         user.get("accountRef1"))) {
       signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
@@ -1079,6 +1097,12 @@ public class MandatesResolutionUIController {
     addAccountModel.setAccountNumber(user.get("accountNo"));
     int size = addAccountModelList.size();
     addAccountModel.setUserInList(++size);
+    List<SignatoryModel> listOfSignatory = addAccountModel.getListOfSignatory();
+    for (int i = 0; i < listOfSignatory.size(); i++) {
+      SignatoryModel signatoryModel = listOfSignatory.get(i);
+      signatoryModel.setUserInAccount(addAccountModel.getUserInList());
+      listOfSignatory.set(i, signatoryModel);
+    }
     addAccountModelList.add(addAccountModel);
     requestWrapper.setListOfAddAccount(addAccountModelList);
     requestWrapper.setAccountCheck("true");
@@ -1202,22 +1226,21 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    List<AddAccountModel> addAccountModelList =
-        mandatesResolutionService.getAllAddSignator(requestWrapper.getListOfAddAccount());
     if (requestWrapper.getListOfAddAccount() == null || requestWrapper.getListOfAddAccount()
         .isEmpty()) {
       requestWrapper.setAccountCheck("false");
       page = xsltProcessor.generatePage(
           xslPagePath("MandatesAutoFill"), requestWrapper);
     } else {
-      RequestWrapper requestWrapperData = new RequestWrapper();
-      requestWrapperData.setListOfAddAccount(addAccountModelList);
-      requestWrapperData.setRequestType(requestWrapper.getRequestType());
-      httpSession.setAttribute("RequestWrapperData", requestWrapperData);
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesSignatureCard"), requestWrapperData);
+          xslPagePath("MandatesSignatureCard"), requestWrapper);
     }
     return ResponseEntity.ok(page);
+  }
+
+  public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+    Set<Object> seen = ConcurrentHashMap.newKeySet();
+    return t -> seen.add(keyExtractor.apply(t));
   }
 
   @PostMapping(value = "/cancelToSignaturePage",
@@ -1236,15 +1259,19 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> proceedSignatureCard(@RequestParam Map<String, String> user) {
     String page = "";
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     requestWrapper.setCheckResolution("false");
     boolean check = false;
     for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
-        if (user.get("capacity" + signatoryModel.getUserInList()).isBlank()) {
+        if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
+            && user.get("capacity" + signatoryModel.getUserInList()
+                        + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
-        } else if (user.get("Group" + signatoryModel.getUserInList()).isBlank()) {
+        } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
+                   && user.get("Group" + signatoryModel.getUserInList()
+                               + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -1252,6 +1279,7 @@ public class MandatesResolutionUIController {
         }
       }
     }
+
 
     if (check) {
       page = xsltProcessor.generatePage(
@@ -1281,7 +1309,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> backSignatureCard() {
     String page = "";
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     page = xsltProcessor.generatePage(
         xslPagePath("MandatesSignatureCard"), requestWrapper);
     return ResponseEntity.ok(page);
@@ -1293,11 +1321,10 @@ public class MandatesResolutionUIController {
                                                    @PathVariable String userInAccount) {
     String page = "";
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     SignatoryModel signatoryModel =
         mandatesResolutionService.getSignatoryData(requestWrapper.getListOfAddAccount(),
             userInList, userInAccount);
-    signatoryModel.setCheckDocConfirm("false");
     httpSession.setAttribute("signatory", signatoryModel);
     page = xsltProcessor.generatePage(
         xslPagePath("SignatoryGroup"), signatoryModel);
@@ -1312,7 +1339,7 @@ public class MandatesResolutionUIController {
 
     String page = "";
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     boolean check = false;
     if (user.get("capacity").isBlank()) {
@@ -1341,7 +1368,7 @@ public class MandatesResolutionUIController {
           mandatesResolutionService.getAddAccountList(requestWrapper.getListOfAddAccount(),
               userInList, userInAccount, user);
       requestWrapper.setListOfAddAccount(listOfAddAccount);
-      httpSession.setAttribute("RequestWrapperData", requestWrapper);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(
           xslPagePath("MandatesSignatureCard"), requestWrapper);
     }
@@ -1353,7 +1380,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> backSignature() {
     String page = "";
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     page = xsltProcessor.generatePage(
         xslPagePath("MandatesSignatureCard"), requestWrapper);
     return ResponseEntity.ok(page);
@@ -1379,9 +1406,8 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitFinalRecord() {
     mandatesResolutionService.createRequest();
-    RequestWrapper wrapper = new RequestWrapper();
-    String page = xsltProcessor.generatePage(
-        xslPagePath("ViewRequestSuccessPage"), wrapper);
+    String page = xsltProcessor.returnPage(
+        xmlPagePath("MandatesSuccessPage"));
     return ResponseEntity.ok(page);
   }
 
@@ -1389,9 +1415,8 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitResoFinalRecord() {
     mandatesResolutionService.createRequestReso();
-    RequestWrapper wrapper = new RequestWrapper();
-    String page = xsltProcessor.generatePage(
-        xslPagePath("ViewRequestSuccessPage"), wrapper);
+    String page = xsltProcessor.returnPage(
+        xmlPagePath("MandatesSuccessPage"));
     return ResponseEntity.ok(page);
   }
 
@@ -1399,16 +1424,20 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitMandateFinalRecord(@RequestParam Map<String, String> user) {
     RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     requestWrapper.setCheckResolution("false");
     boolean check = false;
     String page = "";
     for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
-        if (user.get("capacity" + signatoryModel.getUserInList()).isBlank()) {
+        if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
+            && user.get("capacity" + signatoryModel.getUserInList()
+                        + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
-        } else if (user.get("Group" + signatoryModel.getUserInList()).isBlank()) {
+        } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
+                   && user.get("Group" + signatoryModel.getUserInList()
+                               + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -1422,9 +1451,8 @@ public class MandatesResolutionUIController {
           xslPagePath("MandatesSignatureCard"), requestWrapper);
     } else {
       mandatesResolutionService.createRequestMandates();
-      RequestWrapper wrapper = new RequestWrapper();
-      page = xsltProcessor.generatePage(
-          xslPagePath("ViewRequestSuccessPage"), requestWrapper);
+      page = xsltProcessor.returnPage(
+          xmlPagePath("MandatesSuccessPage"));
     }
     return ResponseEntity.ok(page);
   }
@@ -1469,7 +1497,7 @@ public class MandatesResolutionUIController {
                   restTemplate.getForEntity(companyUrl, CompanyDTO.class);
               r.setCompanyName(
                   companyResponse.getStatusCode().is2xxSuccessful()
-                      && companyResponse.getBody() != null
+                  && companyResponse.getBody() != null
                       ? companyResponse.getBody().getName()
                       : "Unknown"
               );
@@ -1512,7 +1540,7 @@ public class MandatesResolutionUIController {
   }
 
   //Admin All Page
-  @RequestMapping(value = "/adminAll", method = {RequestMethod.GET, RequestMethod.POST}, produces
+  @RequestMapping(value = "/adminAll", method = { RequestMethod.GET, RequestMethod.POST }, produces
       = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminAll() {
     try {
@@ -1584,8 +1612,8 @@ public class MandatesResolutionUIController {
         r.setRequestIdForDisplay(formatted != null
             ? formatted
             : (r.getRequestId() == null ? "—" : "REQ - "
-            +
-            String.format("%04d", r.getRequestId())));
+                                                +
+                                                String.format("%04d", r.getRequestId())));
       }
 
       // Sort: created DESC, then numeric requestId DESC
@@ -2425,12 +2453,12 @@ public class MandatesResolutionUIController {
     } catch (Exception e) {
       String fallbackError =
           "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-              +
-              "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
-              +
-              "    <error>Unable to load request for admin viewing.</error>\n"
-              +
-              "</page>\n";
+          +
+          "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
+          +
+          "    <error>Unable to load request for admin viewing.</error>\n"
+          +
+          "</page>\n";
       return ResponseEntity.ok(fallbackError);
     }
   }
@@ -2482,7 +2510,7 @@ public class MandatesResolutionUIController {
 
   @PostMapping(
       value = "/adminReassignSubmit",
-      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE }
   )
   public ResponseEntity<String> submitAdminReassign(
       @RequestParam(value = "selectUser", required = false) String newAssignee,
@@ -2607,8 +2635,8 @@ public class MandatesResolutionUIController {
           //Show all if admin else only rows the user created
           .filter(r -> admin || (
               r.getCreator() != null
-                  && !r.getCreator().trim().isEmpty()
-                  && r.getCreator().trim().equalsIgnoreCase(me)
+              && !r.getCreator().trim().isEmpty()
+              && r.getCreator().trim().equalsIgnoreCase(me)
           ))
           .peek(r -> {
             try {
@@ -2681,8 +2709,8 @@ public class MandatesResolutionUIController {
           //Show all if admin, else only rows the user created
           .filter(r -> admin || (
               r.getCreator() != null
-                  && !r.getCreator().trim().isEmpty()
-                  && r.getCreator().trim().equalsIgnoreCase(me)
+              && !r.getCreator().trim().isEmpty()
+              && r.getCreator().trim().equalsIgnoreCase(me)
           ))
           .peek(r -> {
             //Ensure display id present
@@ -2757,8 +2785,8 @@ public class MandatesResolutionUIController {
           //Show all if admin, else only rows the user created
           .filter(r -> admin || (
               r.getCreator() != null
-                  && !r.getCreator().trim().isEmpty()
-                  && r.getCreator().trim().equalsIgnoreCase(me)
+              && !r.getCreator().trim().isEmpty()
+              && r.getCreator().trim().equalsIgnoreCase(me)
           ))
           .peek(r -> {
             //Ensure display id present
@@ -2807,7 +2835,7 @@ public class MandatesResolutionUIController {
 
   @RequestMapping(
       value = "/requestTableDraft",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> displayRequestTableDraft() {
@@ -2931,7 +2959,8 @@ public class MandatesResolutionUIController {
 
       var resp = rt.exchange(url, HttpMethod.GET, null,
           new org.springframework.core.ParameterizedTypeReference<
-              java.util.List<ListOfValuesDTO>>() {});
+              java.util.List<ListOfValuesDTO>>() {
+          });
 
       // Exactly what DAO allows (regex is case-sensitive)
       final java.util.Set<String> allowed = java.util.Set.of(
@@ -2960,10 +2989,10 @@ public class MandatesResolutionUIController {
 
     } catch (Exception e) {
       String fallback = """
-      <?xml version="1.0" encoding="UTF-8"?>
-      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <error>Unable to load Export CSV page.</error>
-      </page>
+          <?xml version="1.0" encoding="UTF-8"?>
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Unable to load Export CSV page.</error>
+          </page>
           """;
       return ResponseEntity.ok(fallback);
     }
@@ -3011,9 +3040,9 @@ public class MandatesResolutionUIController {
     EXPORT_LOG.info("EXPORT DEBUG hit: {}", uriLine);
 
     logger.info("EXPORT DEBUG values -> status='{}', "
-        + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
+                + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
     EXPORT_LOG.info("EXPORT DEBUG values -> status='{}', "
-        + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
+                    + "fromDate='{}', toDate='{}'", status, fromDate, toDate);
 
     Map<String, String[]> pm = request.getParameterMap();
     if (pm == null || pm.isEmpty()) {
@@ -3031,17 +3060,17 @@ public class MandatesResolutionUIController {
 
     //Return text file tiny
     String body = """
-      EXPORT DEBUG
-      ------------
-
-      %s
-
-      status   = %s
-      fromDate = %s
-      toDate   = %s
-
-      all params:
-      %s
+        EXPORT DEBUG
+        ------------
+        
+        %s
+        
+        status   = %s
+        fromDate = %s
+        toDate   = %s
+        
+        all params:
+        %s
         """.formatted(
         uriLine,
         String.valueOf(status),
@@ -3050,9 +3079,9 @@ public class MandatesResolutionUIController {
         (pm == null || pm.isEmpty())
             ? "(none)"
             : pm.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
-            .map(e -> e.getKey() + "=" + java.util.Arrays.toString(e.getValue()))
-            .collect(java.util.stream.Collectors.joining("\n"))
+                .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+                .map(e -> e.getKey() + "=" + java.util.Arrays.toString(e.getValue()))
+                .collect(java.util.stream.Collectors.joining("\n"))
     );
 
     byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -3066,7 +3095,7 @@ public class MandatesResolutionUIController {
 
   @PostMapping(
       value = "/cancelCreateRequest",
-      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE }
   )
   public ResponseEntity<String> cancelCreateRequest(HttpSession session) {
     UserDTO user = (UserDTO) session.getAttribute("currentUser");
@@ -3088,8 +3117,8 @@ public class MandatesResolutionUIController {
   ) {
     //Accept a variety of param names used by different widgets
     String q = null;
-    for (String key : new String[] {"q", "term", "value", "text", "query", "input", "s",
-        "companyRegNumber"}) {
+    for (String key : new String[]{ "q", "term", "value", "text", "query", "input", "s",
+        "companyRegNumber" }) {
       if (params.containsKey(key) && params.get(key) != null && !params.get(key).trim().isEmpty()) {
         q = params.get(key).trim();
         break;
@@ -3146,8 +3175,8 @@ public class MandatesResolutionUIController {
   //Search Results page (accept both GET and POST; produce both XML variants)
   @RequestMapping(
       value = "/searchResults",
-      method = {RequestMethod.GET, RequestMethod.POST},
-      produces = {MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE}
+      method = { RequestMethod.GET, RequestMethod.POST },
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE }
   )
   public ResponseEntity<String> displaySearchResults(
       @RequestParam(value = "registrationNumber", required = false) String reg,
@@ -3257,9 +3286,9 @@ public class MandatesResolutionUIController {
       }
     };
 
-    Integer directorCount     = intOrNull.apply(request.getParameter("directorCount"));
-    Integer removeDirectorAt  = intOrNull.apply(request.getParameter("removeDirectorAt"));
-    Integer toolCount         = intOrNull.apply(request.getParameter("toolCount"));
+    Integer directorCount = intOrNull.apply(request.getParameter("directorCount"));
+    Integer removeDirectorAt = intOrNull.apply(request.getParameter("removeDirectorAt"));
+    Integer toolCount = intOrNull.apply(request.getParameter("toolCount"));
     Integer resolutionDocCount = intOrNull.apply(request.getParameter("resolutionDocCount"));
 
     // 1) Resolve pdfSessionId (prefer query, then session)
@@ -3494,7 +3523,7 @@ public class MandatesResolutionUIController {
 
   @RequestMapping(
       value = "/draft/save",
-      method = {RequestMethod.POST},
+      method = { RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> saveDraft(
@@ -3630,8 +3659,8 @@ public class MandatesResolutionUIController {
         for (RequestStagingDTO.AuthorityDraft a : auths) {
           String key = (
               (a.getFirstname() == null ? "" : a.getFirstname().trim())
-                  + "|" + (a.getSurname() == null ? "" : a.getSurname().trim())
-                  + "|" + (a.getDesignation() == null ? "" : a.getDesignation().trim())
+              + "|" + (a.getSurname() == null ? "" : a.getSurname().trim())
+              + "|" + (a.getDesignation() == null ? "" : a.getDesignation().trim())
           ).toLowerCase();
           uniq.putIfAbsent(key, a);
         }
@@ -3879,10 +3908,10 @@ public class MandatesResolutionUIController {
           if (!postedPath.isBlank()) {
             logger.info(
                 "nextStep: non-multipart detected; only path seen ({}). File should be uploaded "
-                    +
-                    "via <comm:fileUpload fileUploadUrl='/app-domain"
-                    + "/mandates-and-resolutions/mandates/attachment/upload"
-                    + "'>.",
+                +
+                "via <comm:fileUpload fileUploadUrl='/app-domain"
+                + "/mandates-and-resolutions/mandates/attachment/upload"
+                + "'>.",
                 postedPath);
           }
         }
@@ -4137,8 +4166,8 @@ public class MandatesResolutionUIController {
       boolean anyMissing = false;
       for (RequestDTO.Director d : directors) {
         boolean rowMissing = nz.apply(d.getName()).isBlank()
-            || nz.apply(d.getSurname()).isBlank()
-            || nz.apply(d.getDesignation()).isBlank();
+                             || nz.apply(d.getSurname()).isBlank()
+                             || nz.apply(d.getDesignation()).isBlank();
         if (rowMissing) {
           anyMissing = true;
           break;
@@ -4194,24 +4223,24 @@ public class MandatesResolutionUIController {
         "confirmationCheckMandateResolution_sigma"
     );
 
-  //RequestType validation
+    //RequestType validation
     if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
       return ResponseEntity.ok("""
-      <page xmlns:comm="http://ws.online.fnb.co.za/common/"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            id="" heading=" " template="error" version="1">
-          <error xsi:type="validationError">
-              <name>mandateResolution</name><code>0</code>
-              <message>Please select a valid request type.</message>
-          </error>
-      </page>
-      """);
+          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                id="" heading=" " template="error" version="1">
+              <error xsi:type="validationError">
+                  <name>mandateResolution</name><code>0</code>
+                  <message>Please select a valid request type.</message>
+              </error>
+          </page>
+          """);
     }
 
     // Require BOTH boxes for the active section
     boolean ok = switch (requestType) {
-      case "1" -> "1".equals(mandateSign)  && "1".equals(mandateSigma);   // Mandate
-      case "2" -> "1".equals(resolutionSign)  && "1".equals(resolutionSigma);   // Resolution
+      case "1" -> "1".equals(mandateSign) && "1".equals(mandateSigma);   // Mandate
+      case "2" -> "1".equals(resolutionSign) && "1".equals(resolutionSigma);   // Resolution
       // Mandate + Resolution
       case "3" -> "1".equals(mandateResolutionSign) && "1".equals(mandateResolutionSigma);
       default -> false;
@@ -4219,16 +4248,16 @@ public class MandatesResolutionUIController {
 
     if (!ok) {
       return ResponseEntity.ok("""
-      <page xmlns:comm="http://ws.online.fnb.co.za/common/"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            id="" heading=" " template="error" version="1">
-          <error xsi:type="validationError">
-              <name>confirmationCheck</name><code>0</code>
-              <message>Please make sure both confirmation 
-              checkboxes are checked at the bottom of the page.</message>
-          </error>
-      </page>
-      """);
+          <page xmlns:comm="http://ws.online.fnb.co.za/common/"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                id="" heading=" " template="error" version="1">
+              <error xsi:type="validationError">
+                  <name>confirmationCheck</name><code>0</code>
+                  <message>Please make sure both confirmation 
+                  checkboxes are checked at the bottom of the page.</message>
+              </error>
+          </page>
+          """);
     }
 
     if (reqSel != null) {
@@ -4774,8 +4803,8 @@ public class MandatesResolutionUIController {
 
       // ---- Submit to backend (creates the Request and returns requestId) ----
       SubmissionPayload payload = buildSubmissionPayload(uiData, "Mandates");
-      za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
-          postSnapshotToBackend(payload);
+      za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result
+          = postSnapshotToBackend(payload);
 
       Long requestId = null;
       if (result != null && result.getRequest() != null) {
@@ -5526,7 +5555,8 @@ public class MandatesResolutionUIController {
           postSnapshotToBackend(payload);
 
       System.out.println("Mandates & Resolutions submission OK. RequestId: "
-          + (result != null && result.getRequest() != null ? result.getRequest().getRequestId() :
+                         + (result != null && result.getRequest() != null ? result.getRequest()
+          .getRequestId() :
           "n/a"));
 
       return displayMandatesResolutionsSuccess();
@@ -5699,10 +5729,10 @@ public class MandatesResolutionUIController {
     } catch (Exception ex) {
       logger.error("Failed to reject/update request: {}", ex.getMessage(), ex);
       return ResponseEntity.ok("""
-        <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-          <error>Could not save rejection.</error>
-        </page>
-      """);
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Could not save rejection.</error>
+            </page>
+          """);
     }
   }
 
@@ -5803,10 +5833,10 @@ public class MandatesResolutionUIController {
     } catch (Exception ex) {
       logger.error("Failed to approve/update request: {}", ex.getMessage(), ex);
       return ResponseEntity.ok("""
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Could not complete approval.</error>
-          </page>
-        """);
+            <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <error>Could not complete approval.</error>
+            </page>
+          """);
     }
   }
 
@@ -5853,7 +5883,7 @@ public class MandatesResolutionUIController {
 
       // 2) Fetch comments (DAO) — newestFirst=true
       String commentsUrl = mandatesResolutionsDaoURL
-          + "/api/comment/request/" + requestId + "?newestFirst=true";
+                           + "/api/comment/request/" + requestId + "?newestFirst=true";
       ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
           commentsUrl,
           HttpMethod.GET,
@@ -6424,11 +6454,11 @@ public class MandatesResolutionUIController {
           return ResponseEntity.ok()
               .contentType(MediaType.APPLICATION_XML)
               .body("""
-              <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                <error>The workflow service is temporarily unavailable, so
-                we couldn't place the request on hold. Please try again shortly.</error>
-              </page>
-            """);
+                    <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                      <error>The workflow service is temporarily unavailable, so
+                      we couldn't place the request on hold. Please try again shortly.</error>
+                    </page>
+                  """);
         }
         throw e;
       }
@@ -6441,10 +6471,10 @@ public class MandatesResolutionUIController {
     } catch (Exception e) {
       logger.error("Hold failed: {}", e.getMessage(), e);
       return ResponseEntity.ok("""
-        <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-          <error>Unable to place request on hold.</error>
-        </page>
-        """);
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Unable to place request on hold.</error>
+          </page>
+          """);
     }
   }
 
@@ -6477,7 +6507,7 @@ public class MandatesResolutionUIController {
         }
       } catch (Exception e) {
         logger.warn("UnHold: GET "
-            + "/api/request/{} failed (continuing): {}", requestId, e.getMessage());
+                    + "/api/request/{} failed (continuing): {}", requestId, e.getMessage());
       }
 
       //2)Compute target pending subStatus
@@ -6551,7 +6581,8 @@ public class MandatesResolutionUIController {
             var comment = new java.util.LinkedHashMap<String, Object>();
             comment.put("requestId", requestId);
             comment.put("commentText", "UnHold applied without workflow sync "
-                + "(Camunda unavailable). Please reconcile once workflow is back.");
+                                       + "(Camunda unavailable). Please reconcile once workflow "
+                                       + "is back.");
             comment.put("isInternal", Boolean.TRUE);
             comment.put("creator", currentDisplayId(session, servletRequest));
             rt.postForEntity(mandatesResolutionsDaoURL + "/api/comment", comment, Object.class);
@@ -6561,11 +6592,11 @@ public class MandatesResolutionUIController {
           return ResponseEntity.ok()
               .contentType(MediaType.APPLICATION_XML)
               .body("""
-              <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                <error>We couldn't take the request off hold, and the workflow service is down.
-                Please try again shortly.</error>
-              </page>
-            """);
+                    <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                      <error>We couldn't take the request off hold, and the workflow 
+                      service is down.Please try again shortly.</error>
+                    </page>
+                  """);
         }
       }
 
@@ -6579,10 +6610,10 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_XML)
           .body("""
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Unable to take request off hold.</error>
-          </page>
-        """);
+                <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                  <error>Unable to take request off hold.</error>
+                </page>
+              """);
     }
   }
 
@@ -6643,10 +6674,10 @@ public class MandatesResolutionUIController {
         {
           w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
           xsl = switch (page) {
-            case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
-            case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
-            case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
-            default -> "MandatesAutoFill";
+          case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
+          case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
+          case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
+          default -> "MandatesAutoFill";
           };
         }
       default ->
@@ -6738,7 +6769,7 @@ public class MandatesResolutionUIController {
 
   @RequestMapping(
       value = "/draft/view",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> viewDraftQuery(
@@ -6752,12 +6783,12 @@ public class MandatesResolutionUIController {
   //Edit request page
   @RequestMapping(
       value = "/adminEditRequest/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> adminDisplayEditRequest(@PathVariable Long requestId,
-                                                   HttpSession session,
-                                                   HttpServletRequest servletRequest) {
+                                                        HttpSession session,
+                                                        HttpServletRequest servletRequest) {
     try {
       String displayName = currentDisplayId(session, servletRequest);
 
@@ -6793,8 +6824,8 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminEditRequestAddSignatory/{requestId}", produces =
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> adminEditRequestAddSignatory(@PathVariable Long requestId,
-                                                        @RequestParam("addSignatoryAt")
-                                                        int accountIndex1) {
+                                                             @RequestParam("addSignatoryAt")
+                                                             int accountIndex1) {
     try {
       RequestTableWrapper wrapper = buildEditWrapper(requestId);
       RequestTableDTO view = wrapper.getRequest().get(0);
@@ -6838,8 +6869,8 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminEditRequestRemoveSignatory/{requestId}", produces =
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> adminEditRequestRemoveSignatory(@PathVariable Long requestId,
-                                                           @RequestParam("removeSignatoryAt")
-                                                           String at) {
+                                                                @RequestParam("removeSignatoryAt")
+                                                                String at) {
     try {
       String[] parts = at.split("_");
       int a1 = Integer.parseInt(parts[0]);
@@ -6902,8 +6933,8 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminEditRequestRemoveDirector/{requestId}", produces =
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> adminEditRequestRemoveDirector(@PathVariable Long requestId,
-                                                          @RequestParam("removeDirectorAt")
-                                                          int index1) {
+                                                               @RequestParam("removeDirectorAt")
+                                                               int index1) {
     try {
       RequestTableWrapper wrapper = buildEditWrapper(requestId);
       RequestTableDTO view = wrapper.getRequest().get(0);
@@ -6957,7 +6988,7 @@ public class MandatesResolutionUIController {
   //Remove account section at 1-based index {removeAccountAt}
   @RequestMapping(
       value = "/adminEditRequestRemoveAccount/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> adminEditRequestRemoveAccount(
@@ -7006,11 +7037,11 @@ public class MandatesResolutionUIController {
   //Save edits from the Edit Request page and then go back to the Landing page
   @RequestMapping(
       value = "/adminEditRequestSave/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> adminEditRequestSave(@PathVariable Long requestId,
-                                                HttpServletRequest request) {
+                                                     HttpServletRequest request) {
     try {
       //Parse form
       Map<String, String[]> params = request.getParameterMap();
@@ -7231,10 +7262,10 @@ public class MandatesResolutionUIController {
       if (body == null || body.isBlank() || body.charAt(0) != '<') {
         body =
             "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
-                +
-                "  <error>Unexpected response after save. Please try again.</error>"
-                +
-                "</page>";
+            +
+            "  <error>Unexpected response after save. Please try again.</error>"
+            +
+            "</page>";
       }
 
       return ResponseEntity
@@ -7245,9 +7276,9 @@ public class MandatesResolutionUIController {
     } catch (Exception e) {
       logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
       String error = """
-      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <error>Unable to save changes for this request.</error>
-      </page>
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Unable to save changes for this request.</error>
+          </page>
           """;
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
     }
@@ -7258,7 +7289,7 @@ public class MandatesResolutionUIController {
   //Edit request page
   @RequestMapping(
       value = "/editRequest/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> displayEditRequest(@PathVariable Long requestId,
@@ -7463,7 +7494,7 @@ public class MandatesResolutionUIController {
   //Remove account section at 1-based index {removeAccountAt}
   @RequestMapping(
       value = "/editRequestRemoveAccount/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> editRequestRemoveAccount(
@@ -7512,7 +7543,7 @@ public class MandatesResolutionUIController {
   //Save edits from the Edit Request page and then go back to the Landing page
   @RequestMapping(
       value = "/editRequestSave/{requestId}",
-      method = {RequestMethod.GET, RequestMethod.POST},
+      method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> editRequestSave(@PathVariable Long requestId,
@@ -7737,10 +7768,10 @@ public class MandatesResolutionUIController {
       if (body == null || body.isBlank() || body.charAt(0) != '<') {
         body =
             "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
-                +
-                "  <error>Unexpected response after save. Please try again.</error>"
-                +
-                "</page>";
+            +
+            "  <error>Unexpected response after save. Please try again.</error>"
+            +
+            "</page>";
       }
 
       return ResponseEntity
@@ -7751,9 +7782,9 @@ public class MandatesResolutionUIController {
     } catch (Exception e) {
       logger.error("Save edit failed for requestId {}: {}", requestId, e.getMessage(), e);
       String error = """
-      <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <error>Unable to save changes for this request.</error>
-      </page>
+          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <error>Unable to save changes for this request.</error>
+          </page>
           """;
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(error);
     }
@@ -7963,11 +7994,11 @@ public class MandatesResolutionUIController {
             accountsByKey.put(k, bucket);
           }
           if ((s.getAccountName() == null
-              || s.getAccountName().isBlank()) && bucket.getAccountName() != null) {
+               || s.getAccountName().isBlank()) && bucket.getAccountName() != null) {
             s.setAccountName(bucket.getAccountName());
           }
           if ((s.getAccountNumber() == null
-              || s.getAccountNumber().isBlank()) && bucket.getAccountNumber() != null) {
+               || s.getAccountNumber().isBlank()) && bucket.getAccountNumber() != null) {
             s.setAccountNumber(bucket.getAccountNumber());
           }
           bucket.getSignatories().add(s);
@@ -8039,8 +8070,10 @@ public class MandatesResolutionUIController {
 
   private static String extractInstruction(Object a) {
     String v = null;
-    String[] cand = {"getInstructions", "getInstruction", "getChangeType", "getChange", "getStatus",
-        "getAction"};
+    String[] cand =
+          { "getInstructions", "getInstruction", "getChangeType", "getChange", "getStatus",
+            "getAction"
+          };
     for (String m : cand) {
       try {
         Object o = a.getClass().getMethod(m).invoke(a);
@@ -8114,11 +8147,11 @@ public class MandatesResolutionUIController {
       case "RESOLUTIONS" -> dto.setAccounts(null);     // keep only Resolutions
       case "BOTH" ->
         {
-          /* leave both lists as-is */
+        /* leave both lists as-is */
         }
       default ->
         {
-          /* no-op or log/throw for unknown type */
+        /* no-op or log/throw for unknown type */
         }
     }
   }
@@ -8590,10 +8623,10 @@ public class MandatesResolutionUIController {
       return true;
     }
     return (s.getFullName() == null || s.getFullName().isBlank())
-        && (s.getIdNumber() == null || s.getIdNumber().isBlank())
-        && (s.getInstruction() == null || s.getInstruction().isBlank())
-        && (s.getCapacity() == null || s.getCapacity().isBlank())
-        && (s.getGroup() == null || s.getGroup().isBlank());
+           && (s.getIdNumber() == null || s.getIdNumber().isBlank())
+           && (s.getInstruction() == null || s.getInstruction().isBlank())
+           && (s.getCapacity() == null || s.getCapacity().isBlank())
+           && (s.getGroup() == null || s.getGroup().isBlank());
   }
 
 
@@ -8808,7 +8841,7 @@ public class MandatesResolutionUIController {
         case "designation" -> d.setDesignation(v);
         default ->
           {
-            /* no-op */
+          /* no-op */
           }
       }
     });
@@ -8816,8 +8849,8 @@ public class MandatesResolutionUIController {
     for (RequestDTO.Director d : byIdx.values()) {
       boolean allBlank =
           (d.getName() == null || d.getName().isBlank())
-              && (d.getSurname() == null || d.getSurname().isBlank())
-              && (d.getDesignation() == null || d.getDesignation().isBlank());
+          && (d.getSurname() == null || d.getSurname().isBlank())
+          && (d.getDesignation() == null || d.getDesignation().isBlank());
       if (!allBlank) {
         out.add(d);
       }
@@ -8878,7 +8911,7 @@ public class MandatesResolutionUIController {
           case "designation" -> d.setDesignation(nz.apply(val));
           default ->
             {
-              /* intentionally ignore unknown fields */
+            /* intentionally ignore unknown fields */
             }
         }
         continue;
@@ -8897,7 +8930,7 @@ public class MandatesResolutionUIController {
           case "Designation" -> d.setDesignation(nz.apply(val));
           default ->
             {
-              /* intentionally ignore unknown fields */
+            /* intentionally ignore unknown fields */
             }
         }
       }
@@ -8911,8 +8944,8 @@ public class MandatesResolutionUIController {
         continue;
       }
       boolean blank = (d.getName() == null || d.getName().isBlank())
-          && (d.getSurname() == null || d.getSurname().isBlank())
-          && (d.getDesignation() == null || d.getDesignation().isBlank());
+                      && (d.getSurname() == null || d.getSurname().isBlank())
+                      && (d.getDesignation() == null || d.getDesignation().isBlank());
       if (!blank) {
         out.add(d);
       }
@@ -8974,22 +9007,22 @@ public class MandatesResolutionUIController {
   private ResponseEntity<String> validationError(String message) {
     String body =
         "<page xmlns:comm=\"http://ws.online.fnb.co.za/common/\" "
-            +
-            "      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-            +
-            "      id=\"\" heading=\" \" template=\"error\" version=\"1\">"
-            +
-            "  <error xsi:type=\"validationError\">"
-            +
-            "    <name>confirmationCheck</name>"
-            +
-            "    <code>0</code>"
-            +
-            "    <message>" + escapeXml(message) + "</message>"
-            +
-            "  </error>"
-            +
-            "</page>";
+        +
+        "      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+        +
+        "      id=\"\" heading=\" \" template=\"error\" version=\"1\">"
+        +
+        "  <error xsi:type=\"validationError\">"
+        +
+        "    <name>confirmationCheck</name>"
+        +
+        "    <code>0</code>"
+        +
+        "    <message>" + escapeXml(message) + "</message>"
+        +
+        "  </error>"
+        +
+        "</page>";
     return ResponseEntity
         .ok()
         .contentType(MediaType.TEXT_XML)   // engine expects XML here
@@ -9197,8 +9230,8 @@ public class MandatesResolutionUIController {
       for (RequestStagingDTO.SignatoryDraft sd : accEntry.getValue().values()) {
         boolean emptyRow =
             isBlank(sd.getFullName())
-                && isBlank(sd.getIdNumber())
-                && isBlank(sd.getInstructions()); // capacity/group are optional
+            && isBlank(sd.getIdNumber())
+            && isBlank(sd.getInstructions()); // capacity/group are optional
         if (!emptyRow) {
           clean.add(sd);
         }
@@ -9214,8 +9247,8 @@ public class MandatesResolutionUIController {
     for (RequestStagingDTO.AccountDraft acc : accountsByIdx.values()) {
       boolean hasAnything =
           !isBlank(acc.getAccountName())
-              || !isBlank(acc.getAccountNumber())
-              || (acc.getSignatories() != null && !acc.getSignatories().isEmpty());
+          || !isBlank(acc.getAccountNumber())
+          || (acc.getSignatories() != null && !acc.getSignatories().isEmpty());
       if (hasAnything) {
         if (acc.getIsActive() == null) {
           acc.setIsActive(Boolean.TRUE);
@@ -10085,14 +10118,14 @@ public class MandatesResolutionUIController {
     boolean hasDirectorsInput =
         ui.getDirectors() != null && ui.getDirectors().stream().anyMatch(d ->
             d != null && !(nz(d.getName()).isEmpty()
-                && nz(d.getSurname()).isEmpty()
-                && nz(d.getDesignation()).isEmpty())
+                           && nz(d.getSurname()).isEmpty()
+                           && nz(d.getDesignation()).isEmpty())
         );
 
     boolean includeAuthorities =
         BackendEnums.TYPE_RESOLUTIONS.equals(typeNorm)
-            || BackendEnums.TYPE_BOTH.equals(typeNorm)
-            || (BackendEnums.TYPE_MANDATES.equals(typeNorm) && hasDirectorsInput);
+        || BackendEnums.TYPE_BOTH.equals(typeNorm)
+        || (BackendEnums.TYPE_MANDATES.equals(typeNorm) && hasDirectorsInput);
 
     java.util.List<SubmissionPayload.Authority> payloadAuthorities = new java.util.ArrayList<>();
     if (includeAuthorities && ui.getDirectors() != null) {
@@ -10101,8 +10134,8 @@ public class MandatesResolutionUIController {
           continue;
         }
         boolean allBlank = nz(d.getName()).isEmpty()
-            && nz(d.getSurname()).isEmpty()
-            && nz(d.getDesignation()).isEmpty();
+                           && nz(d.getSurname()).isEmpty()
+                           && nz(d.getDesignation()).isEmpty();
         if (allBlank) {
           continue;
         }
@@ -10122,12 +10155,12 @@ public class MandatesResolutionUIController {
     int accCount = out.getAccounts() == null ? 0 : out.getAccounts().size();
     int sigCount = out.getAccounts() == null ? 0
         : out.getAccounts().stream()
-        .mapToInt(a -> a.getSignatories() == null ? 0 : a.getSignatories().size())
-        .sum();
+            .mapToInt(a -> a.getSignatories() == null ? 0 : a.getSignatories().size())
+            .sum();
 
     logger.info(
         "buildSubmissionPayload -> type={}, status={}, subStatus={}, accounts={}, signatories"
-            + "(total)={}, authorities(directors)={}",
+        + "(total)={}, authorities(directors)={}",
         typeNorm, r.getStatus(), r.getSubStatus(), accCount, sigCount, payloadAuthorities.size());
 
     return out;
@@ -10189,11 +10222,11 @@ public class MandatesResolutionUIController {
     } catch (org.springframework.web.client.HttpStatusCodeException e) {
       errors.add(
           "PATCH " + base + "/api/request/" + requestId + " -> " + e.getRawStatusCode() + " : "
-              + e.getResponseBodyAsString());
+          + e.getResponseBodyAsString());
     } catch (Exception e) {
       errors.add(
           "PATCH " + base + "/api/request/" + requestId + " -> " + e.getClass().getSimpleName()
-              + " : " + (e.getMessage() == null ? "" : e.getMessage()));
+          + " : " + (e.getMessage() == null ? "" : e.getMessage()));
     }
 
     //2) PUT /api/request/{id} with a *small* body (status + existing subStatus if present)
@@ -10202,10 +10235,10 @@ public class MandatesResolutionUIController {
       return;
     } catch (org.springframework.web.client.HttpStatusCodeException e) {
       errors.add("PUT " + base + "/api/request/" + requestId + " -> " + e.getRawStatusCode() + " : "
-          + e.getResponseBodyAsString());
+                 + e.getResponseBodyAsString());
     } catch (Exception e) {
       errors.add("PUT " + base + "/api/request/" + requestId + " -> " + e.getClass().getSimpleName()
-          + " : " + (e.getMessage() == null ? "" : e.getMessage()));
+                 + " : " + (e.getMessage() == null ? "" : e.getMessage()));
     }
 
     //3) POST /api/request (upsert) with same small body
@@ -10214,7 +10247,7 @@ public class MandatesResolutionUIController {
       return;
     } catch (org.springframework.web.client.HttpStatusCodeException e) {
       errors.add("POST " + base + "/api/request -> " + e.getRawStatusCode() + " : "
-          + e.getResponseBodyAsString());
+                 + e.getResponseBodyAsString());
     } catch (Exception e) {
       errors.add("POST " + base + "/api/request -> " + e.getClass().getSimpleName() + " : " + (
           e.getMessage() == null ? "" : e.getMessage()));
@@ -10263,23 +10296,23 @@ public class MandatesResolutionUIController {
   }
 
   // ===== DAO-LEGAL "Pending" subStatus values  =====
-  private static final String SS_WINDEED_VER    = "Windeed Verification Pending";
-  private static final String SS_HOGAN_VER      = "Hogan Verification Pending";
-  private static final String SS_HANIS_VER      = "Hanis Verification Pending";
+  private static final String SS_WINDEED_VER = "Windeed Verification Pending";
+  private static final String SS_HOGAN_VER = "Hogan Verification Pending";
+  private static final String SS_HANIS_VER = "Hanis Verification Pending";
   private static final String SS_ADMIN_APPROVAL = "Admin Approval Pending";
-  private static final String SS_HOGAN_UPD      = "Hogan Update Pending";
-  private static final String SS_DOCU_UPD       = "Documentum Update Pending";
-  private static final String SS_DONE           = "Request Updated Successfully";
-  private static final String SS_REJECTED       = "Rejected";
+  private static final String SS_HOGAN_UPD = "Hogan Update Pending";
+  private static final String SS_DOCU_UPD = "Documentum Update Pending";
+  private static final String SS_DONE = "Request Updated Successfully";
+  private static final String SS_REJECTED = "Rejected";
 
   // ===== DAO-LEGAL "On Hold" labels  =====
 // NOTE: DAO regex uses lowercase 'on' in "Update on Hold for ..."
-  private static final String HOLD_WINDEED_VER  = "Verification On Hold for Windeed";
-  private static final String HOLD_HOGAN_VER    = "Verification On Hold for Hogan";
-  private static final String HOLD_HANIS_VER    = "Verification On Hold for Hanis";
-  private static final String HOLD_ADMIN        = "Admin Approval On Hold";
-  private static final String HOLD_HOGAN_UPD    = "Update on Hold for Hogan";
-  private static final String HOLD_DOCU_UPD     = "Update on Hold for Documentum";
+  private static final String HOLD_WINDEED_VER = "Verification On Hold for Windeed";
+  private static final String HOLD_HOGAN_VER = "Verification On Hold for Hogan";
+  private static final String HOLD_HANIS_VER = "Verification On Hold for Hanis";
+  private static final String HOLD_ADMIN = "Admin Approval On Hold";
+  private static final String HOLD_HOGAN_UPD = "Update on Hold for Hogan";
+  private static final String HOLD_DOCU_UPD = "Update on Hold for Documentum";
 
   /**
    * Map any legacy/typo variants to DAO-legal values BEFORE we branch or PUT.
@@ -10364,12 +10397,18 @@ public class MandatesResolutionUIController {
       return HOLD_HOGAN_VER; //safe default hold bucket
     }
     switch (c) {
-      case SS_WINDEED_VER:    return HOLD_WINDEED_VER;
-      case SS_HOGAN_VER:      return HOLD_HOGAN_VER;
-      case SS_HANIS_VER:      return HOLD_HANIS_VER;
-      case SS_ADMIN_APPROVAL: return HOLD_ADMIN;
-      case SS_HOGAN_UPD:      return HOLD_HOGAN_UPD;   //"Update on Hold for Hogan"
-      case SS_DOCU_UPD:       return HOLD_DOCU_UPD;    //Update on Hold for Documentum"
+      case SS_WINDEED_VER:
+        return HOLD_WINDEED_VER;
+      case SS_HOGAN_VER:
+        return HOLD_HOGAN_VER;
+      case SS_HANIS_VER:
+        return HOLD_HANIS_VER;
+      case SS_ADMIN_APPROVAL:
+        return HOLD_ADMIN;
+      case SS_HOGAN_UPD:
+        return HOLD_HOGAN_UPD;   //"Update on Hold for Hogan"
+      case SS_DOCU_UPD:
+        return HOLD_DOCU_UPD;    //Update on Hold for Documentum"
 
       case SS_DONE:
       case SS_REJECTED:
@@ -10391,12 +10430,12 @@ public class MandatesResolutionUIController {
 
     return switch (s) {
       case HOLD_WINDEED_VER -> SS_WINDEED_VER;
-      case HOLD_HOGAN_VER   -> SS_HOGAN_VER;
-      case HOLD_HANIS_VER   -> SS_HANIS_VER;
-      case HOLD_ADMIN       -> SS_ADMIN_APPROVAL;
-      case HOLD_HOGAN_UPD   -> SS_HOGAN_UPD;   // "Update on Hold for Hogan"
-      case HOLD_DOCU_UPD    -> SS_DOCU_UPD;    // "Update on Hold for Documentum"
-      default               -> SS_HOGAN_VER;   // sensible default
+      case HOLD_HOGAN_VER -> SS_HOGAN_VER;
+      case HOLD_HANIS_VER -> SS_HANIS_VER;
+      case HOLD_ADMIN -> SS_ADMIN_APPROVAL;
+      case HOLD_HOGAN_UPD -> SS_HOGAN_UPD;   // "Update on Hold for Hogan"
+      case HOLD_DOCU_UPD -> SS_DOCU_UPD;    // "Update on Hold for Documentum"
+      default -> SS_HOGAN_VER;   // sensible default
     };
   }
 
@@ -10499,7 +10538,7 @@ public class MandatesResolutionUIController {
                                                       String requestStatusFallback) {
     final RestTemplate rt = new RestTemplate();
     final String base = mandatesResolutionsDaoURL
-        + "/api/lov?type={type}&subType={subType}&requestStatus={status}";
+                        + "/api/lov?type={type}&subType={subType}&requestStatus={status}";
 
     java.util.function.Function<String, java.util.List<String>> call = (String statusVal) -> {
       if (statusVal == null || statusVal.trim().isEmpty()) {
@@ -10572,7 +10611,7 @@ public class MandatesResolutionUIController {
           //Prefer numeric "lineN" ordering
           others.sort((a, b) -> {
             boolean s1IsLine = a.toLowerCase().startsWith("line");
-            boolean s2IsLine  = b.toLowerCase().startsWith("line");
+            boolean s2IsLine = b.toLowerCase().startsWith("line");
             if (s1IsLine && s2IsLine) {
               try {
                 int ai = Integer.parseInt(a.replaceAll("\\D+", ""));
@@ -10650,7 +10689,7 @@ public class MandatesResolutionUIController {
 
       RestTemplate rt = new RestTemplate();
       String url = daoBaseUrl + "/api/lov?type=Readout&subType=Instructions&requestStatus="
-          + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
+                   + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
 
       //DAO returns a list of LOV rows, we only need each row's "value"
       var resp = rt.exchange(
@@ -10681,7 +10720,6 @@ public class MandatesResolutionUIController {
   }
 
 
-
   @SuppressWarnings("unchecked")
   private void populateInstructions(RequestTableWrapper wrapper,
                                     String subStatus, String daoBaseUrl) {
@@ -10702,14 +10740,15 @@ public class MandatesResolutionUIController {
 
       RestTemplate rt = new RestTemplate();
       String url = daoBaseUrl + "/api/lov?type=Readout&subType=Instructions&requestStatus="
-          + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
+                   + java.net.URLEncoder.encode(status, java.nio.charset.StandardCharsets.UTF_8);
 
       var resp = rt.exchange(
           url,
           org.springframework.http.HttpMethod.GET,
           null,
           new org.springframework.core.ParameterizedTypeReference
-              <java.util.List<java.util.Map<String, Object>>>() {}
+              <java.util.List<java.util.Map<String, Object>>>() {
+          }
       );
 
       if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
@@ -10730,7 +10769,7 @@ public class MandatesResolutionUIController {
   }
 
   private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
-      postSnapshotToBackend(SubmissionPayload payload) {
+        postSnapshotToBackend(SubmissionPayload payload) {
 
     String url = mandatesResolutionsDaoURL + "/api/submission";
     RestTemplate rt = new RestTemplate();
@@ -10801,15 +10840,15 @@ public class MandatesResolutionUIController {
 
   private static String errorPage(String message) {
     return """
-        <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="" heading=" " template="error" version="1">
-          <error xsi:type="validationError">
-            <code>0</code>
-            <message>""" + message + "</message>\n"
-        +
-        "</error>\n"
-        +
-        "</page>";
+               <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     id="" heading=" " template="error" version="1">
+                 <error xsi:type="validationError">
+                   <code>0</code>
+                   <message>""" + message + "</message>\n"
+           +
+           "</error>\n"
+           +
+           "</page>";
   }
 
   /**

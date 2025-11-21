@@ -315,39 +315,6 @@ public class MandatesResolutionService {
     return addAccountModel;
   }
 
-  public List<AddAccountModel> getAllAddSignator(List<AddAccountModel> listOfAccount) {
-    List<AddAccountModel> addAccountModelList = new ArrayList<>();
-    for (AddAccountModel model : listOfAccount) {
-      AddAccountModel addAccountModel = new AddAccountModel();
-      List<SignatoryModel> listOfSignatory = new ArrayList<>();
-      for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
-        if ("Add".equalsIgnoreCase(signatoryModel.getInstruction())) {
-          SignatoryModel signatoryData = new SignatoryModel();
-          signatoryData.setFullName(signatoryModel.getFullName());
-          signatoryData.setIdNumber(signatoryModel.getIdNumber());
-          signatoryData.setInstruction(signatoryModel.getInstruction());
-          int size = addAccountModelList.size();
-          int sig = listOfSignatory.size();
-          signatoryData.setUserInAccount(++size);
-          signatoryData.setUserInList(++sig);
-          listOfSignatory.add(signatoryData);
-          addAccountModel.setAccountName(model.getAccountName());
-          addAccountModel.setAccountNumber(model.getAccountNumber());
-          addAccountModel.setUserInList(++size);
-        } else {
-          int size = addAccountModelList.size();
-          addAccountModel.setAccountName(model.getAccountName());
-          addAccountModel.setAccountNumber(model.getAccountNumber());
-          addAccountModel.setUserInList(++size);
-          addAccountModel.setCheckRemoveSignatory("true");
-        }
-      }
-      addAccountModel.setListOfSignatory(listOfSignatory);
-      addAccountModelList.add(addAccountModel);
-    }
-    return addAccountModelList;
-  }
-
   public SignatoryModel getSignatoryData(List<AddAccountModel> listOfAccount, String userInList,
                                          String userInAccount) {
     SignatoryModel signatoryModels = new SignatoryModel();
@@ -362,6 +329,7 @@ public class MandatesResolutionService {
             signatoryModels.setInstruction(signatoryModel.getInstruction());
             signatoryModels.setCapacity(signatoryModel.getCapacity());
             signatoryModels.setGroup(signatoryModel.getGroup());
+            signatoryModels.setCheckDocConfirm(signatoryModel.getCheckDocConfirm());
             if ("true".equalsIgnoreCase(signatoryModel.getCheckDocConfirm())) {
               signatoryModels.setCheckDocConfirm(signatoryModel.getCheckDocConfirm());
             } else {
@@ -488,8 +456,6 @@ public class MandatesResolutionService {
   public String sendRequestSignatureCard() {
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    RequestWrapper wrapperData =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
     UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     String url = mandatesResolutionsDaoURL + "/api/request-staging";
     Map<String, Object> payload = new HashMap<>();
@@ -516,10 +482,8 @@ public class MandatesResolutionService {
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
     payload.put("waiverLastFetched", currentDateTime);
     payload.put("creator", user.getUsername());
-    List<AddAccountModel> listOFAddAccount = getListAddAccount(requestWrapper.getListOfAddAccount(),
-        wrapperData.getListOfAddAccount());
     List<Map<String, Object>> accounts = new ArrayList<>();
-    for (AddAccountModel addAccountModel : listOFAddAccount) {
+    for (AddAccountModel addAccountModel : requestWrapper.getListOfAddAccount()) {
       Map<String, Object> accountE = new HashMap<>();
       List<Map<String, Object>> signatoriesE = new ArrayList<>();
       accountE.put("accountName", addAccountModel.getAccountName());
@@ -565,8 +529,6 @@ public class MandatesResolutionService {
 
   public String createRequest() {
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    RequestWrapper wrapperData =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
     UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     String url = mandatesResolutionsDaoURL + "/api/submission";
     Map<String, Object> requestBody = new HashMap<>();
@@ -601,10 +563,8 @@ public class MandatesResolutionService {
     waiver.put("permittedTools", tools);
     waiver.put("lastFetched", "2025-08-25T12:00:00");
     waiver.put("creator", user.getUsername());
-    List<AddAccountModel> listOFAddAccount = getListAddAccount(wrapper.getListOfAddAccount(),
-        wrapperData.getListOfAddAccount());
     List<Map<String, Object>> accounts = new ArrayList<>();
-    for (AddAccountModel addAccountModel : listOFAddAccount) {
+    for (AddAccountModel addAccountModel : wrapper.getListOfAddAccount()) {
       Map<String, Object> accountE = new HashMap<>();
       List<Map<String, Object>> signatoriesE = new ArrayList<>();
       accountE.put("accountName", addAccountModel.getAccountName());
@@ -739,8 +699,6 @@ public class MandatesResolutionService {
 
   public String createRequestMandates() {
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    RequestWrapper wrapperData =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapperData");
     UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     String url = mandatesResolutionsDaoURL + "/api/submission";
     Map<String, Object> requestBody = new HashMap<>();
@@ -775,10 +733,8 @@ public class MandatesResolutionService {
     waiver.put("permittedTools", tools);
     waiver.put("lastFetched", "2025-08-25T12:00:00");
     waiver.put("creator", user.getUsername());
-    List<AddAccountModel> listOFAddAccount = getListAddAccount(wrapper.getListOfAddAccount(),
-        wrapperData.getListOfAddAccount());
     List<Map<String, Object>> accounts = new ArrayList<>();
-    for (AddAccountModel addAccountModel : listOFAddAccount) {
+    for (AddAccountModel addAccountModel : wrapper.getListOfAddAccount()) {
       Map<String, Object> accountE = new HashMap<>();
       List<Map<String, Object>> signatoriesE = new ArrayList<>();
       accountE.put("accountName", addAccountModel.getAccountName());
@@ -823,54 +779,5 @@ public class MandatesResolutionService {
     ResponseEntity<String> response =
         restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
     return response.getBody();
-  }
-
-  private List<AddAccountModel> getListAddAccount(List<AddAccountModel> listOne,
-                                                  List<AddAccountModel> listTwo) {
-    Map<String, AddAccountModel> merged = new HashMap<>();
-    for (AddAccountModel acc : listOne) {
-      merged.put(acc.getAccountName(), acc);
-    }
-
-    for (AddAccountModel acc2 : listTwo) {
-
-      AddAccountModel existing = merged.get(acc2.getAccountName());
-
-      if (existing != null) {
-        List<SignatoryModel> mergedSigns = new ArrayList<>(existing.getListOfSignatory());
-
-        for (SignatoryModel newSign : acc2.getListOfSignatory()) {
-          Optional<SignatoryModel> found =
-              mergedSigns.stream()
-                  .filter(s -> s.getIdNumber().equals(newSign.getIdNumber()))
-                  .findFirst();
-
-          if (found.isPresent()) {
-            SignatoryModel old = found.get();
-            if (old.getFullName() == null) {
-              old.setFullName(newSign.getFullName());
-            }
-            if (old.getInstruction() == null) {
-              old.setInstruction(newSign.getInstruction());
-            }
-            if (old.getCapacity() == null) {
-              old.setCapacity(newSign.getCapacity());
-            }
-            if (old.getGroup() == null) {
-              old.setGroup(newSign.getGroup());
-            }
-            if (old.getCheckDocConfirm() == null) {
-              old.setCheckDocConfirm(newSign.getCheckDocConfirm());
-            }
-          } else {
-            mergedSigns.add(newSign);
-          }
-        }
-        existing.setListOfSignatory(mergedSigns);
-      } else {
-        merged.put(acc2.getAccountName(), acc2);
-      }
-    }
-    return new ArrayList<>(merged.values());
   }
 }
