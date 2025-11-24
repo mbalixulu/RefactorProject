@@ -266,7 +266,7 @@ public class MandatesResolutionService {
         result.setAccountNumber(model.getAccountNumber());
         result.setAccountName(model.getAccountName());
         List<SignatoryModel> listOfSignatory = model.getListOfSignatory();
-        for(int i = 0; i < listOfSignatory.size(); i++){
+        for (int i = 0; i < listOfSignatory.size(); i++) {
           SignatoryModel signatoryModel = listOfSignatory.get(i);
           signatoryModel.setCheckEdit("true");
           listOfSignatory.set(i, signatoryModel);

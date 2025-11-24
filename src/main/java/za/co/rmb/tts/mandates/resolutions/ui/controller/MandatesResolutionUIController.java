@@ -680,7 +680,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckStyleTwo("false");
     }
 
-    if("Please select".equalsIgnoreCase(user.get("mandateResolution"))) {
+    if ("Please select".equalsIgnoreCase(user.get("mandateResolution"))) {
       requestWrapper.setCheckMandatesAndresolution("false");
       requestWrapper.setCheckMandates("false");
       requestWrapper.setCheckResolution("false");
@@ -904,8 +904,8 @@ public class MandatesResolutionUIController {
       requestWrapper.setAccountCheck("true");
     }
 
-    if(requestWrapper.getListOfAddAccount() == null
-       || requestWrapper.getListOfAddAccount().isEmpty()){
+    if (requestWrapper.getListOfAddAccount() == null
+        || requestWrapper.getListOfAddAccount().isEmpty()) {
       page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
@@ -1024,13 +1024,14 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/signatoryRemoveEdit/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  @PostMapping(value = "/signatoryRemoveEdit/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> signatoryRemoveEdit(@PathVariable String userInList) {
     String page = "";
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
     List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
-    for(int i = 0 ; i < signatoryModelList.size(); i++) {
+    for (int i = 0; i < signatoryModelList.size(); i++) {
       SignatoryModel signatoryModel = signatoryModelList.get(i);
       if (userInList.equalsIgnoreCase(String.valueOf(signatoryModel.getUserInList()))) {
         signatoryModel.setCheckRemoveOption("yes");
@@ -1043,13 +1044,14 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  @PostMapping(value = "/signatoryRemoveUndo/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
+  @PostMapping(value = "/signatoryRemoveUndo/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> signatoryRemoveUndo(@PathVariable String userInList) {
     String page = "";
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
     List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
-    for(int i = 0 ; i < signatoryModelList.size(); i++) {
+    for (int i = 0; i < signatoryModelList.size(); i++) {
       SignatoryModel signatoryModel = signatoryModelList.get(i);
       if (userInList.equalsIgnoreCase(String.valueOf(signatoryModel.getUserInList()))) {
         signatoryModel.setCheckRemoveOption("no");
@@ -1237,8 +1239,8 @@ public class MandatesResolutionUIController {
     List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
     boolean allYes = signatoryModelList.stream()
         .allMatch(s -> "yes".equalsIgnoreCase(s.getCheckRemoveOption()));
-    if (signatoryModelList.size() == 1 &&
-        "yes".equalsIgnoreCase(signatoryModelList.get(0).getCheckRemoveOption())) {
+    if (signatoryModelList.size() == 1
+        && "yes".equalsIgnoreCase(signatoryModelList.get(0).getCheckRemoveOption())) {
       addAccountModel.setCheckSignatoryList("true");
       check = true;
     } else if (allYes) {
