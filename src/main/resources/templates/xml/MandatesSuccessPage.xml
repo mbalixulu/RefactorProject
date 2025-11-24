@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" id="ResolutionSuccessPage" title="Resolution Success Page" template="main" layout="" version="1">
     <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:formLayout">
         <ns1:form ns1:action="" ns1:name="ResolutionSuccessPage">

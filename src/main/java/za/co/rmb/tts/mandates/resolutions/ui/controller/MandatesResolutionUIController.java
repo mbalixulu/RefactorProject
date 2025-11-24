@@ -858,6 +858,7 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setCheckSecondDirectorList("false");
     requestWrapper.setCheckDirectorEmpty("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
@@ -1086,8 +1087,8 @@ public class MandatesResolutionUIController {
       signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
       check = true;
     }
-
-    if (addAccountModel.getListOfSignatory() == null) {
+    List<SignatoryModel> listOfSignatory = addAccountModel.getListOfSignatory();
+    if (listOfSignatory == null || listOfSignatory.isEmpty()) {
       addAccountModel.setCheckSignatoryList("true");
       check = true;
     } else {
@@ -1097,11 +1098,12 @@ public class MandatesResolutionUIController {
     addAccountModel.setAccountNumber(user.get("accountNo"));
     int size = addAccountModelList.size();
     addAccountModel.setUserInList(++size);
-    List<SignatoryModel> listOfSignatory = addAccountModel.getListOfSignatory();
-    for (int i = 0; i < listOfSignatory.size(); i++) {
-      SignatoryModel signatoryModel = listOfSignatory.get(i);
-      signatoryModel.setUserInAccount(addAccountModel.getUserInList());
-      listOfSignatory.set(i, signatoryModel);
+    if (listOfSignatory != null && !listOfSignatory.isEmpty()) {
+      for (int i = 0; i < listOfSignatory.size(); i++) {
+        SignatoryModel signatoryModel = listOfSignatory.get(i);
+        signatoryModel.setUserInAccount(addAccountModel.getUserInList());
+        listOfSignatory.set(i, signatoryModel);
+      }
     }
     addAccountModelList.add(addAccountModel);
     requestWrapper.setListOfAddAccount(addAccountModelList);
@@ -1310,6 +1312,8 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setCheckSecondDirectorList("false");
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(
         xslPagePath("MandatesSignatureCard"), requestWrapper);
     return ResponseEntity.ok(page);
@@ -1368,6 +1372,7 @@ public class MandatesResolutionUIController {
           mandatesResolutionService.getAddAccountList(requestWrapper.getListOfAddAccount(),
               userInList, userInAccount, user);
       requestWrapper.setListOfAddAccount(listOfAddAccount);
+      requestWrapper.setCheckSignatureCard("false");
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(
           xslPagePath("MandatesSignatureCard"), requestWrapper);
@@ -1405,18 +1410,42 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/submitFinalRecord",
       produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitFinalRecord() {
-    mandatesResolutionService.createRequest();
-    String page = xsltProcessor.returnPage(
-        xmlPagePath("MandatesSuccessPage"));
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    String page = "";
+    if (requestWrapper.getListOfDirectors() == null) {
+      requestWrapper.setCheckSecondDirectorList("true");
+    } else {
+      requestWrapper.setCheckSecondDirectorList("false");
+    }
+    if ("true".equalsIgnoreCase(requestWrapper.getCheckSecondDirectorList())) {
+      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+          requestWrapper);
+    } else {
+      mandatesResolutionService.createRequest();
+      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
+    }
     return ResponseEntity.ok(page);
   }
 
   @PostMapping(value = "/submitResoFinalRecord",
       produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> submitResoFinalRecord() {
-    mandatesResolutionService.createRequestReso();
-    String page = xsltProcessor.returnPage(
-        xmlPagePath("MandatesSuccessPage"));
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    String page = "";
+    if (requestWrapper.getListOfDirectors() == null) {
+      requestWrapper.setCheckSecondDirectorList("true");
+    } else {
+      requestWrapper.setCheckSecondDirectorList("false");
+    }
+    if ("true".equalsIgnoreCase(requestWrapper.getCheckSecondDirectorList())) {
+      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+          requestWrapper);
+    } else {
+      mandatesResolutionService.createRequestReso();
+      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
+    }
     return ResponseEntity.ok(page);
   }
 
@@ -1451,8 +1480,7 @@ public class MandatesResolutionUIController {
           xslPagePath("MandatesSignatureCard"), requestWrapper);
     } else {
       mandatesResolutionService.createRequestMandates();
-      page = xsltProcessor.returnPage(
-          xmlPagePath("MandatesSuccessPage"));
+      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -6745,10 +6773,10 @@ public class MandatesResolutionUIController {
         {
           w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
           xsl = switch (page) {
-          case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
-          case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
-          case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
-          default -> "MandatesAutoFill";
+            case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
+            case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
+            case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
+            default -> "MandatesAutoFill";
           };
         }
       default ->

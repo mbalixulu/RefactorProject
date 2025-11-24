@@ -35,6 +35,7 @@ public class RequestWrapper {
   private String checkStyleTwo;
   private List<DirectorModel> directorModels;
   private List<DirectorModel> listOfDirectors;
+  private String checkSecondDirectorList;
   private String checkDirectorEmpty;
   private String accountCheck;
   private List<AddAccountModel> listOfAddAccount;

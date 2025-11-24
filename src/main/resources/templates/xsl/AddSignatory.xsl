@@ -72,7 +72,7 @@
                 <comm:baseButton comm:id="next"
                                  comm:url="app-domain/mandates-and-resolutions/submitSignatoryDetails"
                                  comm:target="main" comm:formSubmit="true" comm:tooltip=""
-                                 comm:label="Submit"/>
+                                 comm:label="Add +"/>
                 </xsl:if>
                 <xsl:if test="signatoryModel/buttonCheck = 'false'">
                 <comm:baseButton comm:id="next"

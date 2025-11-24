@@ -1,0 +1,50 @@
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+    <xsl:output method="xml"/>
+    <xsl:template match="/">
+        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" id="ResolutionSuccessPage"
+              title="Resolution Success Page" template="main" layout="" version="1">
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:formLayout">
+                <ns1:form ns1:action="" ns1:name="ResolutionSuccessPage">
+                    <ns1:sections ns1:id="" ns1:align="left" ns1:width="half" ns1:tooltip=""
+                                  ns1:label="" ns1:symbol-type="">
+                        <ns1:symbol xsi:type="ns1:textParagraph" ns1:type="sub" ns1:subHeading=""
+                                    ns1:bold="true" ns1:boldTableCell="false" ns1:color="black"
+                                    ns1:tooltip="" ns1:symbol-type="">
+                            <ns1:value/>
+                        </ns1:symbol>
+                        <!--Check mark picture-->
+                        <ns1:symbol xsi:type="ns1:imagelink"
+                                    ns1:id="" ns1:lazy="false"
+                                    ns1:url="/_assets/images/mm/fnb/15/pc/illustrations/tick.results.illustration.svg"
+                                    ns1:selected="false" ns1:align="center" ns1:illustration="true"
+                                    ns1:badgeUrl=""
+                                    ns1:badgeAlign="right" ns1:textUpper="" ns1:textMiddle=""
+                                    ns1:textLower="" ns1:type="card"
+                                    ns1:height="75" ns1:width="75" ns1:sizeMetric="px"/>
+                    </ns1:sections>
+                    <!--Paragraph-->
+                    <ns1:sections ns1:id="" ns1:align="right" ns1:width="half" ns1:tooltip=""
+                                  ns1:label="" ns1:symbol-type="">
+                        <ns1:symbol xsi:type="ns1:textHeading" ns1:size="3"
+                                    ns1:boldTableCell="false" ns1:color="ghostdark" ns1:tooltip=""
+                                    ns1:label="Thank you" ns1:symbol-type="">
+                            <ns1:value>Thank you</ns1:value>
+                        </ns1:symbol>
+                        <ns1:symbol xsi:type="ns1:textParagraph" ns1:type="sub" ns1:subHeading=""
+                                    ns1:bold="true" ns1:boldTableCell="false" ns1:color="black"
+                                    ns1:tooltip="" ns1:symbol-type="">
+                            <ns1:value>This <xsl:value-of
+                                    select="requestWrapper/requestType"/> has been successfully submitted.</ns1:value>
+                        </ns1:symbol>
+                    </ns1:sections>
+                </ns1:form>
+            </symbol>
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer"
+                    ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
+                <ns1:baseButton ns1:id="finishBtn"
+                                ns1:url="app-domain/mandates-and-resolutions/inProgressRequests"
+                                ns1:target="main" ns1:formSubmit="false" ns1:label="Finish"/>
+            </symbol>
+        </page>
+    </xsl:template>
+</xsl:stylesheet>
