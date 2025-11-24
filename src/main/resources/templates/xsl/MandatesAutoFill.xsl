@@ -195,7 +195,7 @@
                                      comm:target="main"/>
                     <comm:baseButton comm:id="proceed"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToSignaturePage"
-                                     comm:label="Proceed" comm:formSubmit="true" comm:target="main"/>
+                                     comm:label="Continue" comm:formSubmit="true" comm:target="main"/>
                 </xsl:if>
             </symbol>
         </page>
