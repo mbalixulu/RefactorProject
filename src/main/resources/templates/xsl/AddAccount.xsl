@@ -124,7 +124,8 @@
                                                comm:col_id="fullName">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="fullName"/>
@@ -136,7 +137,8 @@
                                                comm:col_id="idNumber">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="idNumber"/>
@@ -148,7 +150,8 @@
                                                comm:col_id="instruction">
                                         <comm:cellItem
                                                 xsi:type="comm:cellItem">
-                                            <comm:item xsi:type="comm:simpleText" comm:align="center">
+                                            <comm:item xsi:type="comm:simpleText"
+                                                       comm:align="center">
                                                 <comm:value>
                                                     <xsl:value-of
                                                             select="instruction"/>
@@ -166,6 +169,7 @@
                                             </comm:item>
                                         </comm:cellItem>
                                     </comm:cell>
+                                    <xsl:if test="checkRemoveOption = 'no'">
                                     <comm:cell xsi:type="comm:cell"
                                                comm:col_id="editScreen">
                                         <comm:cellItem
@@ -181,6 +185,7 @@
                                                        comm:label="Edit"/>
                                         </comm:cellItem>
                                     </comm:cell>
+                                    </xsl:if>
                                     <comm:cell xsi:type="comm:cell"
                                                comm:col_id="space">
                                         <comm:cellItem
@@ -191,51 +196,84 @@
                                             </comm:item>
                                         </comm:cellItem>
                                     </comm:cell>
-                                    <!-- Remove (Delete) row -->
-                                    <comm:cell comm:col_id="remove">
-                                        <comm:cellItem>
-                                            <comm:item
-                                                    xsi:type="comm:button"
-                                                    comm:id="remove"
-                                                    comm:type="paper"
-                                                    comm:width="2"
-                                                    comm:target="main"
-                                                    comm:formSubmit="false"
-                                                    comm:label="Remove"
-                                                    comm:url="app-domain/mandates-and-resolutions/SignatoryRemove/{userInList}"/>
-                                        </comm:cellItem>
-                                    </comm:cell>
-                                </comm:row>
-                            </xsl:for-each>
+                                    <xsl:if test="checkEdit = 'false'">
+                                        <comm:cell comm:col_id="remove">
+                                            <comm:cellItem>
+                                                <comm:item
+                                                        xsi:type="comm:button"
+                                                        comm:id="remove"
+                                                        comm:type="paper"
+                                                        comm:width="2"
+                                                        comm:target="main"
+                                                        comm:formSubmit="false"
+                                                        comm:label="Remove"
+                                                        comm:url="app-domain/mandates-and-resolutions/SignatoryRemove/{userInList}"/>
+                                            </comm:cellItem>
+                                        </comm:cell>
+                                    </xsl:if>
+                                    <xsl:if test="checkEdit = 'true'">
+                                        <xsl:if test="checkRemoveOption = 'no'">
+                                        <comm:cell comm:col_id="remove">
+                                            <comm:cellItem>
+                                                <comm:item
+                                                        xsi:type="comm:button"
+                                                        comm:id="remove"
+                                                        comm:type="paper"
+                                                        comm:width="2"
+                                                        comm:target="main"
+                                                        comm:formSubmit="false"
+                                                        comm:label="Remove"
+                                                        comm:url="app-domain/mandates-and-resolutions/signatoryRemoveEdit/{userInList}"/>
+                                            </comm:cellItem>
+                                        </comm:cell>
+                                    </xsl:if>
+                                    <xsl:if test="checkRemoveOption = 'yes'">
+                                        <comm:cell comm:col_id="remove">
+                                            <comm:cellItem>
+                                                <comm:item
+                                                        xsi:type="comm:button"
+                                                        comm:id="remove"
+                                                        comm:type="paper"
+                                                        comm:width="2"
+                                                        comm:target="main"
+                                                        comm:formSubmit="false"
+                                                        comm:label="Undo"
+                                                        comm:url="app-domain/mandates-and-resolutions/signatoryRemoveUndo/{userInList}"/>
+                                            </comm:cellItem>
+                                        </comm:cell>
+                                    </xsl:if>
+                                </xsl:if>
+                            </comm:row>
+                        </xsl:for-each>
+                    </comm:symbol>
+                </comm:sections>
+                <xsl:if test="addAccountModel/checkSignatoryList = 'true'">
+                    <comm:sections comm:width="full">
+                        <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                            <comm:value>At least one Signatory is required for this request !
+                            </comm:value>
                         </comm:symbol>
                     </comm:sections>
-                    <xsl:if test="addAccountModel/checkSignatoryList = 'true'">
-                        <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
-                                <comm:value>At least one Signatory is required for this request !
-                                </comm:value>
-                            </comm:symbol>
-                        </comm:sections>
-                    </xsl:if>
-                </comm:form>
-            </symbol>
-            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="comm:footer"
-                    comm:text="" comm:textAlign="left" comm:buttonAlign="right">
-                <comm:baseButton comm:id="proceed" comm:target="main"
-                                 comm:url="app-domain/mandates-and-resolutions/cancelAddAccount"
-                                 comm:label="Cancel" comm:formSubmit="true"/>
-                <xsl:if test="addAccountModel/buttonCheck = 'false'">
-                    <comm:baseButton comm:id="backSearch" comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/addSignatoryWithAccount"
-                                     comm:label="Add +" comm:formSubmit="true"/>
                 </xsl:if>
-                <xsl:if test="addAccountModel/buttonCheck = 'true'">
-                    <comm:baseButton comm:id="backSearch" comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/updateSignatoryWithAccount/{addAccountModel/userInList}"
-                                     comm:label="Update" comm:formSubmit="true"/>
-                </xsl:if>
-            </symbol>
+            </comm:form>
+        </symbol>
+        <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="comm:footer"
+                comm:text="" comm:textAlign="left" comm:buttonAlign="right">
+            <comm:baseButton comm:id="proceed" comm:target="main"
+                             comm:url="app-domain/mandates-and-resolutions/cancelAddAccount"
+                             comm:label="Cancel" comm:formSubmit="true"/>
+            <xsl:if test="addAccountModel/buttonCheck = 'false'">
+                <comm:baseButton comm:id="backSearch" comm:target="main"
+                                 comm:url="app-domain/mandates-and-resolutions/addSignatoryWithAccount"
+                                 comm:label="Add +" comm:formSubmit="true"/>
+            </xsl:if>
+            <xsl:if test="addAccountModel/buttonCheck = 'true'">
+                <comm:baseButton comm:id="backSearch" comm:target="main"
+                                 comm:url="app-domain/mandates-and-resolutions/updateSignatoryWithAccount/{addAccountModel/userInList}"
+                                 comm:label="Update" comm:formSubmit="true"/>
+            </xsl:if>
+        </symbol>
 
-        </page>
-    </xsl:template>
-</xsl:stylesheet>
+    </page>
+</xsl:template>
+        </xsl:stylesheet>

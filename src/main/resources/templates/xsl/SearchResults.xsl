@@ -430,17 +430,17 @@
                 <xsl:if test="requestWrapper/checkMandates = 'true'">
                     <comm:baseButton comm:id="proceed" comm:target="main"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToAccount"
-                                     comm:label="Proceed" comm:formSubmit="true"/>
+                                     comm:label="Continue" comm:formSubmit="true"/>
                 </xsl:if>
                 <xsl:if test="requestWrapper/checkResolution = 'true'">
                     <comm:baseButton comm:id="proceed" comm:target="main"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToAccountReso"
-                                     comm:label="Proceed" comm:formSubmit="true"/>
+                                     comm:label="Continue" comm:formSubmit="true"/>
                 </xsl:if>
                 <xsl:if test="requestWrapper/checkMandatesAndresolution = 'true'">
                     <comm:baseButton comm:id="proceed" comm:target="main"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToAccount"
-                                     comm:label="Proceed" comm:formSubmit="true"/>
+                                     comm:label="Continue" comm:formSubmit="true"/>
                 </xsl:if>
             </symbol>
             <symbol xsi:type="comm:setEventAjax"

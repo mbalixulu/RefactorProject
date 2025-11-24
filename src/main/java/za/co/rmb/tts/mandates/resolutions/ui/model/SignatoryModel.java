@@ -23,4 +23,6 @@ public class SignatoryModel {
   private String group;
   private String checkDocConfirm;
   private SignatoryErrorModel signatoryErrorModel;
+  private String checkRemoveOption;
+  private String checkEdit;
 }

@@ -252,6 +252,7 @@ public class MandatesResolutionService {
     signatoryModel.setFullName(user.get("fullName"));
     signatoryModel.setIdNumber(user.get("idNumber"));
     signatoryModel.setInstruction(user.get("accountRef1"));
+    signatoryModel.setCheckRemoveOption("no");
     return signatoryModel;
   }
 
@@ -264,6 +265,13 @@ public class MandatesResolutionService {
         AddAccountModel result = new AddAccountModel();
         result.setAccountNumber(model.getAccountNumber());
         result.setAccountName(model.getAccountName());
+        List<SignatoryModel> listOfSignatory = model.getListOfSignatory();
+        for (int i = 0; i < listOfSignatory.size(); i++) {
+          SignatoryModel signatoryModel = listOfSignatory.get(i);
+          signatoryModel.setCheckEdit("true");
+          listOfSignatory.set(i, signatoryModel);
+        }
+        result.setListOfSignatory(listOfSignatory);
         result.setListOfSignatory(model.getListOfSignatory());
         result.setUserInList(model.getUserInList());
         return result;

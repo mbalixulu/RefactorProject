@@ -159,7 +159,7 @@
                     <comm:baseButton comm:id="next"
                                      comm:url="app-domain/mandates-and-resolutions/proceedSignatureCard"
                                      comm:target="main" comm:formSubmit="true" comm:tooltip=""
-                                     comm:label="Proceed"/>
+                                     comm:label="Continue"/>
                 </xsl:if>
             </symbol>
         </page>

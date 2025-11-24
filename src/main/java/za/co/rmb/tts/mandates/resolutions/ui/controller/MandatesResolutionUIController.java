@@ -679,6 +679,14 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckStyleOne("false");
       requestWrapper.setCheckStyleTwo("false");
     }
+
+    if ("Please select".equalsIgnoreCase(user.get("mandateResolution"))) {
+      requestWrapper.setCheckMandatesAndresolution("false");
+      requestWrapper.setCheckMandates("false");
+      requestWrapper.setCheckResolution("false");
+      requestWrapper.setCheckStyleOne("false");
+      requestWrapper.setCheckStyleTwo("false");
+    }
     RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
     dto.setCompanyName(user.get("companyName"));
     dto.setCompanyAddress(user.get("companyAddress"));
@@ -772,8 +780,17 @@ public class MandatesResolutionUIController {
       page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
-      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
-          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+      if (requestWrapper.getListOfAddAccount() == null
+          || requestWrapper.getListOfAddAccount().isEmpty()) {
+        AddAccountModel addAccountModel = new AddAccountModel();
+        addAccountModel.setButtonCheck("false");
+        httpSession.setAttribute("Signatory", addAccountModel);
+        httpSession.setAttribute("RequestWrapper", requestWrapper);
+        page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+      } else {
+        page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+            (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+      }
     }
     return new ResponseEntity<>(page, HttpStatus.OK);
   }
@@ -868,12 +885,9 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/addAccount", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> addAccount() {
     String page = "";
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     AddAccountModel addAccountModel = new AddAccountModel();
     addAccountModel.setButtonCheck("false");
     httpSession.setAttribute("Signatory", addAccountModel);
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
     return ResponseEntity.ok(page);
@@ -889,12 +903,19 @@ public class MandatesResolutionUIController {
     } else {
       requestWrapper.setAccountCheck("true");
     }
-    AddAccountModel addAccountModel =
-        (AddAccountModel) httpSession.getAttribute("Signatory");
-    addAccountModel.setCheckSignatoryList("false");
-    httpSession.setAttribute("Signatory", addAccountModel);
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), requestWrapper);
+
+    if (requestWrapper.getListOfAddAccount() == null
+        || requestWrapper.getListOfAddAccount().isEmpty()) {
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    } else {
+      AddAccountModel addAccountModel =
+          (AddAccountModel) httpSession.getAttribute("Signatory");
+      addAccountModel.setCheckSignatoryList("false");
+      httpSession.setAttribute("Signatory", addAccountModel);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
+      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), requestWrapper);
+    }
     return ResponseEntity.ok(page);
   }
 
@@ -983,6 +1004,7 @@ public class MandatesResolutionUIController {
       SignatoryModel signatoryModelData = mandatesResolutionService.setSignatory(user);
       int size = signatoryModels.size();
       signatoryModelData.setUserInList(++size);
+      signatoryModelData.setCheckEdit("false");
       signatoryModels.add(signatoryModelData);
       addAccountModel.setListOfSignatory(signatoryModels);
       httpSession.setAttribute("Signatory", addAccountModel);
@@ -998,6 +1020,46 @@ public class MandatesResolutionUIController {
     mandatesResolutionService.removeSpecificSignatory(Integer.valueOf(userInList));
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/signatoryRemoveEdit/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> signatoryRemoveEdit(@PathVariable String userInList) {
+    String page = "";
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
+    for (int i = 0; i < signatoryModelList.size(); i++) {
+      SignatoryModel signatoryModel = signatoryModelList.get(i);
+      if (userInList.equalsIgnoreCase(String.valueOf(signatoryModel.getUserInList()))) {
+        signatoryModel.setCheckRemoveOption("yes");
+        signatoryModelList.set(i, signatoryModel);
+      }
+    }
+    addAccountModel.setListOfSignatory(signatoryModelList);
+    httpSession.setAttribute("Signatory", addAccountModel);
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/signatoryRemoveUndo/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> signatoryRemoveUndo(@PathVariable String userInList) {
+    String page = "";
+    AddAccountModel addAccountModel =
+        (AddAccountModel) httpSession.getAttribute("Signatory");
+    List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
+    for (int i = 0; i < signatoryModelList.size(); i++) {
+      SignatoryModel signatoryModel = signatoryModelList.get(i);
+      if (userInList.equalsIgnoreCase(String.valueOf(signatoryModel.getUserInList()))) {
+        signatoryModel.setCheckRemoveOption("no");
+        signatoryModelList.set(i, signatoryModel);
+      }
+    }
+    addAccountModel.setListOfSignatory(signatoryModelList);
+    httpSession.setAttribute("Signatory", addAccountModel);
     page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
@@ -1096,25 +1158,27 @@ public class MandatesResolutionUIController {
     }
     addAccountModel.setAccountName(user.get("accountName"));
     addAccountModel.setAccountNumber(user.get("accountNo"));
-    int size = addAccountModelList.size();
-    addAccountModel.setUserInList(++size);
-    if (listOfSignatory != null && !listOfSignatory.isEmpty()) {
-      for (int i = 0; i < listOfSignatory.size(); i++) {
-        SignatoryModel signatoryModel = listOfSignatory.get(i);
-        signatoryModel.setUserInAccount(addAccountModel.getUserInList());
-        listOfSignatory.set(i, signatoryModel);
-      }
-    }
-    addAccountModelList.add(addAccountModel);
-    requestWrapper.setListOfAddAccount(addAccountModelList);
-    requestWrapper.setAccountCheck("true");
-    httpSession.setAttribute("Signatory", addAccountModel);
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
       addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
       addAccountModel.setButtonCheck("false");
       page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
     } else {
+      int size = addAccountModelList.size();
+      addAccountModel.setUserInList(++size);
+      addAccountModel.setSignatoryErrorModel(null);
+      addAccountModel.setCheckSignatoryList("false");
+      if (listOfSignatory != null && !listOfSignatory.isEmpty()) {
+        for (int i = 0; i < listOfSignatory.size(); i++) {
+          SignatoryModel signatoryModel = listOfSignatory.get(i);
+          signatoryModel.setUserInAccount(addAccountModel.getUserInList());
+          listOfSignatory.set(i, signatoryModel);
+        }
+      }
+      addAccountModelList.add(addAccountModel);
+      requestWrapper.setListOfAddAccount(addAccountModelList);
+      requestWrapper.setAccountCheck("true");
+      httpSession.setAttribute("Signatory", addAccountModel);
+      httpSession.setAttribute("RequestWrapper", requestWrapper);
       RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
       page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
     }
@@ -1160,13 +1224,7 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    List<AddAccountModel> addAccountModelList =
-        mandatesResolutionService.updateAccount(requestWrapper.getListOfAddAccount(), userInList,
-            user);
-    AddAccountModel addAccountModel =
-        mandatesResolutionService.updateAccountSingle(requestWrapper.getListOfAddAccount(),
-            userInList,
-            user);
+    AddAccountModel addAccountModel = (AddAccountModel) httpSession.getAttribute("Signatory");
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("accountName").isBlank()) {
@@ -1178,15 +1236,19 @@ public class MandatesResolutionUIController {
       signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
       check = true;
     }
-
-    if (addAccountModel.getListOfSignatory() == null || addAccountModel.getListOfSignatory()
-        .isEmpty()) {
+    List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
+    boolean allYes = signatoryModelList.stream()
+        .allMatch(s -> "yes".equalsIgnoreCase(s.getCheckRemoveOption()));
+    if (signatoryModelList.size() == 1
+        && "yes".equalsIgnoreCase(signatoryModelList.get(0).getCheckRemoveOption())) {
+      addAccountModel.setCheckSignatoryList("true");
+      check = true;
+    } else if (allYes) {
       addAccountModel.setCheckSignatoryList("true");
       check = true;
     } else {
       addAccountModel.setCheckSignatoryList("false");
     }
-
     if (check) {
       addAccountModel.setAccountName(user.get("accountName"));
       addAccountModel.setAccountNumber(user.get("accountNo"));
@@ -1194,6 +1256,18 @@ public class MandatesResolutionUIController {
       addAccountModel.setButtonCheck("true");
       page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
     } else {
+      List<AddAccountModel> addAccountModelList =
+          mandatesResolutionService.updateAccount(requestWrapper.getListOfAddAccount(), userInList,
+              user);
+      addAccountModel =
+          mandatesResolutionService.updateAccountSingle(requestWrapper.getListOfAddAccount(),
+              userInList,
+              user);
+      List<SignatoryModel> listOfSig = addAccountModel.getListOfSignatory();
+      listOfSig.removeIf(sig ->
+          "yes".equalsIgnoreCase(sig.getCheckRemoveOption())
+      );
+      addAccountModel.setListOfSignatory(listOfSig);
       requestWrapper.setListOfAddAccount(addAccountModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
