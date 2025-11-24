@@ -10,19 +10,33 @@
     <xsl:variable name="UPPER" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"/>
 
     <xsl:template match="/requestWrapper">
-        <xsl:variable name="SUB"    select="normalize-space(/requestWrapper/request/subStatus)"/>
+        <xsl:variable name="SUB" select="normalize-space(/requestWrapper/request/subStatus)"/>
         <xsl:variable name="SUB_UP" select="translate($SUB, $LOWER, $UPPER)"/>
 
         <!-- Primary label -->
         <xsl:variable name="LAB_SUBMIT">
             <xsl:choose>
-                <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>
-                <xsl:when test="contains($SUB_UP,'WINDEED VERIFICATION PENDING')">Verify for Windeed</xsl:when>
-                <xsl:when test="contains($SUB_UP,'HANNIS VERIFICATION PENDING') or contains($SUB_UP,'HANIS VERIFICATION PENDING')">Verify for Hannis</xsl:when>
-                <xsl:when test="contains($SUB_UP,'ADMIN VERIFICATION PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">Approve</xsl:when>
-                <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan</xsl:when>
-                <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Updated successfully</xsl:when>
-                <xsl:when test="contains($SUB_UP,'REQUEST UPDATED SUCCESSFULLY')">Updated Successfully</xsl:when>
+                <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan
+                </xsl:when>
+                <xsl:when test="contains($SUB_UP,'WINDEED VERIFICATION PENDING')">Verify for
+                    Windeed
+                </xsl:when>
+                <xsl:when
+                        test="contains($SUB_UP,'HANNIS VERIFICATION PENDING') or contains($SUB_UP,'HANIS VERIFICATION PENDING')">
+                    Verify for Hannis
+                </xsl:when>
+                <xsl:when
+                        test="contains($SUB_UP,'ADMIN VERIFICATION PENDING') or contains($SUB_UP,'ADMIN APPROVAL PENDING')">
+                    Approve
+                </xsl:when>
+                <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan
+                </xsl:when>
+                <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Updated
+                    successfully
+                </xsl:when>
+                <xsl:when test="contains($SUB_UP,'REQUEST UPDATED SUCCESSFULLY')">Updated
+                    Successfully
+                </xsl:when>
                 <xsl:otherwise>Approve</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
@@ -37,9 +51,11 @@
         </xsl:variable>
         <xsl:variable name="SECOND_URL">
             <xsl:choose>
-                <xsl:when test="$IS_DOCU">app-domain/mandates-and-resolutions/viewRequestReject</xsl:when>
+                <xsl:when test="$IS_DOCU">app-domain/mandates-and-resolutions/viewRequestReject
+                </xsl:when>
                 <xsl:otherwise>
-                    <xsl:value-of select="concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)"/>
+                    <xsl:value-of
+                            select="concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)"/>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
@@ -55,7 +71,8 @@
               id="approvePanel" title="Approve Request" template="main" layout="" version="1">
 
             <symbol xsi:type="comm:formLayout">
-                <comm:form comm:action="app-domain/mandates-and-resolutions/comment/approve" comm:name="approveForm">
+                <comm:form comm:action="app-domain/mandates-and-resolutions/comment/approve"
+                           comm:name="approveForm">
 
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading">
@@ -64,34 +81,21 @@
                     </comm:sections>
 
                     <comm:sections comm:align="left" comm:width="full">
-                        <comm:symbol xsi:type="comm:input" comm:name="requestId" comm:inputType="hidden">
-                            <comm:value><xsl:value-of select="/requestWrapper/request/requestId"/></comm:value>
+                        <comm:symbol xsi:type="comm:input" comm:name="requestId"
+                                     comm:inputType="hidden">
+                            <comm:value>
+                                <xsl:value-of select="/requestWrapper/request/requestId"/>
+                            </comm:value>
                         </comm:symbol>
-                        <comm:symbol xsi:type="comm:input" comm:name="subStatus" comm:inputType="hidden">
-                            <comm:value><xsl:value-of select="/requestWrapper/request/subStatus"/></comm:value>
+                        <comm:symbol xsi:type="comm:input" comm:name="subStatus"
+                                     comm:inputType="hidden">
+                            <comm:value>
+                                <xsl:value-of select="/requestWrapper/request/subStatus"/>
+                            </comm:value>
                         </comm:symbol>
 
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="boxDiv">
                             <comm:box xsi:type="comm:box">
-
-<!--                                &lt;!&ndash; ===== Dynamic Instructions from wrapper.lovs.instructions ===== &ndash;&gt;-->
-<!--                                <comm:boxSymbol xsi:type="comm:textList" comm:subHeading="Instructions">-->
-<!--                                    <comm:value/>-->
-<!--                                    <xsl:choose>-->
-<!--                                        &lt;!&ndash;Render list items when present&ndash;&gt;-->
-<!--                                        <xsl:when test="count(/requestWrapper/lovs/instructions/instruction) &gt; 0">-->
-<!--                                            <xsl:for-each select="/requestWrapper/lovs/instructions/instruction">-->
-<!--                                                <comm:textListItem><comm:value><xsl:value-of select="."/></comm:value></comm:textListItem>-->
-<!--                                            </xsl:for-each>-->
-<!--                                        </xsl:when>-->
-<!--                                        &lt;!&ndash;Fallback&ndash;&gt;-->
-<!--                                        <xsl:otherwise>-->
-<!--                                            <comm:textListItem>-->
-<!--                                                <comm:value>No specific instructions for this status.</comm:value>-->
-<!--                                            </comm:textListItem>-->
-<!--                                        </xsl:otherwise>-->
-<!--                                    </xsl:choose>-->
-<!--                                </comm:boxSymbol>-->
                                 <comm:boxSymbol xsi:type="comm:commentbox"
                                                 comm:name="commentbox"
                                                 comm:label="Comment"
@@ -104,28 +108,41 @@
                         </comm:symbol>
                     </comm:sections>
 
-                    <comm:sections comm:align="left" comm:width="full">
+                   <!-- <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:button"
-                                     comm:id="submitApprove"
+                                     comm:id=""
                                      comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/comment/approve"
-                                     comm:label="{$LAB_SUBMIT}"
+                                     comm:url=""
+                                     comm:label=""
                                      comm:width="1"
                                      comm:formSubmit="true"
                                      comm:align="right"
                                      comm:type="primary"/>
                         <comm:symbol xsi:type="comm:button"
-                                     comm:id="secondaryApprove"
+                                     comm:id=""
                                      comm:target="main"
-                                     comm:url="{$SECOND_URL}"
-                                     comm:label="{$SECOND_LABEL}"
+                                     comm:url=""
+                                     comm:label=""
                                      comm:width="1"
-                                     comm:formSubmit="{$SECOND_SUBMIT}"
+                                     comm:formSubmit=""
                                      comm:align="right"
                                      comm:type="primary"/>
-                    </comm:sections>
+                    </comm:sections>-->
 
                 </comm:form>
+            </symbol>
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:type="comm:footer" comm:text="" comm:textAlign="left"
+                    comm:buttonAlign="right">
+                <comm:baseButton comm:id="submitApprove"
+                                 comm:url="app-domain/mandates-and-resolutions/comment/approve"
+                                 comm:target="main" comm:formSubmit="true" comm:tooltip=""
+                                 comm:label="{$LAB_SUBMIT}"/>
+                <comm:baseButton comm:id="secondaryApprove"
+                                 comm:url="{$SECOND_URL}"
+                                 comm:target="main" comm:formSubmit="{$SECOND_SUBMIT}"
+                                 comm:tooltip=""
+                                 comm:label="{$SECOND_LABEL}"/>
             </symbol>
         </page>
     </xsl:template>

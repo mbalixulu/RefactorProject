@@ -205,6 +205,14 @@
                             <comm:tableNavigator comm:pageSize="10"/>
                         </comm:symbol>
                     </comm:sections>
+                    <xsl:if test="requestWrapper/checkSecondDirectorList = 'true'">
+                        <comm:sections comm:width="full">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                                <comm:value>At least one Director is required for this request !
+                                </comm:value>
+                            </comm:symbol>
+                        </comm:sections>
+                    </xsl:if>
                 </comm:form>
             </symbol>
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
