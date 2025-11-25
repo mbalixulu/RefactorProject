@@ -2059,7 +2059,7 @@ public class MandatesResolutionUIController {
       List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
       RequestDTO requestDTO = new RequestDTO();
       UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
-      if("ADMIN".equalsIgnoreCase(users.getUserRole())){
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
         requestDTO.setSubStatus("Admin");
       } else {
         requestDTO.setSubStatus("User");
@@ -2075,7 +2075,7 @@ public class MandatesResolutionUIController {
           r.setType(src.getRequestType());
           r.setCreated(String.valueOf(src.getCreated()));
           rows.add(r);
-        } else if("USER".equalsIgnoreCase(users.getUserRole())
+        } else if ("USER".equalsIgnoreCase(users.getUserRole())
                   && src.getCreator().equalsIgnoreCase(users.getUsername())) {
           r.setRequestId(src.getStagingId());
           r.setCompanyName(src.getCompanyName());
