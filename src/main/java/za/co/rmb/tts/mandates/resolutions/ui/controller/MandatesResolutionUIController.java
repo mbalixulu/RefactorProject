@@ -2052,192 +2052,48 @@ public class MandatesResolutionUIController {
   }
 
   @PostMapping(value = "/draftRequests", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayDraftRequests(HttpSession session,
-                                                     HttpServletRequest request) {
+  public ResponseEntity<String> displayDraftRequests() {
     try {
-      final String base = mandatesResolutionsDaoURL;
-      final RestTemplate rt = new RestTemplate();
-
-      // Fetch all draft requests
-      RequestStagingDTO[] raws =
-          rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
-      List<RequestStagingDTO> list = (raws == null) ? List.of() : Arrays.asList(raws);
-
-      final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-      final ObjectMapper OM = new ObjectMapper().findAndRegisterModules();
       RequestTableWrapper wrapper = new RequestTableWrapper();
       List<RequestTableDTO> rows = new ArrayList<>();
-
-      // Determine user info
-      UserDTO user = (UserDTO) session.getAttribute("currentUser");
-      final boolean admin = user != null && "ADMIN".equalsIgnoreCase(user.getUserRole());
-      final String me = (user != null) ? user.getEmployeeNumber() : "";
-
+      List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
       RequestDTO requestDTO = new RequestDTO();
-      for (RequestStagingDTO d : list) {
-        // Filter: non-admins only see their own assigned requests
-        if (!admin && (d.getCreator() == null || !d.getCreator().equalsIgnoreCase(me))) {
-          continue;
-        }
-
-        RequestStagingDTO src = d;
-        String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
-        // If blank, fetch raw JSON and search for created-like field
-        if (createdStr.isBlank()) {
-          try {
-            ResponseEntity<String> resp =
-                rt.getForEntity(base + "/api/request-staging/{id}", String.class, d.getStagingId());
-            String body = resp.getBody();
-            if (body != null && !body.isBlank()) {
-              try {
-                JsonNode root = OM.readTree(body);
-                String raw = findCreatedAnyCase(root);
-                if (raw != null && !raw.isBlank()) {
-                  if (isAllDigits(raw)) {
-                    createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
-                  } else {
-                    createdStr = tryFormatIso(raw, FMT);
-                  }
-                }
-              } catch (Exception ignore) {
-                //
-              }
-            }
-          } catch (Exception ignore) {
-            //
-          }
-        }
-
-        if (createdStr.isBlank() && src.getCreated() != null) {
-          createdStr = src.getCreated().format(FMT);
-        }
-
-        UserDTO users = (UserDTO) session.getAttribute("currentUser");
-        System.out.println("=======Print role========" + users.getUserRole());
-        if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
-          requestDTO.setSubStatus("Admin");
-        } else {
-          requestDTO.setSubStatus("User");
-        }
-        // Build table row
+      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        requestDTO.setSubStatus("Admin");
+      } else {
+        requestDTO.setSubStatus("User");
+      }
+      for (RequestStagingDTO src : list) {
         RequestTableDTO r = new RequestTableDTO();
-        r.setRequestId(src.getStagingId());
-        r.setCompanyName(src.getCompanyName());
-        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
-        r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
-        r.setType(src.getRequestType());
-        r.setCreated(createdStr);
-        r.setUpdated(null);
-        r.setAssignedUser(src.getAssignedUser());
-
-        rows.add(r);
+        if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+          r.setRequestId(src.getStagingId());
+          r.setCompanyName(src.getCompanyName());
+          r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+          r.setStatus(src.getRequestStatus());
+          r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+          r.setType(src.getRequestType());
+          r.setCreated(String.valueOf(src.getCreated()));
+          rows.add(r);
+        } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                  && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+          r.setRequestId(src.getStagingId());
+          r.setCompanyName(src.getCompanyName());
+          r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+          r.setStatus(src.getRequestStatus());
+          r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+          r.setType(src.getRequestType());
+          r.setCreated(String.valueOf(src.getCreated()));
+          rows.add(r);
+        }
       }
       wrapper.setRequest(rows);
       wrapper.setRequestDTO(requestDTO);
-
-      // Use single XSLT for all draft requests
       String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
 
     } catch (Exception e) {
       logger.error("Error loading draft requests: {}", e.getMessage(), e);
-      String fallbackError = """
-          <?xml version="1.0" encoding="UTF-8"?>
-          <page>
-              <error>Unable to load drafts.</error>
-          </page>
-          """;
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(fallbackError);
-    }
-  }
-
-  //Admin Draft Page
-  @PostMapping(value = "/adminDraft", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminDraft() {
-    try {
-      final String base = mandatesResolutionsDaoURL;
-      final RestTemplate rt = new RestTemplate();
-
-      RequestStagingDTO[] raws =
-          rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
-      List<RequestStagingDTO> list =
-          (raws == null) ? java.util.List.of() : java.util.Arrays.asList(raws);
-
-      final java.time.format.DateTimeFormatter FMT =
-          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-      final com.fasterxml.jackson.databind.ObjectMapper OM =
-          new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
-
-      RequestTableWrapper wrapper = new RequestTableWrapper();
-      List<RequestTableDTO> rows = new java.util.ArrayList<>();
-
-      for (RequestStagingDTO d : list) {
-        RequestStagingDTO src = d;
-
-        //1)Default binding first
-        String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
-
-        // )If blank, fetch raw JSON and try rebind / find created-like field
-        if (createdStr.isBlank()) {
-          try {
-            ResponseEntity<String> resp =
-                rt.getForEntity(base + "/api/request-staging/{id}", String.class, d.getStagingId());
-            String body = resp.getBody();
-            if (body != null && !body.isBlank()) {
-              try {
-                RequestStagingDTO rebound = OM.readValue(body, RequestStagingDTO.class);
-                if (rebound != null) {
-                  src = rebound;
-                }
-              } catch (Exception ignore) {
-                // intentionally empty
-              }
-
-              try {
-                com.fasterxml.jackson.databind.JsonNode root = OM.readTree(body);
-                String raw = findCreatedAnyCase(root);
-                if (raw != null && !raw.isBlank()) {
-                  if (isAllDigits(raw)) {
-                    createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
-                  } else {
-                    createdStr = tryFormatIso(raw, FMT);
-                  }
-                }
-              } catch (Exception ignore) {
-                // intentionally empty
-              }
-            }
-          } catch (Exception ignore) {
-            // intentionally empty
-          }
-        }
-
-        if (createdStr.isBlank() && src.getCreated() != null) {
-          createdStr = src.getCreated().format(FMT);
-        }
-
-        //Build row for the table
-        RequestTableDTO r = new RequestTableDTO();
-        r.setRequestId(src.getStagingId());
-        r.setCompanyName(src.getCompanyName());
-        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
-        r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
-        r.setType(src.getRequestType());
-        r.setCreated(createdStr);
-        r.setUpdated(null);
-
-        rows.add(r);
-      }
-
-      wrapper.setRequest(rows);
-      String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
-
-    } catch (Exception e) {
-      logger.error("Error loading Admin Draft page: {}", e.getMessage(), e);
       String fallbackError = """
           <?xml version="1.0" encoding="UTF-8"?>
           <page>
@@ -3004,99 +2860,6 @@ public class MandatesResolutionUIController {
           """;
       return ResponseEntity.ok(fallbackError);
     }
-  }
-
-  @RequestMapping(
-      value = "/requestTableDraft",
-      method = { RequestMethod.GET, RequestMethod.POST },
-      produces = MediaType.APPLICATION_XML_VALUE
-  )
-  public ResponseEntity<String> displayRequestTableDraft() {
-    final String base = mandatesResolutionsDaoURL;
-    final RestTemplate rt = new RestTemplate();
-
-    RequestStagingDTO[] raws =
-        rt.getForObject(base + "/api/request-staging/all", RequestStagingDTO[].class);
-    List<RequestStagingDTO> list =
-        (raws == null) ? java.util.List.of() : java.util.Arrays.asList(raws);
-
-    final java.time.format.DateTimeFormatter FMT =
-        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-    final com.fasterxml.jackson.databind.ObjectMapper OM =
-        new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
-
-    RequestTableWrapper wrapper = new RequestTableWrapper();
-    List<RequestTableDTO> rows = new java.util.ArrayList<>();
-
-    for (RequestStagingDTO d : list) {
-      RequestStagingDTO src = d;
-
-      //1) Try default binding first
-      String createdStr = (d.getCreated() == null) ? "" : d.getCreated().format(FMT);
-
-      //2) If still blank, fetch raw JSON and search for a created-like field
-      if (createdStr.isBlank()) {
-        try {
-          ResponseEntity<String> resp =
-              rt.getForEntity(base + "/api/request-staging/{id}", String.class, d.getStagingId());
-          String body = resp.getBody();
-          if (body != null && !body.isBlank()) {
-            // DEBUG (uncomment once to verify what DAO returns)
-            // logger.info("Draft {} raw JSON: {}", d.getStagingId(), body);
-
-            //a) Try re-bind with our ObjectMapper (handles java-time)
-            try {
-              RequestStagingDTO rebound = OM.readValue(body, RequestStagingDTO.class);
-              if (rebound != null) {
-                src = rebound;
-              }
-            } catch (Exception ignore) {
-              // intentionally empty
-            }
-
-            //b) Tree-scan for any case/shape of "created"
-            try {
-              com.fasterxml.jackson.databind.JsonNode root = OM.readTree(body);
-              String raw = findCreatedAnyCase(root);
-
-              if (raw != null && !raw.isBlank()) {
-                if (isAllDigits(raw)) {
-                  createdStr = formatEpochMillis(Long.parseLong(raw), FMT);
-                } else {
-                  createdStr = tryFormatIso(raw, FMT); //returns raw text if parse fails
-                }
-              }
-            } catch (Exception ignore) {
-              // intentionally empty
-            }
-          }
-        } catch (Exception ignore) {
-          // intentionally empty
-        }
-      }
-
-      if (createdStr.isBlank() && src.getCreated() != null) {
-        createdStr = src.getCreated().format(FMT);
-      }
-
-      //Build the table row
-      RequestTableDTO r = new RequestTableDTO();
-      r.setRequestId(src.getStagingId());
-      r.setCompanyName(src.getCompanyName());
-      r.setRegistrationNumber(src.getCompanyRegistrationNumber());
-      r.setStatus(src.getRequestStatus());
-      r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
-      r.setType(src.getRequestType());
-      r.setCreated(createdStr);  //<created> for the XSL column
-      r.setUpdated(null);
-
-      rows.add(r);
-    }
-
-    wrapper.setRequest(rows);
-    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
-    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   @PostMapping(value = "/requestTableProfile", produces = MediaType.APPLICATION_XML_VALUE)
