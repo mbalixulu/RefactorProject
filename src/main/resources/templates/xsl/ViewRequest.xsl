@@ -21,6 +21,8 @@
     <xsl:variable name="REQ2" select="(//*[local-name()='request'])[1]"/>
     <!-- Prefer REQ1 when it exists; otherwise fall back to REQ2 -->
     <xsl:variable name="REQ" select="($REQ1 | $REQ2[not($REQ1)])[1]"/>
+    <xsl:variable name="STATUS_UP"
+                  select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
 
     <!-- Request type flags -->
     <xsl:variable name="TYPE_RAW" select="normalize-space($REQ/*[local-name()='type'])"/>
@@ -746,49 +748,61 @@
                         </ns1:sections>
                     </xsl:if>
                     <!-- ===== Instructions  ===== -->
-                    <ns1:sections ns1:align="left" ns1:width="full">
-                        <ns1:symbol xsi:type="ns1:input" ns1:name="requestId" ns1:inputType="hidden">
-                            <ns1:value><xsl:value-of select="$REQ/*[local-name()='requestId']"/></ns1:value>
-                        </ns1:symbol>
+                    <xsl:if test="not(contains($STATUS_UP,'COMPLETED'))">
+                        <ns1:sections ns1:align="left" ns1:width="full">
+                            <ns1:symbol xsi:type="ns1:input" ns1:name="requestId"
+                                        ns1:inputType="hidden">
+                                <ns1:value>
+                                    <xsl:value-of select="$REQ/*[local-name()='requestId']"/>
+                                </ns1:value>
+                            </ns1:symbol>
 
-                        <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="instructionsBox">
-                            <ns1:box xsi:type="ns1:box">
+                            <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="instructionsBox">
+                                <ns1:box xsi:type="ns1:box">
 
-                                <!-- List of instructions -->
-                                <ns1:boxSymbol xsi:type="ns1:textList" ns1:subHeading="Instructions">
-                                    <ns1:value/>
-                                    <xsl:choose>
-                                        <xsl:when test="count(//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']) &gt; 0">
-                                            <xsl:for-each select="//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']">
+                                    <!-- List of instructions -->
+                                    <ns1:boxSymbol xsi:type="ns1:textList"
+                                                   ns1:subHeading="Instructions">
+                                        <ns1:value/>
+                                        <xsl:choose>
+                                            <xsl:when
+                                                    test="count(//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']) &gt; 0">
+                                                <xsl:for-each
+                                                        select="//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']">
+                                                    <ns1:textListItem>
+                                                        <ns1:value>
+                                                            <xsl:value-of select="."/>
+                                                        </ns1:value>
+                                                    </ns1:textListItem>
+                                                </xsl:for-each>
+                                            </xsl:when>
+                                            <xsl:otherwise>
                                                 <ns1:textListItem>
-                                                    <ns1:value><xsl:value-of select="."/></ns1:value>
+                                                    <ns1:value>No specific instructions for this
+                                                        status.
+                                                    </ns1:value>
                                                 </ns1:textListItem>
-                                            </xsl:for-each>
-                                        </xsl:when>
-                                        <xsl:otherwise>
-                                            <ns1:textListItem>
-                                                <ns1:value>No specific instructions for this status.</ns1:value>
-                                            </ns1:textListItem>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                </ns1:boxSymbol>
-                                <ns1:boxSymbol xsi:type="ns1:input"
-                                               ns1:name="confirmationCheckMandate"
-                                               ns1:inputType="checkbox"
-                                               ns1:unCheckedValue="No"
-                                               ns1:selected="false"
-                                               ns1:errorMessage="{//*[local-name()='approveRejectErrorModel']/*[local-name()='confirmationCheckMandate']}">
-                                    <ns1:value/>
-                                    <ns1:inputItem ns1:id="confirmationCheckMandate"
-                                                   ns1:label="I confirm that the Instructions have been followed as mentioned above."
-                                                   ns1:type="checkbox"
-                                                   ns1:value="1"
+                                            </xsl:otherwise>
+                                        </xsl:choose>
+                                    </ns1:boxSymbol>
+                                    <ns1:boxSymbol xsi:type="ns1:input"
+                                                   ns1:name="confirmationCheckMandate"
+                                                   ns1:inputType="checkbox"
                                                    ns1:unCheckedValue="No"
-                                                   ns1:selected="false"/>
-                                </ns1:boxSymbol>
-                            </ns1:box>
-                        </ns1:symbol>
-                    </ns1:sections>
+                                                   ns1:selected="false"
+                                                   ns1:errorMessage="{//*[local-name()='approveRejectErrorModel']/*[local-name()='confirmationCheckMandate']}">
+                                        <ns1:value/>
+                                        <ns1:inputItem ns1:id="confirmationCheckMandate"
+                                                       ns1:label="I confirm that the Instructions have been followed as mentioned above."
+                                                       ns1:type="checkbox"
+                                                       ns1:value="1"
+                                                       ns1:unCheckedValue="No"
+                                                       ns1:selected="false"/>
+                                    </ns1:boxSymbol>
+                                </ns1:box>
+                            </ns1:symbol>
+                        </ns1:sections>
+                    </xsl:if>
                 </ns1:form>
             </symbol>
 
@@ -796,22 +810,6 @@
             <xsl:variable name="SUB_RAW" select="normalize-space($REQ/*[local-name()='subStatus'])"/>
             <xsl:variable name="SUB_UP"  select="translate($SUB_RAW, $LOWER, $UPPER)"/>
             <xsl:variable name="STATUS_UP" select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
-            <!--<xsl:variable name="BACK_URL">
-                <xsl:choose>
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">
-                        app-domain/mandates-and-resolutions/completedRequests
-                    </xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'ON HOLD')">
-                        app-domain/mandates-and-resolutions/onHoldRequests
-                    </xsl:when>
-                    <xsl:when test="contains($STATUS_UP,'IN PROGRESS')">
-                        app-domain/mandates-and-resolutions/inProgressRequests
-                    </xsl:when>
-                    &lt;!&ndash; default safety: go back to pending table &ndash;&gt;
-                    <xsl:otherwise>app-domain/mandates-and-resolutions/inProgressRequests
-                    </xsl:otherwise>
-                </xsl:choose>
-            </xsl:variable>-->
             <xsl:variable name="LAB_APPROVE">
                 <xsl:choose>
                     <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>

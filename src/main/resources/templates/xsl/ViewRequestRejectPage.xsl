@@ -78,28 +78,42 @@
                         </comm:symbol>
                     </comm:sections>
 
-                    <comm:sections comm:align="left" comm:width="full">
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id="submitReject"
-                                     comm:target="main"
-                                     comm:url="app-domain/mandates-and-resolutions/comment/reject"
-                                     comm:label="Reject"
-                                     comm:width="1"
-                                     comm:formSubmit="true"
-                                     comm:align="right"
-                                     comm:type="primary"/>
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id="cancelReject"
-                                     comm:target="main"
-                                     comm:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)}"
-                                     comm:label="Cancel"
-                                     comm:width="1"
-                                     comm:formSubmit="false"
-                                     comm:align="right"
-                                     comm:type="primary"/>
-                    </comm:sections>
+                    <!--  <comm:sections comm:align="left" comm:width="full">
+                          <comm:symbol xsi:type="comm:button"
+                                       comm:id="submitReject"
+                                       comm:target="main"
+                                       comm:url="app-domain/mandates-and-resolutions/comment/reject"
+                                       comm:label="Reject"
+                                       comm:width="1"
+                                       comm:formSubmit="true"
+                                       comm:align="right"
+                                       comm:type="primary"/>
+                          <comm:symbol xsi:type="comm:button"
+                                       comm:id="cancelReject"
+                                       comm:target="main"
+                                       comm:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)}"
+                                       comm:label="Cancel"
+                                       comm:width="1"
+                                       comm:formSubmit="false"
+                                       comm:align="right"
+                                       comm:type="primary"/>
+                      </comm:sections>-->
 
                 </comm:form>
+            </symbol>
+            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:type="comm:footer" comm:text="" comm:textAlign="left"
+                    comm:buttonAlign="right">
+                <comm:baseButton comm:id="submitReject"
+                                 comm:target="main"
+                                 comm:url="app-domain/mandates-and-resolutions/comment/reject"
+                                 comm:label="Reject"
+                                 comm:formSubmit="true"/>
+                <comm:baseButton comm:id="cancelReject"
+                                 comm:target="main"
+                                 comm:url="{concat('app-domain/mandates-and-resolutions/viewRequest/', /requestWrapper/request/requestId)}"
+                                 comm:label="Cancel"
+                                 comm:formSubmit="false"/>
             </symbol>
 
         </page>
