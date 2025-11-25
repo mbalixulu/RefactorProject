@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.WaveModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 
 @Service
@@ -787,5 +789,13 @@ public class MandatesResolutionService {
     ResponseEntity<String> response =
         restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
     return response.getBody();
+  }
+
+  public List<RequestStagingDTO> getAllDrafts() {
+    String url = mandatesResolutionsDaoURL + "/api/request-staging/all";
+    RequestStagingDTO[] raws =
+        restTemplate.getForObject(url, RequestStagingDTO[].class);
+    List<RequestStagingDTO> list = (raws == null) ? List.of() : Arrays.asList(raws);
+    return list;
   }
 }
