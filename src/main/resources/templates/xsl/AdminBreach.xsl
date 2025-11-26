@@ -43,7 +43,12 @@
                             </xsl:choose>
                         </xsl:attribute>
 
-                        <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable" ns1:headingColor="primary" ns1:showTotal="true">
+                        <ns1:symbol xsi:type="ns1:fullTable"
+                                    ns1:id="TemplateTable"
+                                    ns1:headingColor="primary"
+                                    ns1:defaultSortIndex="7"
+                                    ns1:defaultSortDirection="descending"
+                                    ns1:showTotal="true">
                             <xsl:attribute name="ns1:heading">
                                 <xsl:choose>
                                     <xsl:when test="status = 'onhold'">On hold</xsl:when>

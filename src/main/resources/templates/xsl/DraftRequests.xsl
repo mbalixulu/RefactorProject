@@ -38,7 +38,9 @@
                         <xsl:attribute name="ns1:label">Draft requests</xsl:attribute>
 
                         <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable"
-                                    ns1:headingColor="primary" ns1:showTotal="true">
+                                    ns1:headingColor="primary" ns1:showTotal="true"
+                                    ns1:defaultSortIndex="6"
+                                    ns1:defaultSortDirection="descending">
                             <xsl:attribute name="ns1:heading">Draft requests</xsl:attribute>
                             <!--Create Request Button-->
                             <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
@@ -62,7 +64,7 @@
                             <ns1:tableSearch ns1:searchPlaceholder="Search Draft"/>
 
                             <ns1:tableColumn ns1:id="stagingId" ns1:heading="Staging ID"
-                                             ns1:fieldName="requestId" ns1:disableSorting="false"
+                                             ns1:fieldName="requestId" ns1:disableSorting="true"
                                              ns1:widthPercent="10"/>
                             <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
                                              ns1:fieldName="companyName" ns1:disableSorting="false"

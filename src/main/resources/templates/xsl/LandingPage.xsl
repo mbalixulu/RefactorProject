@@ -46,7 +46,12 @@
 
                         <!--Table Starts here-->
                         <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
-                        <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable" ns1:headingColor="primary" ns1:showTotal="true">
+                            <ns1:symbol xsi:type="ns1:fullTable"
+                                        ns1:id="TemplateTable"
+                                        ns1:headingColor="primary"
+                                        ns1:defaultSortIndex="7"
+                                        ns1:defaultSortDirection="descending"
+                                        ns1:showTotal="true">
                             <xsl:attribute name="ns1:heading">
                                 <xsl:choose>
                                     <xsl:when test="status = 'onhold'">On hold</xsl:when>
@@ -56,9 +61,12 @@
                             </xsl:attribute>
 
                             <!--Create Request Button-->
-                            <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
-                                           ns1:id="createRequestbtn" ns1:label="Create Request"
-                                           ns1:tooltip="true" ns1:tip="tip"
+                                <ns1:addButton xsi:type="ns1:imageButton"
+                                               ns1:target="main"
+                                               ns1:id="createRequestbtn"
+                                               ns1:label="Create Request"
+                                               ns1:tooltip="true"
+                                               ns1:tip="tip"
                                            ns1:url="app-domain/mandates-and-resolutions/createRequest"
                                            ns1:formName="ticketForm">
                                 <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
@@ -78,16 +86,39 @@
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
                             <!--Columns-->
-                            <ns1:tableColumn ns1:id="requestID"     ns1:heading="Request ID"     ns1:fieldName="requestID"     ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="assignedUser" ns1:heading="Assigned User"
-                                             ns1:fieldName="assignedUser"
-                                             ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="sla"           ns1:heading="SLA"            ns1:fieldName="sla"           ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="companyName"   ns1:heading="Company Name"   ns1:fieldName="companyName"   ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="status"        ns1:heading="Status"         ns1:fieldName="status"        ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="subStatus"     ns1:heading="Sub Status"     ns1:fieldName="subStatus"     ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="requestType"   ns1:heading="Request Type"   ns1:fieldName="requestType"   ns1:disableSorting="false" ns1:widthPercent="9"/>
-                            <ns1:tableColumn ns1:id="dateCreated"   ns1:heading="Date Created"   ns1:fieldName="dateCreated"   ns1:disableSorting="false" ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="requestID"
+                                                 ns1:heading="Request ID"
+                                                 ns1:fieldName="requestID"
+                                                 ns1:disableSorting="true"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="assignedUser"
+                                                 ns1:heading="Assigned User"
+                                                 ns1:fieldName="assignedUser"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="sla"
+                                                 ns1:heading="SLA"
+                                                 ns1:fieldName="sla"
+                                                 ns1:widthPercent="6"/>
+                                <ns1:tableColumn ns1:id="companyName"
+                                                 ns1:heading="Company Name"
+                                                 ns1:fieldName="companyName"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="status"
+                                                 ns1:heading="Status"
+                                                 ns1:fieldName="status"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="subStatus"
+                                                 ns1:heading="Sub Status"
+                                                 ns1:fieldName="subStatus"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="requestType"
+                                                 ns1:heading="Request Type"
+                                                 ns1:fieldName="requestType"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="dateCreated"
+                                                 ns1:heading="Date Created"
+                                                 ns1:fieldName="dateCreated"
+                                                 ns1:widthPercent="9"/>
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
                             <!--Rows-->
@@ -209,8 +240,12 @@
                         </ns1:symbol>
                         </xsl:if>
                         <xsl:if test="requests/requestDTO/subStatus = 'User'">
-                            <ns1:symbol xsi:type="ns1:fullTable" ns1:id="TemplateTable"
-                                        ns1:headingColor="primary" ns1:showTotal="true">
+                            <ns1:symbol xsi:type="ns1:fullTable"
+                                        ns1:id="TemplateTable"
+                                        ns1:headingColor="primary"
+                                        ns1:defaultSortIndex="6"
+                                        ns1:defaultSortDirection="descending"
+                                        ns1:showTotal="true">
                                 <xsl:attribute name="ns1:heading">
                                     <xsl:choose>
                                         <xsl:when test="status = 'onhold'">On hold</xsl:when>
@@ -220,9 +255,12 @@
                                 </xsl:attribute>
 
                                 <!--Create Request Button-->
-                                <ns1:addButton xsi:type="ns1:imageButton" ns1:target="main"
-                                               ns1:id="createRequestbtn" ns1:label="Create Request"
-                                               ns1:tooltip="true" ns1:tip="tip"
+                                <ns1:addButton xsi:type="ns1:imageButton"
+                                               ns1:target="main"
+                                               ns1:id="createRequestbtn"
+                                               ns1:label="Create Request"
+                                               ns1:tooltip="true"
+                                               ns1:tip="tip"
                                                ns1:url="app-domain/mandates-and-resolutions/createRequest"
                                                ns1:formName="ticketForm">
                                     <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
@@ -238,30 +276,34 @@
                                 <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
                                 <!--Columns-->
-                                <ns1:tableColumn ns1:id="requestID" ns1:heading="Request ID"
+                                <ns1:tableColumn ns1:id="requestID"
+                                                 ns1:heading="Request ID"
                                                  ns1:fieldName="requestID"
-                                                 ns1:disableSorting="false"
+                                                 ns1:disableSorting="true"
                                                  ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
-                                                 ns1:disableSorting="false" ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
+                                <ns1:tableColumn ns1:id="sla"
+                                                 ns1:heading="SLA"
+                                                 ns1:fieldName="sla"
+                                                 ns1:widthPercent="9"/>
+                                <ns1:tableColumn ns1:id="companyName"
+                                                 ns1:heading="Company Name"
                                                  ns1:fieldName="companyName"
-                                                 ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="status" ns1:heading="Status"
-                                                 ns1:fieldName="status" ns1:disableSorting="false"
+                                <ns1:tableColumn ns1:id="status"
+                                                 ns1:heading="Status"
+                                                 ns1:fieldName="status"
                                                  ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="subStatus" ns1:heading="Sub Status"
+                                <ns1:tableColumn ns1:id="subStatus"
+                                                 ns1:heading="Sub Status"
                                                  ns1:fieldName="subStatus"
-                                                 ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="requestType" ns1:heading="Request Type"
+                                <ns1:tableColumn ns1:id="requestType"
+                                                 ns1:heading="Request Type"
                                                  ns1:fieldName="requestType"
-                                                 ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="dateCreated" ns1:heading="Date Created"
+                                <ns1:tableColumn ns1:id="dateCreated"
+                                                 ns1:heading="Date Created"
                                                  ns1:fieldName="dateCreated"
-                                                 ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
                                 <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
 
