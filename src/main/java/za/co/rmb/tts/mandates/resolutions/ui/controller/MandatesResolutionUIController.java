@@ -453,7 +453,6 @@ public class MandatesResolutionUIController {
     } else {
       int size = directorModelList.size();
       directorModel.setUserInList(++size);
-      System.out.println("=====print ======" + directorModel.getUserInList());
       directorModelList.add(directorModel);
       requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
@@ -514,7 +513,6 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/removeDirector/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> removeDirector(@PathVariable String userInList) {
-    System.out.println("======Print ======" + userInList);
     String page = "";
     mandatesResolutionService.removeSpecificAdmin(Integer.valueOf(userInList));
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
@@ -1201,7 +1199,14 @@ public class MandatesResolutionUIController {
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     requestWrapper.setStepForSave("Step 2");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    mandatesResolutionService.sendRequestStaging();
+    if (requestWrapper.getRequest().getStagingId() != null) {
+      RequestStagingDTO stagingDTO = mandatesResolutionService.getDraftsById(requestWrapper
+          .getRequest().getStagingId());
+      mandatesResolutionService.updateDraftByStagingIdStepOne(requestWrapper.getRequest()
+          .getStagingId(), user, stagingDTO, requestWrapper);
+    } else {
+      mandatesResolutionService.sendRequestStaging();
+    }
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
       return displayAdminApproval();
@@ -1383,9 +1388,19 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/saveSignatureCard",
       produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> saveSignatureCard() {
+  public ResponseEntity<String> saveSignatureCard(@RequestParam Map<String, String> user) {
     String page = "";
-    mandatesResolutionService.sendRequestSignatureCard();
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    requestWrapper.setStepForSave("Step 3");
+    if (requestWrapper.getRequest().getStagingId() != null) {
+      RequestStagingDTO stagingDTO = mandatesResolutionService.getDraftsById(requestWrapper
+          .getRequest().getStagingId());
+      mandatesResolutionService.updateDraftByStagingIdStepOne(requestWrapper.getRequest()
+          .getStagingId(), user, stagingDTO, requestWrapper);
+    } else {
+      mandatesResolutionService.sendRequestSignatureCard();
+    }
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
       return displayAdminApproval();
@@ -1481,12 +1496,19 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/saveAppointedDirectors",
       produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> saveAppointedDirectors() {
+  public ResponseEntity<String> saveAppointedDirectors(@RequestParam Map<String, String> user) {
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     requestWrapper.setStepForSave("Step 4");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    mandatesResolutionService.sendRequestStaging();
+    if (requestWrapper.getRequest().getStagingId() != null) {
+      RequestStagingDTO stagingDTO = mandatesResolutionService.getDraftsById(requestWrapper
+          .getRequest().getStagingId());
+      mandatesResolutionService.updateDraftByStagingIdStepOne(requestWrapper.getRequest()
+          .getStagingId(), user, stagingDTO, requestWrapper);
+    } else {
+      mandatesResolutionService.sendRequestStaging();
+    }
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
       return displayAdminApproval();
@@ -2090,7 +2112,7 @@ public class MandatesResolutionUIController {
           r.setCreated(String.valueOf(src.getCreated()));
           rows.add(r);
         } else if ("USER".equalsIgnoreCase(users.getUserRole())
-                  && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+                   && src.getCreator().equalsIgnoreCase(users.getUsername())) {
           r.setRequestId(src.getStagingId());
           r.setCompanyName(src.getCompanyName());
           r.setRegistrationNumber(src.getCompanyRegistrationNumber());
@@ -2481,7 +2503,6 @@ public class MandatesResolutionUIController {
         wrapper.setApproveRejectErrorModel(em);
       }
       UserDTO users = (UserDTO) session.getAttribute("currentUser");
-      System.out.println("=====User Role==== " + users.getUserRole());
       RequestDTO requestDTO = new RequestDTO();
       if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
         requestDTO.setSubStatus("Admin");
@@ -4661,7 +4682,6 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/mandatesSubmit", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> handleMandatesSubmit(HttpServletRequest request,
                                                      HttpSession session) {
-    System.out.println("Submitting Mandates (FINAL)...");
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     try {
@@ -5015,7 +5035,6 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/resolutionSubmit", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayResolutionSubmit(HttpServletRequest request,
                                                         HttpSession session) {
-    System.out.println("Submitting Resolution (FINAL)...");
     java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
 
     try {
@@ -5505,11 +5524,6 @@ public class MandatesResolutionUIController {
       SubmissionPayload payload = buildSubmissionPayload(uiData, "Both");
       za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO result =
           postSnapshotToBackend(payload);
-
-      System.out.println("Mandates & Resolutions submission OK. RequestId: "
-                         + (result != null && result.getRequest() != null ? result.getRequest()
-          .getRequestId() :
-          "n/a"));
 
       return displayMandatesResolutionsSuccess();
 
@@ -6245,7 +6259,6 @@ public class MandatesResolutionUIController {
         wrapper.setApproveRejectErrorModel(em);
       }
       UserDTO users = (UserDTO) session.getAttribute("currentUser");
-      System.out.println("=====User Role==== " + users.getUserRole());
       RequestDTO requestDTO = new RequestDTO();
       if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
         requestDTO.setSubStatus("Admin");
@@ -7742,61 +7755,6 @@ public class MandatesResolutionUIController {
     }
   }
 
-
-//  @PostMapping(
-//      value = "/file-upload",
-//      consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
-//      produces = MediaType.APPLICATION_XML_VALUE
-//  )
-//  public ResponseEntity<String> handleFileUpload(
-//      @RequestParam("file") MultipartFile uploadedFile,
-//      @RequestParam(value = "registrationNumber") String registrationNumber,
-//      HttpSession session
-//  ) {
-//    System.out.println("=== [file-upload] HIT ===");
-//    System.out.println("File: " + (uploadedFile != null ? uploadedFile.getOriginalFilename() :
-//    "NULL"));
-//    System.out.println("Registration Number: " + registrationNumber);
-//
-//    if (uploadedFile == null || uploadedFile.isEmpty()) {
-//      return ResponseEntity.ok("<page><error>No file provided</error></page>");
-//    }
-//
-//    try {
-//      ExtractedPdfDataDTO savedData = documentUploadClient.uploadFile(uploadedFile,
-//      registrationNumber);
-//      if (savedData != null) {
-//        session.setAttribute("pdfSessionId", savedData.getPdfSessionId());
-//        System.out.println("pdfSessionId set in session: " + savedData.getPdfSessionId());
-//
-//        RequestDTO dto = new RequestDTO();
-//        dto.setPdfSessionId(savedData.getPdfSessionId());
-//        dto.setRegistrationNumber(registrationNumber);
-//        dto.setEditable(true);
-//
-//        pdfExtractionDataCache.put(dto.getPdfSessionId(), dto);
-//      }
-//      // IMPORTANT: Return lightweight <page>, not the next screen
-//      return ResponseEntity.ok("""
-//        <?xml version="1.0" encoding="UTF-8"?>
-//        <page xmlns:comm="http://ws.online.fnb.co.za/v1/common/"
-//              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-//              id="upload"
-//              template="message"
-//              version="1">
-//            <info>File uploaded successfully</info>
-//        </page>
-//        """);
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//      return ResponseEntity.ok("<page><error>Failed to upload file</error></page>");
-//    }
-//  }
-
-  /**
-   * STEP 2: Proceed after successful file upload
-   * BiFrost submits the form again (without file). We render the actual XSL page here.
-   */
   @PostMapping(
       value = "/proceedPdfExtraction",
       consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE
@@ -7805,19 +7763,15 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "registrationNumber", required = false) String registrationNumber,
       HttpSession session
   ) {
-    System.out.println(">>> [proceedPdfExtraction] HIT <<<");
-
     try {
       String pdfSessionId = (String) session.getAttribute("pdfSessionId");
       if (pdfSessionId == null || pdfSessionId.isBlank()) {
-        System.out.println("No file uploaded before proceeding.");
         return ResponseEntity.ok().build();
       }
 
       RequestDTO dto = pdfExtractionDataCache.get(pdfSessionId);
       if (dto == null) {
         if (registrationNumber == null || registrationNumber.isBlank()) {
-          System.out.println("Registration number is required.");
           return ResponseEntity.ok().build();
         }
         dto = new RequestDTO();
@@ -7826,14 +7780,9 @@ public class MandatesResolutionUIController {
         dto.setEditable(true);
         pdfExtractionDataCache.put(pdfSessionId, dto);
       }
-
-      System.out.println("PDF extraction started in background for session: " + pdfSessionId);
-
       return ResponseEntity.ok().build(); //
 
     } catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Failed to process proceed step: " + e.getMessage());
       return ResponseEntity.ok().build();
     }
   }
@@ -7843,7 +7792,6 @@ public class MandatesResolutionUIController {
    */
   @PostMapping("/upload-error")
   public ResponseEntity<String> uploadError() {
-    System.out.println(">>> [upload-error] File upload failed <<<");
     return ResponseEntity.ok("<page><error>Upload error</error></page>");
   }
 
@@ -8509,8 +8457,6 @@ public class MandatesResolutionUIController {
 
       ResponseEntity<String> response =
           restTemplate.postForEntity(workflowUrl, requestBody, String.class);
-
-      System.out.println("Workflow started, processId: " + response.getBody());
     } catch (Exception e) {
       System.err.println("Workflow failed: " + e.getMessage());
     }
@@ -10721,7 +10667,7 @@ public class MandatesResolutionUIController {
   }
 
   private za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO
-        postSnapshotToBackend(SubmissionPayload payload) {
+      postSnapshotToBackend(SubmissionPayload payload) {
 
     String url = mandatesResolutionsDaoURL + "/api/submission";
     RestTemplate rt = new RestTemplate();
@@ -10813,7 +10759,6 @@ public class MandatesResolutionUIController {
         ? "application/octet-stream" : file.getContentType();
 
     getOrInitSessionFiles(session).add(new SessionFile(name, ct, file.getSize(), file.getBytes()));
-    System.out.println("Session uploads count = " + getOrInitSessionFiles(session).size());
 
     RequestDTO dto = (RequestDTO) session.getAttribute("requestData");
     if (dto == null) {
