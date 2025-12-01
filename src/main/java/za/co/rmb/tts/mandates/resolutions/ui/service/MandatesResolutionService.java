@@ -479,7 +479,6 @@ public class MandatesResolutionService {
     }
     if (requestWrapper.getListOfDirectors() != null) {
       for (DirectorModel directorModel : requestWrapper.getListOfDirectors()) {
-        System.out.println("=====Print====" + directorModel.getInstructions());
         authorities.add(Map.of(
             "firstname", directorModel.getName(),
             "surname", directorModel.getSurname(),
@@ -585,6 +584,10 @@ public class MandatesResolutionService {
 
     Map<String, Object> request = new HashMap<>();
     request.put("sla", 3);
+    if (wrapper.getRequest().getStagingId() != null
+        && wrapper.getRequest().getStagingId() != 0) {
+      request.put("stagingId", wrapper.getRequest().getStagingId());
+    }
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
       request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleTwo()));
@@ -682,6 +685,10 @@ public class MandatesResolutionService {
 
     Map<String, Object> request = new HashMap<>();
     request.put("sla", 3);
+    if (wrapper.getRequest().getStagingId() != null
+        && wrapper.getRequest().getStagingId() != 0) {
+      request.put("stagingId", wrapper.getRequest().getStagingId());
+    }
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
       request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleTwo()));
@@ -753,7 +760,7 @@ public class MandatesResolutionService {
     Map<String, Object> request = new HashMap<>();
     request.put("sla", 3);
     if (wrapper.getRequest().getStagingId() != null
-        && wrapper.getRequest().getStagingId() == 0) {
+        && wrapper.getRequest().getStagingId() != 0) {
       request.put("stagingId", wrapper.getRequest().getStagingId());
     }
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
@@ -857,11 +864,35 @@ public class MandatesResolutionService {
     requestWrapper.setCheckBackOption("false");
     String waiver = stagingDTO.getWaiverPermittedTools();
     List<String> listOfTools = Arrays.asList(waiver.split(","));
-    requestWrapper.setToolOne(listOfTools.get(0));
-    requestWrapper.setToolTwo(listOfTools.get(1));
-    requestWrapper.setToolThree(listOfTools.get(2));
-    requestWrapper.setToolFour(listOfTools.get(3));
-    requestWrapper.setToolFive(listOfTools.get(4));
+    if (listOfTools.size() > 0) {
+      requestWrapper.setToolOne(listOfTools.get(0));
+    } else {
+      requestWrapper.setToolOne(null);
+    }
+
+    if (listOfTools.size() > 1) {
+      requestWrapper.setToolTwo(listOfTools.get(1));
+    } else {
+      requestWrapper.setToolTwo(null);
+    }
+
+    if (listOfTools.size() > 2) {
+      requestWrapper.setToolThree(listOfTools.get(2));
+    } else {
+      requestWrapper.setToolThree(null);
+    }
+
+    if (listOfTools.size() > 3) {
+      requestWrapper.setToolFour(listOfTools.get(3));
+    } else {
+      requestWrapper.setToolFour(null);
+    }
+
+    if (listOfTools.size() > 4) {
+      requestWrapper.setToolFive(listOfTools.get(4));
+    } else {
+      requestWrapper.setToolFive(null);
+    }
     List<RequestStagingDTO.AuthorityDraft> listOfAuthority = stagingDTO.getAuthorities();
     List<DirectorModel> listOfDireactor = new ArrayList<>();
     List<DirectorModel> listForLast = new ArrayList<>();
@@ -918,6 +949,8 @@ public class MandatesResolutionService {
         AddAccountModel addAccountModel = new AddAccountModel();
         addAccountModel.setAccountName(accountDraft.getAccountName());
         addAccountModel.setAccountNumber(accountDraft.getAccountNumber());
+        int size = listOfAddAccount.size();
+        addAccountModel.setUserInList(++size);
         List<RequestStagingDTO.SignatoryDraft> listOfSignatory = accountDraft.getSignatories();
         List<SignatoryModel> signatoryList = new ArrayList<>();
         for (RequestStagingDTO.SignatoryDraft signatoryDraft : listOfSignatory) {
@@ -927,6 +960,11 @@ public class MandatesResolutionService {
           model.setInstruction(signatoryDraft.getInstructions());
           model.setCapacity(signatoryDraft.getCapacity());
           model.setGroup(signatoryDraft.getGroupCategory());
+          model.setCheckRemoveOption("no");
+          model.setCheckEdit("false");
+          model.setUserInAccount(++size);
+          int sig = signatoryList.size();
+          model.setUserInList(++sig);
           model.setCheckDocConfirm("true");
           signatoryList.add(model);
         }
@@ -948,22 +986,37 @@ public class MandatesResolutionService {
     String url = mandatesResolutionsDaoURL + "/api/request-staging/" + stagingId;
     requestStagingDTO.setCompanyRegistrationNumber(requestStagingDTO
         .getCompanyRegistrationNumber());
-    requestStagingDTO.setCompanyName(user.get("companyName"));
-    requestStagingDTO.setCompanyAddress(user.get("companyAddress"));
-    requestStagingDTO.setRequestType(user.get("mandateResolution"));
-    //If Request Type is present setCheck Box
-    String tools = String.join(",",
-        user.get("toolOne"),
-        user.get("toolTwo"),
-        user.get("toolThree"),
-        user.get("toolFour"),
-        user.get("toolFive")
-    );
-    requestStagingDTO.setWaiverPermittedTools(tools);
-    List<RequestStagingDTO.AuthorityDraft> listOfAuthority = requestStagingDTO.getAuthorities();
-    for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
-      RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
-      if ("No".equalsIgnoreCase(directorModel.getCheckDraft())) {
+    if ("Step 1".equalsIgnoreCase(requestWrapper.getStepForSave())) {
+      requestStagingDTO.setCompanyName(user.get("companyName"));
+      requestStagingDTO.setCompanyAddress(user.get("companyAddress"));
+      requestStagingDTO.setRequestType(user.get("mandateResolution"));
+      //If Request Type is present setCheck Box
+      String tools = String.join(",",
+          user.get("toolOne"),
+          user.get("toolTwo"),
+          user.get("toolThree"),
+          user.get("toolFour"),
+          user.get("toolFive")
+      );
+      requestStagingDTO.setWaiverPermittedTools(tools);
+    } else {
+      requestStagingDTO.setCompanyName(requestWrapper.getRequest().getCompanyName());
+      requestStagingDTO.setCompanyAddress(requestWrapper.getRequest().getCompanyAddress());
+      requestStagingDTO.setRequestType(requestWrapper.getRequestType());
+      //If Request Type is present setCheck Box
+      String tools = String.join(",",
+          requestWrapper.getToolOne(),
+          requestWrapper.getToolTwo(),
+          requestWrapper.getToolThree(),
+          requestWrapper.getToolFour(),
+          requestWrapper.getToolFive()
+      );
+      requestStagingDTO.setWaiverPermittedTools(tools);
+    }
+    List<RequestStagingDTO.AuthorityDraft> listOfAuthority = new ArrayList<>();
+    if (requestWrapper.getDirectorModels() != null) {
+      for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
+        RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
         authorityDraft.setFirstname(directorModel.getName());
         authorityDraft.setSurname(directorModel.getSurname());
         authorityDraft.setIsActive(true);
@@ -971,7 +1024,42 @@ public class MandatesResolutionService {
         listOfAuthority.add(authorityDraft);
       }
     }
+    if (requestWrapper.getListOfDirectors() != null) {
+      for (DirectorModel directorModel : requestWrapper.getListOfDirectors()) {
+        RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
+        authorityDraft.setFirstname(directorModel.getName());
+        authorityDraft.setSurname(directorModel.getSurname());
+        authorityDraft.setDesignation(directorModel.getDesignation());
+        authorityDraft.setInstructions(directorModel.getInstructions());
+        authorityDraft.setIsActive(true);
+        listOfAuthority.add(authorityDraft);
+      }
+    }
     requestStagingDTO.setAuthorities(listOfAuthority);
+    List<RequestStagingDTO.AccountDraft> listOfAddAccount = new ArrayList<>();
+    if (requestWrapper.getListOfAddAccount() != null) {
+      for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
+        RequestStagingDTO.AccountDraft accountDraft = new RequestStagingDTO.AccountDraft();
+        accountDraft.setAccountName(model.getAccountName());
+        accountDraft.setAccountNumber(model.getAccountNumber());
+        accountDraft.setIsActive(true);
+        List<RequestStagingDTO.SignatoryDraft> listOfSignatory = new ArrayList<>();
+        for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
+          RequestStagingDTO.SignatoryDraft signatoryDraft = new RequestStagingDTO.SignatoryDraft();
+          signatoryDraft.setFullName(signatoryModel.getFullName());
+          signatoryDraft.setCapacity(signatoryModel.getCapacity());
+          signatoryDraft.setIsActive(true);
+          signatoryDraft.setIdNumber(signatoryModel.getIdNumber());
+          signatoryDraft.setGroupCategory(signatoryModel.getGroup());
+          signatoryDraft.setInstructions(signatoryModel.getInstruction());
+          listOfSignatory.add(signatoryDraft);
+        }
+        accountDraft.setSignatories(listOfSignatory);
+        listOfAddAccount.add(accountDraft);
+      }
+      requestStagingDTO.setAccounts(listOfAddAccount);
+      requestStagingDTO.setRequestSubStatus(requestWrapper.getStepForSave());
+    }
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
     HttpEntity<RequestStagingDTO> entity = new HttpEntity<>(requestStagingDTO, headers);
