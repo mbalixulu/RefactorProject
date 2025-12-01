@@ -21,4 +21,5 @@ public class DirectorModel {
   private String pageCheck;
   private String instructions;
   private DirectorErrorModel directorErrorModel;
+  private String checkDraft;
 }

@@ -19,8 +19,8 @@
                                     <comm:value>Search Result</comm:value>
                                 </comm:boxSymbol>
                                 <comm:boxSymbol xsi:type="comm:textReadout"
-                                                     comm:subHeading="Registration Number:"
-                                                     comm:color="ghostmedium">
+                                                comm:subHeading="Registration Number:"
+                                                comm:color="ghostmedium">
                                     <comm:value>
                                         <xsl:value-of
                                                 select="requestWrapper/request/registrationNumber"/>
@@ -51,14 +51,14 @@
                                 <comm:boxSymbol xsi:type="comm:textHeading" comm:size="4">
                                     <comm:value>Company waiver *</comm:value>
                                 </comm:boxSymbol>
-                                    <comm:boxSymbol xsi:type="comm:input"
-                                                    comm:name="toolOne"
-                                                    comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
-                                                    comm:label="Tool 1">
-                                        <comm:value>
-                                            <xsl:value-of select="requestWrapper/toolOne"/>
-                                        </comm:value>
-                                    </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="toolOne"
+                                                comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
+                                                comm:label="Tool 1">
+                                    <comm:value>
+                                        <xsl:value-of select="requestWrapper/toolOne"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
                                 <comm:boxSymbol xsi:type="comm:input"
                                                 comm:name="toolTwo"
                                                 comm:errorMessage="{requestWrapper/searchResultsErrorModel/toolOne}"
@@ -166,12 +166,22 @@
                             <comm:rowGroup xsi:type="comm:rowGroup"
                                            comm:groupId="xxxx"
                                            comm:groupHeaderLabel="Label XXXXX">
-                                <comm:groupTableButton xsi:type="comm:imageButton"
-                                                       comm:tooltip="true"
-                                                       comm:formName="WrapupLandingForm"
-                                                       comm:tip="" comm:target="main"
-                                                       comm:url="app-domain/mandates-and-resolutions/tablePopup"
-                                                       comm:id="gp1"/>
+                                <xsl:if test="requestWrapper/checkDirectorButton = 'false'">
+                                    <comm:groupTableButton xsi:type="comm:imageButton"
+                                                           comm:tooltip="true"
+                                                           comm:formName="WrapupLandingForm"
+                                                           comm:tip="" comm:target="main"
+                                                           comm:url="app-domain/mandates-and-resolutions/tablePopup"
+                                                           comm:id="gp1"/>
+                                </xsl:if>
+                                <xsl:if test="requestWrapper/checkDirectorButton = 'true'">
+                                    <comm:groupTableButton xsi:type="comm:imageButton"
+                                                           comm:tooltip="true"
+                                                           comm:formName="WrapupLandingForm"
+                                                           comm:tip="" comm:target="main"
+                                                           comm:url="app-domain/mandates-and-resolutions/tablesPopupDraft"
+                                                           comm:id="gp1"/>
+                                </xsl:if>
                             </comm:rowGroup>
 
                             <xsl:for-each
@@ -419,14 +429,22 @@
             </symbol>
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="comm:footer"
                     comm:text="" comm:textAlign="left" comm:buttonAlign="right">
-                <comm:baseButton comm:id="backSearch" comm:target="main"
-                                 comm:url="app-domain/mandates-and-resolutions/backCreateReq"
-                                 comm:label="Back" comm:formSubmit="true"/>
+                <xsl:if test="requestWrapper/checkBackOption = 'true'">
+                    <comm:baseButton comm:id="backSearch" comm:target="main"
+                                     comm:url="app-domain/mandates-and-resolutions/backCreateReq"
+                                     comm:label="Back" comm:formSubmit="true"/>
+                </xsl:if>
+                <xsl:if test="requestWrapper/checkBackOption = 'false'">
+                    <comm:baseButton comm:id="backSearch" comm:target="main"
+                                     comm:url="app-domain/mandates-and-resolutions/draftRequests"
+                                     comm:label="Back" comm:formSubmit="true"/>
+                </xsl:if>
                 <comm:baseButton comm:id="save"
                                  comm:target="main"
                                  comm:url="app-domain/mandates-and-resolutions/searchAccountSave"
                                  comm:label="Save"
                                  comm:formSubmit="true"/>
+                <xsl:if test="requestWrapper/checkDirectorButton = 'false'">
                 <xsl:if test="requestWrapper/checkMandates = 'true'">
                     <comm:baseButton comm:id="proceed" comm:target="main"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToAccount"
@@ -441,6 +459,25 @@
                     <comm:baseButton comm:id="proceed" comm:target="main"
                                      comm:url="app-domain/mandates-and-resolutions/proceedToAccount"
                                      comm:label="Continue" comm:formSubmit="true"/>
+                </xsl:if>
+                </xsl:if>
+
+                <xsl:if test="requestWrapper/checkDirectorButton = 'true'">
+                    <xsl:if test="requestWrapper/checkMandates = 'true'">
+                        <comm:baseButton comm:id="proceed" comm:target="main"
+                                         comm:url="app-domain/mandates-and-resolutions/proceedToAccountForDraft"
+                                         comm:label="Continue" comm:formSubmit="true"/>
+                    </xsl:if>
+                    <xsl:if test="requestWrapper/checkResolution = 'true'">
+                        <comm:baseButton comm:id="proceed" comm:target="main"
+                                         comm:url="app-domain/mandates-and-resolutions/proceedToAccountReso"
+                                         comm:label="Continue" comm:formSubmit="true"/>
+                    </xsl:if>
+                    <xsl:if test="requestWrapper/checkMandatesAndresolution = 'true'">
+                        <comm:baseButton comm:id="proceed" comm:target="main"
+                                         comm:url="app-domain/mandates-and-resolutions/proceedToAccountForDraft"
+                                         comm:label="Continue" comm:formSubmit="true"/>
+                    </xsl:if>
                 </xsl:if>
             </symbol>
             <symbol xsi:type="comm:setEventAjax"

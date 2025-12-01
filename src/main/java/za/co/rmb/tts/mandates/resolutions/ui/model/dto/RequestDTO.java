@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @XmlRootElement(name = "request")
 @XmlAccessorType(XmlAccessType.FIELD)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RequestDTO implements Serializable {
+public class RequestDTO {
 
   @XmlElement(name = "registrationNumber")
   private String registrationNumber;
