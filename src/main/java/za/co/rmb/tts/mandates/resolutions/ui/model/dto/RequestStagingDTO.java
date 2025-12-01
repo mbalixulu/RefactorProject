@@ -54,6 +54,7 @@ public class RequestStagingDTO {
     private String firstname;
     private String surname;
     private String designation;
+    private String instructions;
     private Boolean isActive = Boolean.TRUE;
   }
 

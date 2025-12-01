@@ -9,6 +9,8 @@ import java.io.Serializable;
 import java.util.List;
 
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel;
@@ -18,6 +20,8 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.ResolutionsAutoFillErro
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel;
 
 @Data
+@Getter
+@Setter
 @XmlRootElement(name = "requestWrapper")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class RequestWrapper {
@@ -31,8 +35,8 @@ public class RequestWrapper {
   private String checkMandatesAndresolution;
   private String checkCreate;
   private String checkDirectorPage;
-  private String checkStyleOne;
-  private String checkStyleTwo;
+  private boolean checkStyleOne;
+  private boolean checkStyleTwo;
   private List<DirectorModel> directorModels;
   private List<DirectorModel> listOfDirectors;
   private String checkSecondDirectorList;
@@ -47,6 +51,8 @@ public class RequestWrapper {
   private String toolThree;
   private String toolFour;
   private String toolFive;
+  private String checkBackOption;
+  private String checkDirectorButton;
 
 
   //Search Results
@@ -85,4 +91,5 @@ public class RequestWrapper {
     @XmlElement(name = "status")
     private java.util.List<String> statuses = new java.util.ArrayList<>();
   }
+
 }

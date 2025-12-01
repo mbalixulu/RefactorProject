@@ -61,6 +61,7 @@ public class MandatesResolutionService {
       directorModel.setDesignation(director.get("designation"));
       directorModel.setSurname(director.get("surname"));
       directorModel.setInstructions(null);
+
     } else {
       directorModel = (DirectorModel) httpSession.getAttribute("DirctorsNew");
       directorModel.setName(director.get("name"));
@@ -243,8 +244,41 @@ public class MandatesResolutionService {
     }
     requestWrapper.setRequestType(user.get("mandateResolution"));
     if (!user.get("mandateResolution").isBlank()) {
-      requestWrapper.setCheckStyleOne(user.get("check1"));
-      requestWrapper.setCheckStyleTwo(user.get("check2"));
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean(user.get("check1")));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(user.get("check2")));
+    }
+    return requestWrapper;
+  }
+
+  public RequestWrapper setSearchResultDraft(Map<String, String> user,
+                                             RequestWrapper requestWrapper) {
+    RequestDTO createModel = (RequestDTO) httpSession.getAttribute("requestData");
+    createModel.setCompanyName(user.get("companyName"));
+    createModel.setCompanyAddress(user.get("companyAddress"));
+    requestWrapper.setRequest(createModel);
+    if (!user.get("toolOne").isBlank()) {
+      requestWrapper.setToolOne(user.get("toolOne"));
+    }
+
+    if (!user.get("toolTwo").isBlank()) {
+      requestWrapper.setToolTwo(user.get("toolTwo"));
+    }
+
+    if (!user.get("toolThree").isBlank()) {
+      requestWrapper.setToolThree(user.get("toolThree"));
+    }
+
+    if (!user.get("toolFour").isBlank()) {
+      requestWrapper.setToolFour(user.get("toolFour"));
+    }
+
+    if (!user.get("toolFive").isBlank()) {
+      requestWrapper.setToolFive(user.get("toolFive"));
+    }
+    requestWrapper.setRequestType(user.get("mandateResolution"));
+    if (!user.get("mandateResolution").isBlank()) {
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean(user.get("check1")));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(user.get("check2")));
     }
     return requestWrapper;
   }
@@ -387,8 +421,8 @@ public class MandatesResolutionService {
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
     if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
       payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleTwo()));
-      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleOne()));
+      payload.put("draftWaiverConfirmCheck", requestWrapper.isCheckStyleTwo());
+      payload.put("draftSigmaConfirmCheck", requestWrapper.isCheckStyleOne());
     }
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", requestWrapper.getStepForSave());
@@ -445,6 +479,7 @@ public class MandatesResolutionService {
     }
     if (requestWrapper.getListOfDirectors() != null) {
       for (DirectorModel directorModel : requestWrapper.getListOfDirectors()) {
+        System.out.println("=====Print====" + directorModel.getInstructions());
         authorities.add(Map.of(
             "firstname", directorModel.getName(),
             "surname", directorModel.getSurname(),
@@ -474,8 +509,8 @@ public class MandatesResolutionService {
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
     if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
       payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleTwo()));
-      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.getCheckStyleOne()));
+      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleTwo()));
+      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleOne()));
     }
     payload.put("requestStatus", "Draft");
     payload.put("requestSubStatus", "Step 3");
@@ -552,8 +587,8 @@ public class MandatesResolutionService {
     request.put("sla", 3);
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
-      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -562,7 +597,6 @@ public class MandatesResolutionService {
 
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
-    waiver.put("permittedTools", "ToolA,ToolB");
     String tools = String.join(",",
         wrapper.getToolOne(),
         wrapper.getToolTwo(),
@@ -650,8 +684,8 @@ public class MandatesResolutionService {
     request.put("sla", 3);
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
-      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -660,7 +694,6 @@ public class MandatesResolutionService {
 
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
-    waiver.put("permittedTools", "ToolA,ToolB");
     String tools = String.join(",",
         wrapper.getToolOne(),
         wrapper.getToolTwo(),
@@ -717,13 +750,16 @@ public class MandatesResolutionService {
     company.put("name", wrapper.getRequest().getCompanyName());
     company.put("address", wrapper.getRequest().getCompanyAddress());
     company.put("creator", user.getUsername());
-
     Map<String, Object> request = new HashMap<>();
     request.put("sla", 3);
+    if (wrapper.getRequest().getStagingId() != null
+        && wrapper.getRequest().getStagingId() == 0) {
+      request.put("stagingId", wrapper.getRequest().getStagingId());
+    }
     if (wrapper.getRequestType() != null && wrapper.getRequestType() != "") {
       request.put("type", wrapper.getRequestType());
-      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleTwo()));
-      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.getCheckStyleOne()));
+      request.put("waiverConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleTwo()));
+      request.put("sigmaConfirmCheck", Boolean.valueOf(wrapper.isCheckStyleOne()));
     }
     request.put("status", "In Progress");
     request.put("subStatus", "Hogan Verification Pending");
@@ -732,7 +768,6 @@ public class MandatesResolutionService {
 
     Map<String, Object> waiver = new HashMap<>();
     waiver.put("ucn", "UCN-7788");
-    waiver.put("permittedTools", "ToolA,ToolB");
     String tools = String.join(",",
         wrapper.getToolOne(),
         wrapper.getToolTwo(),
@@ -797,5 +832,150 @@ public class MandatesResolutionService {
         restTemplate.getForObject(url, RequestStagingDTO[].class);
     List<RequestStagingDTO> list = (raws == null) ? List.of() : Arrays.asList(raws);
     return list;
+  }
+
+  public RequestStagingDTO getDraftsById(Long id) {
+    String url = mandatesResolutionsDaoURL + "/api/request-staging/" + id;
+    RequestStagingDTO stage =
+        restTemplate.getForObject(url, RequestStagingDTO.class, id);
+    return stage;
+  }
+
+  public RequestWrapper processViewDraft(RequestStagingDTO stagingDTO) {
+    RequestWrapper requestWrapper = new RequestWrapper();
+    RequestDTO dto = new RequestDTO();
+    dto.setRegistrationNumber(stagingDTO.getCompanyRegistrationNumber());
+    dto.setCompanyName(stagingDTO.getCompanyName());
+    dto.setCompanyAddress(stagingDTO.getCompanyAddress());
+    dto.setSla(String.valueOf(stagingDTO.getRequestSla()));
+    dto.setStagingId(stagingDTO.getStagingId());
+    dto.setStatus(stagingDTO.getRequestStatus());
+    dto.setSubStatus(stagingDTO.getRequestSubStatus());
+    dto.setCurrentAssignedUser(stagingDTO.getAssignedUser());
+    requestWrapper.setRequest(dto);
+    httpSession.setAttribute("requestData", dto);
+    requestWrapper.setCheckBackOption("false");
+    String waiver = stagingDTO.getWaiverPermittedTools();
+    List<String> listOfTools = Arrays.asList(waiver.split(","));
+    requestWrapper.setToolOne(listOfTools.get(0));
+    requestWrapper.setToolTwo(listOfTools.get(1));
+    requestWrapper.setToolThree(listOfTools.get(2));
+    requestWrapper.setToolFour(listOfTools.get(3));
+    requestWrapper.setToolFive(listOfTools.get(4));
+    List<RequestStagingDTO.AuthorityDraft> listOfAuthority = stagingDTO.getAuthorities();
+    List<DirectorModel> listOfDireactor = new ArrayList<>();
+    List<DirectorModel> listForLast = new ArrayList<>();
+    for (RequestStagingDTO.AuthorityDraft authorityDraft : listOfAuthority) {
+      DirectorModel model = new DirectorModel();
+      if (authorityDraft.getInstructions() != null) {
+        model.setName(authorityDraft.getFirstname());
+        model.setSurname(authorityDraft.getSurname());
+        model.setDesignation(authorityDraft.getDesignation());
+        model.setInstructions(authorityDraft.getInstructions());
+        int size = listForLast.size();
+        model.setUserInList(++size);
+        listForLast.add(model);
+      } else {
+        model.setName(authorityDraft.getFirstname());
+        model.setSurname(authorityDraft.getSurname());
+        model.setDesignation(authorityDraft.getDesignation());
+        int size = listOfDireactor.size();
+        model.setUserInList(++size);
+        listOfDireactor.add(model);
+      }
+    }
+    requestWrapper.setDirectorModels(listOfDireactor);
+    requestWrapper.setListOfDirectors(listForLast);
+    requestWrapper.setRequestType(stagingDTO.getRequestType());
+    if ("Mandate and Resolution".equalsIgnoreCase(stagingDTO.getRequestType())) {
+      requestWrapper.setCheckMandatesAndresolution("true");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+    } else {
+      requestWrapper.setCheckMandatesAndresolution("false");
+    }
+
+    if ("Mandate".equalsIgnoreCase(stagingDTO.getRequestType())) {
+      requestWrapper.setCheckMandates("true");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+    } else {
+      requestWrapper.setCheckMandates("false");
+    }
+
+    if ("Resolution".equalsIgnoreCase(stagingDTO.getRequestType())) {
+      requestWrapper.setCheckResolution("true");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+    } else {
+      requestWrapper.setCheckResolution("false");
+    }
+    requestWrapper.setCheckDirectorButton("true");
+    List<RequestStagingDTO.AccountDraft> listOfAccount = stagingDTO.getAccounts();
+    if (listOfAccount != null && !listOfAccount.isEmpty()) {
+      List<AddAccountModel> listOfAddAccount = new ArrayList<>();
+      for (RequestStagingDTO.AccountDraft accountDraft : listOfAccount) {
+        AddAccountModel addAccountModel = new AddAccountModel();
+        addAccountModel.setAccountName(accountDraft.getAccountName());
+        addAccountModel.setAccountNumber(accountDraft.getAccountNumber());
+        List<RequestStagingDTO.SignatoryDraft> listOfSignatory = accountDraft.getSignatories();
+        List<SignatoryModel> signatoryList = new ArrayList<>();
+        for (RequestStagingDTO.SignatoryDraft signatoryDraft : listOfSignatory) {
+          SignatoryModel model = new SignatoryModel();
+          model.setFullName(signatoryDraft.getFullName());
+          model.setIdNumber(signatoryDraft.getIdNumber());
+          model.setInstruction(signatoryDraft.getInstructions());
+          model.setCapacity(signatoryDraft.getCapacity());
+          model.setGroup(signatoryDraft.getGroupCategory());
+          model.setCheckDocConfirm("true");
+          signatoryList.add(model);
+        }
+        addAccountModel.setListOfSignatory(signatoryList);
+        listOfAddAccount.add(addAccountModel);
+      }
+      requestWrapper.setListOfAddAccount(listOfAddAccount);
+    } else {
+      requestWrapper.setListOfAddAccount(null);
+    }
+
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    return requestWrapper;
+  }
+
+  public void updateDraftByStagingIdStepOne(Long stagingId, Map<String, String> user,
+                                            RequestStagingDTO requestStagingDTO,
+                                            RequestWrapper requestWrapper) {
+    String url = mandatesResolutionsDaoURL + "/api/request-staging/" + stagingId;
+    requestStagingDTO.setCompanyRegistrationNumber(requestStagingDTO
+        .getCompanyRegistrationNumber());
+    requestStagingDTO.setCompanyName(user.get("companyName"));
+    requestStagingDTO.setCompanyAddress(user.get("companyAddress"));
+    requestStagingDTO.setRequestType(user.get("mandateResolution"));
+    //If Request Type is present setCheck Box
+    String tools = String.join(",",
+        user.get("toolOne"),
+        user.get("toolTwo"),
+        user.get("toolThree"),
+        user.get("toolFour"),
+        user.get("toolFive")
+    );
+    requestStagingDTO.setWaiverPermittedTools(tools);
+    List<RequestStagingDTO.AuthorityDraft> listOfAuthority = requestStagingDTO.getAuthorities();
+    for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
+      RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
+      if ("No".equalsIgnoreCase(directorModel.getCheckDraft())) {
+        authorityDraft.setFirstname(directorModel.getName());
+        authorityDraft.setSurname(directorModel.getSurname());
+        authorityDraft.setIsActive(true);
+        authorityDraft.setDesignation(directorModel.getDesignation());
+        listOfAuthority.add(authorityDraft);
+      }
+    }
+    requestStagingDTO.setAuthorities(listOfAuthority);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    HttpEntity<RequestStagingDTO> entity = new HttpEntity<>(requestStagingDTO, headers);
+    ResponseEntity<String> response =
+        restTemplate.exchange(url, HttpMethod.PUT, entity, String.class);
   }
 }

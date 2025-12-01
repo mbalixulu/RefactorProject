@@ -169,6 +169,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> displayCreateRequest() {
     RequestWrapper requestWrapper = new RequestWrapper();
     requestWrapper.setCheckCreate("false");
+    requestWrapper.setCheckDirectorButton("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), requestWrapper);
     return ResponseEntity.ok(page);
@@ -288,6 +289,7 @@ public class MandatesResolutionUIController {
     }
     dto.setEditable(true);
     wrapper.setRequest(dto);
+    wrapper.setCheckBackOption("true");
     httpSession.setAttribute("requestData", dto);
     httpSession.setAttribute("RequestWrapper", wrapper);
     if (check) {
@@ -370,8 +372,8 @@ public class MandatesResolutionUIController {
     }
     requestWrapper.setRequestType(wave.get("mandateResolution"));
     if (!wave.get("mandateResolution").isBlank()) {
-      requestWrapper.setCheckStyleOne(wave.get("check1"));
-      requestWrapper.setCheckStyleTwo(wave.get("check2"));
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean(wave.get("check1")));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(wave.get("check2")));
     }
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
@@ -443,6 +445,7 @@ public class MandatesResolutionUIController {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
+    directorModel.setCheckDraft("No");
 
     if (check) {
       directorModel.setDirectorErrorModel(dirctorErrorModel);
@@ -450,6 +453,7 @@ public class MandatesResolutionUIController {
     } else {
       int size = directorModelList.size();
       directorModel.setUserInList(++size);
+      System.out.println("=====print ======" + directorModel.getUserInList());
       directorModelList.add(directorModel);
       requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
@@ -509,8 +513,8 @@ public class MandatesResolutionUIController {
   }
 
   @PostMapping(value = "/removeDirector/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> removeDirector(@PathVariable String userInList,
-                                               @RequestParam Map<String, String> user) {
+  public ResponseEntity<String> removeDirector(@PathVariable String userInList) {
+    System.out.println("======Print ======" + userInList);
     String page = "";
     mandatesResolutionService.removeSpecificAdmin(Integer.valueOf(userInList));
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
@@ -658,32 +662,32 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckMandates("true");
       requestWrapper.setCheckResolution("false");
       requestWrapper.setCheckMandatesAndresolution("false");
-      requestWrapper.setCheckStyleOne("false");
-      requestWrapper.setCheckStyleTwo("false");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("false"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("false"));
     }
 
     if ("Resolution".equalsIgnoreCase(user.get("mandateResolution"))) {
       requestWrapper.setCheckResolution("true");
       requestWrapper.setCheckMandates("false");
       requestWrapper.setCheckMandatesAndresolution("false");
-      requestWrapper.setCheckStyleOne("false");
-      requestWrapper.setCheckStyleTwo("false");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("false"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("false"));
     }
 
     if ("Mandate And Resolution".equalsIgnoreCase(user.get("mandateResolution"))) {
       requestWrapper.setCheckMandatesAndresolution("true");
       requestWrapper.setCheckMandates("false");
       requestWrapper.setCheckResolution("false");
-      requestWrapper.setCheckStyleOne("false");
-      requestWrapper.setCheckStyleTwo("false");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("false"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("false"));
     }
 
     if ("Please select".equalsIgnoreCase(user.get("mandateResolution"))) {
       requestWrapper.setCheckMandatesAndresolution("false");
       requestWrapper.setCheckMandates("false");
       requestWrapper.setCheckResolution("false");
-      requestWrapper.setCheckStyleOne("false");
-      requestWrapper.setCheckStyleTwo("false");
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("false"));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("false"));
     }
     RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
     dto.setCompanyName(user.get("companyName"));
@@ -859,7 +863,14 @@ public class MandatesResolutionUIController {
         requestWrapper = mandatesResolutionService.setSearchResult(user);
     requestWrapper.setStepForSave("Step 1");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    mandatesResolutionService.sendRequestStaging();
+    if (requestWrapper.getRequest().getStagingId() != null) {
+      RequestStagingDTO stagingDTO = mandatesResolutionService.getDraftsById(requestWrapper
+          .getRequest().getStagingId());
+      mandatesResolutionService.updateDraftByStagingIdStepOne(requestWrapper.getRequest()
+          .getStagingId(), user, stagingDTO, requestWrapper);
+    } else {
+      mandatesResolutionService.sendRequestStaging();
+    }
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
       return displayAdminApproval();
@@ -1323,6 +1334,11 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
     page = xsltProcessor.generatePage(
         xslPagePath("MandatesAutoFill"), requestWrapper);
     return ResponseEntity.ok(page);
@@ -3173,7 +3189,9 @@ public class MandatesResolutionUIController {
     session.setAttribute("requestData", dto);
 
     //9) Render SearchResults page
-    RequestWrapper wrapper = new RequestWrapper();
+    RequestWrapper wrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    wrapper.setCheckBackOption("true");
     wrapper.setRequest(dto);
     String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
@@ -6552,153 +6570,153 @@ public class MandatesResolutionUIController {
   }
 
   @GetMapping(value = "/draft/view", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> viewDraft(
-      @RequestParam("id") Long id,
-      HttpSession session
-  ) {
-    final String base = mandatesResolutionsDaoURL;
-    RestTemplate rt = new RestTemplate();
-
-    RequestStagingDTO s =
-        rt.getForObject(base + "/api/request-staging/{id}", RequestStagingDTO.class, id);
-    if (s == null) {
-      return ResponseEntity.notFound().build();
+  public ResponseEntity<String> viewDraft(@RequestParam("id") Long id) {
+    RequestStagingDTO stagingDTO = mandatesResolutionService.getDraftsById(id);
+    RequestWrapper wrapper = mandatesResolutionService.processViewDraft(stagingDTO);
+    String pageXml = "";
+    if ("Step 1".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
+      pageXml = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
     }
 
-    // 1) Which page to open? Prefer the token saved in subStatus "Saved@PAGE"
-    String page = normalizePageCode(extractLastPageCode(s.getRequestSubStatus()));
-    if (page == null) {
-      // Fallback heuristic (old behaviour)
-      page = (s.getAccounts() != null && !s.getAccounts().isEmpty())
-          ? "MANDATES_AUTOFILL"
-          : "SEARCH_RESULTS";
-    }
-
-    // 2)Keeps existing pdfSessionsId
-    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
-    if (pdfSessionId == null || pdfSessionId.isBlank()) {
-      pdfSessionId = java.util.UUID.randomUUID().toString();
-    }
-
-    // 3) Build wrapper based on page and render appropriate XSL
-    RequestWrapper w;
-    String xsl;
-
-    switch (page) {
-      case "SEARCH_RESULTS" ->
-        {
-          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-          xsl = "SearchResults";
-        }
-      case "DIRECTORS_DETAILS" ->
-        {
-          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-          xsl = "MandatesResolutionsDirectorsDetails";
-        }
-      // Treat RESOLUTION_AUTOFILL like the directors/search path
-      case "RESOLUTION_AUTOFILL" ->
-        {
-          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId); // includes directors + tools
-          xsl = "ResolutionAutoFill";
-        }
-      case "MANDATES_AUTOFILL",
-           "ACC_DETAILS",
-           "MANDATES_SIGNATURE_CARD",
-           "MANDATES_RESOLUTIONS_SIGNATURE_CARD" ->
-        {
-          w = buildAutoFillWrapperFromStaging(id, pdfSessionId); // accounts + signatories pages
-          xsl = switch (page) {
-            case "ACC_DETAILS" -> "MandatesResolutionsAccDetails";
-            case "MANDATES_SIGNATURE_CARD" -> "MandatesSignatureCard";
-            case "MANDATES_RESOLUTIONS_SIGNATURE_CARD" -> "MandatesResolutionsSignatureCard";
-            default -> "MandatesAutoFill";
-          };
-        }
-      default ->
-        {
-          w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-          xsl = "SearchResults";
-        }
-    }
-
-    //  Seed dropdown selection (numeric "1|2|3") into the wrapper for XSLT
-    String sel = normalizeSelCode(s.getRequestType());
-    if (sel == null && s.getRequestSubStatus() != null) {
-      int at = s.getRequestSubStatus().lastIndexOf('@');
-      if (at > -1) {
-        sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
+    if ("Step 2".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
+      if (wrapper.getListOfAddAccount() == null) {
+        wrapper.setAccountCheck("false");
+      } else {
+        wrapper.setAccountCheck("true");
       }
-    }
-    if (sel != null && w != null && w.getRequest() != null) {
-      w.getRequest().setMandateResolution(sel);
+      pageXml = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
     }
 
-    // Put in session for downstream flows
-    session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
-    session.setAttribute("requestData", w.getRequest());
+    if ("Step 3".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
+      pageXml = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+    }
 
-    String pageXml = xsltProcessor.generatePage(xslPagePath(xsl), w);
-    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(pageXml);
+    if ("Step 4".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
+      pageXml = xsltProcessor.generatePage(xslPagePath("Resolutions"), wrapper);
+    }
+
+    return ResponseEntity.ok(pageXml);
   }
 
-  private ResponseEntity<String> renderDraft(Long id, HttpSession session) {
-    final String base = mandatesResolutionsDaoURL;
-    RestTemplate rt = new RestTemplate();
-
-    RequestStagingDTO s =
-        rt.getForObject(base + "/api/request-staging/{id}", RequestStagingDTO.class, id);
-    if (s == null) {
-      String xml = "<page><error>Draft not found.</error></page>";
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(xml);
+  @PostMapping(value = "/tablesPopupDraft", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> tablesDraft(@RequestParam Map<String, String> wave) {
+    String page = "";
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    RequestDTO dto = (RequestDTO) httpSession.getAttribute("requestData");
+    dto.setCompanyName(wave.get("companyName"));
+    dto.setCompanyAddress(wave.get("companyAddress"));
+    httpSession.setAttribute("requestData", dto);
+    requestWrapper.setRequest(dto);
+    if (!wave.get("toolOne").isBlank()) {
+      requestWrapper.setToolOne(wave.get("toolOne"));
     }
 
-    // Decide page: if draft already has accounts, go to MandatesAutoFill; otherwise SearchResults
-    boolean goAutoFill = (s.getAccounts() != null && !s.getAccounts().isEmpty());
-
-    String pdfSessionId = (String) session.getAttribute("pdfSessionId");
-    if (pdfSessionId == null || pdfSessionId.isBlank()) {
-      pdfSessionId = java.util.UUID.randomUUID().toString();
+    if (!wave.get("toolTwo").isBlank()) {
+      requestWrapper.setToolTwo(wave.get("toolTwo"));
     }
 
-    if (goAutoFill) {
-      RequestWrapper w = buildAutoFillWrapperFromStaging(id, pdfSessionId);
+    if (!wave.get("toolThree").isBlank()) {
+      requestWrapper.setToolThree(wave.get("toolThree"));
+    }
 
-      String sel = normalizeSelCode(s.getRequestType());
-      if (sel == null && s.getRequestSubStatus() != null) {
-        int at = s.getRequestSubStatus().lastIndexOf('@');
-        if (at > -1) {
-          sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
-        }
-      }
-      if (sel != null && w.getRequest() != null) {
-        w.getRequest().setMandateResolution(sel);
-      }
+    if (!wave.get("toolFour").isBlank()) {
+      requestWrapper.setToolFour(wave.get("toolFour"));
+    }
 
-      session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
-      session.setAttribute("requestData", w.getRequest());
-      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), w);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+    if (!wave.get("toolFive").isBlank()) {
+      requestWrapper.setToolFive(wave.get("toolFive"));
+    }
+    requestWrapper.setRequestType(wave.get("mandateResolution"));
+    if (!wave.get("mandateResolution").isBlank()) {
+      requestWrapper.setCheckStyleOne(Boolean.parseBoolean(wave.get("check1")));
+      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(wave.get("check2")));
+    }
+    requestWrapper.setCheckDirectorEmpty("false");
+    requestWrapper.setSearchResultsErrorModel(null);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    DirectorModel directorModel = new DirectorModel();
+    directorModel.setButtonCheck("true");
+    directorModel.setPageCheck("false");
+    httpSession.setAttribute("Dirctors", directorModel);
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    return ResponseEntity.ok(page);
+  }
 
+  @PostMapping(value = "/proceedToAccountForDraft",
+      produces = { MediaType.APPLICATION_XML_VALUE, MediaType.TEXT_XML_VALUE })
+  public ResponseEntity<String> proceedToAccountForDraft(@RequestParam Map<String, String> user) {
+    RequestWrapper requestWrapper =
+        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
+    SearchResultsErrorModel searchResultsErrorModel = new SearchResultsErrorModel();
+    boolean check = false;
+    String page = "";
+    requestWrapper = mandatesResolutionService.setSearchResultDraft(user, requestWrapper);
+    if (user.get("companyName").isBlank()) {
+      searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("companyAddress").isBlank()) {
+      searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
+      check = true;
+    }
+
+    if (user.get("toolOne").isBlank() && user.get("toolTwo").isBlank()
+        && user.get("toolThree").isBlank() && user.get("toolFour").isBlank()
+        && user.get("toolFive").isBlank()) {
+      searchResultsErrorModel.setToolOne("At least One Waiver tool need for the Request !");
+      check = true;
+    }
+
+    List<DirectorModel> directors = requestWrapper.getDirectorModels();
+    if (directors == null || directors.isEmpty()) {
+      requestWrapper.setCheckDirectorEmpty("true");
+      check = true;
     } else {
-      RequestWrapper w = buildSearchResultsWrapperFromStaging(id, pdfSessionId);
-
-      //Seed dropdown selection for the SearchResults page
-      String sel = normalizeSelCode(s.getRequestType());
-      if (sel == null && s.getRequestSubStatus() != null) {
-        int at = s.getRequestSubStatus().lastIndexOf('@');
-        if (at > -1) {
-          sel = normalizeSelCode(s.getRequestSubStatus().substring(at + 1));
-        }
-      }
-      if (sel != null && w.getRequest() != null) {
-        w.getRequest().setMandateResolution(sel);
-      }
-
-      session.setAttribute("pdfSessionId", w.getRequest().getPdfSessionId());
-      session.setAttribute("requestData", w.getRequest());
-      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), w);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+      requestWrapper.setCheckDirectorEmpty("false");
     }
+
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
+        user.get("mandateResolution"))) {
+      searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
+      check = true;
+    } else {
+      if (user.get("check1").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleOne("Select the Check box !");
+        check = true;
+      }
+      if (user.get("check2").equalsIgnoreCase("false")) {
+        searchResultsErrorModel.setCheckStyleTwo("Select the Check box !");
+        check = true;
+      }
+    }
+
+    if (requestWrapper.getListOfAddAccount() == null) {
+      requestWrapper.setAccountCheck("false");
+    } else {
+      requestWrapper.setAccountCheck("true");
+    }
+
+    requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
+    httpSession.setAttribute("RequestWrapper", requestWrapper);
+    if (check) {
+      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+          (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+    } else {
+      if (requestWrapper.getListOfAddAccount() == null
+          || requestWrapper.getListOfAddAccount().isEmpty()) {
+        AddAccountModel addAccountModel = new AddAccountModel();
+        addAccountModel.setButtonCheck("false");
+        httpSession.setAttribute("Signatory", addAccountModel);
+        httpSession.setAttribute("RequestWrapper", requestWrapper);
+        page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+      } else {
+        page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+            (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
+      }
+    }
+    return new ResponseEntity<>(page, HttpStatus.OK);
   }
 
   @RequestMapping(
@@ -6710,7 +6728,7 @@ public class MandatesResolutionUIController {
       @RequestParam("id") Long id,
       HttpSession session
   ) {
-    return viewDraft(id, session);
+    return viewDraft(id);
   }
 
   // ================ ADMIN EDIT ENDPOINTS =================
