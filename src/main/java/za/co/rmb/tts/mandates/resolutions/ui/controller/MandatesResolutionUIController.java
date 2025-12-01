@@ -6472,6 +6472,8 @@ public class MandatesResolutionUIController {
 
       // WORKFLOW-FIRST
       var wfPayload = new java.util.LinkedHashMap<String, Object>();
+      wfPayload.put("status", "In Progress");
+      wfPayload.put("subStatus", restoredPending);
       wfPayload.put("processOutcome", "UnHold");          //adapter triggers Camunda lane
       wfPayload.put("outcome", "UnHold");                 //BPMN gateway: ${outcome == 'UnHold'}
       wfPayload.put("updator", currentDisplayId(session, servletRequest));
