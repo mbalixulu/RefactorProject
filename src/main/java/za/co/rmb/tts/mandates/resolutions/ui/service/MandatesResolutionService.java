@@ -962,14 +962,14 @@ public class MandatesResolutionService {
     requestStagingDTO.setWaiverPermittedTools(tools);
     List<RequestStagingDTO.AuthorityDraft> listOfAuthority = requestStagingDTO.getAuthorities();
     for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
-        RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
-        if ("No".equalsIgnoreCase(directorModel.getCheckDraft())) {
-          authorityDraft.setFirstname(directorModel.getName());
-          authorityDraft.setSurname(directorModel.getSurname());
-          authorityDraft.setIsActive(true);
-          authorityDraft.setDesignation(directorModel.getDesignation());
-          listOfAuthority.add(authorityDraft);
-        }
+      RequestStagingDTO.AuthorityDraft authorityDraft = new RequestStagingDTO.AuthorityDraft();
+      if ("No".equalsIgnoreCase(directorModel.getCheckDraft())) {
+        authorityDraft.setFirstname(directorModel.getName());
+        authorityDraft.setSurname(directorModel.getSurname());
+        authorityDraft.setIsActive(true);
+        authorityDraft.setDesignation(directorModel.getDesignation());
+        listOfAuthority.add(authorityDraft);
+      }
     }
     requestStagingDTO.setAuthorities(listOfAuthority);
     HttpHeaders headers = new HttpHeaders();
