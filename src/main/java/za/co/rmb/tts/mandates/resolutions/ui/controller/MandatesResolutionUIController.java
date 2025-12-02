@@ -2925,54 +2925,13 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
-  // ============= Export as CSV =============
   @PostMapping(value = "/exportCSV", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayExportCSV() {
-    try {
-      var rt = new RestTemplate();
-      var url = mandatesResolutionsDaoURL + "/api/lov?type=Dropdown&subType=RequestStatus";
-
-      var resp = rt.exchange(url, HttpMethod.GET, null,
-          new org.springframework.core.ParameterizedTypeReference<
-              java.util.List<ListOfValuesDTO>>() {
-          });
-
-      // Exactly what DAO allows (regex is case-sensitive)
-      final java.util.Set<String> allowed = java.util.Set.of(
-          "Draft", "In Progress", "Completed", "On Hold", "Breached"
-      );
-
-      java.util.List<String> statuses = new java.util.ArrayList<>();
-      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-        for (var lov : resp.getBody()) {
-          if (lov != null) {
-            String v = lov.getValue() == null ? "" : lov.getValue().trim();
-            if (!v.isEmpty() && allowed.contains(v)) {
-              statuses.add(v);
-            }
-          }
-        }
-      }
-
-      var wrapper = new RequestWrapper();
-      var lovs = new RequestWrapper.LovsDTO();
-      lovs.setStatuses(statuses);
-      wrapper.setLovs(lovs);
       ExportModel exportModel = new ExportModel();
       exportModel.setButtonCheck("false");
       httpSession.setAttribute("ExportCSV", exportModel);
       String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
       return ResponseEntity.ok(page);
-
-    } catch (Exception e) {
-      String fallback = """
-          <?xml version="1.0" encoding="UTF-8"?>
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Unable to load Export CSV page.</error>
-          </page>
-          """;
-      return ResponseEntity.ok(fallback);
-    }
   }
 
   @PostMapping(value = "/exportRequests", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
