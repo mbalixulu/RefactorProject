@@ -1,6 +1,9 @@
 package za.co.rmb.tts.mandates.resolutions.ui.service;
 
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -9,9 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,9 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.ExportModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
-import za.co.rmb.tts.mandates.resolutions.ui.model.WaveModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
@@ -1099,5 +1100,29 @@ public class MandatesResolutionService {
     HttpEntity<RequestStagingDTO> entity = new HttpEntity<>(requestStagingDTO, headers);
     ResponseEntity<String> response =
         restTemplate.exchange(url, HttpMethod.PUT, entity, String.class);
+  }
+
+  public byte[] exportCsv(ExportModel exportModel) throws IOException {
+    String url = mandatesResolutionsDaoURL + "/api/request/export";
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("status", exportModel.getStatus());
+    payload.put("fromDate", exportModel.getFromDate());
+    payload.put("toDate", exportModel.getToDate());
+    payload.put("type", null);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setAccept(Collections.singletonList(
+        MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )));
+    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+    RestTemplate restTemplate = new RestTemplate();
+    ResponseEntity<byte[]> response = restTemplate.exchange(
+        url,
+        HttpMethod.POST,
+        entity,
+        byte[].class
+    );
+    return response.getBody();
   }
 }
