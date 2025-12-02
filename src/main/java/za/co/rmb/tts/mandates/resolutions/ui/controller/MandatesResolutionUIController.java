@@ -1,7 +1,10 @@
 package za.co.rmb.tts.mandates.resolutions.ui.controller;
 
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,6 +57,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.ExportModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
@@ -2954,8 +2958,10 @@ public class MandatesResolutionUIController {
       var lovs = new RequestWrapper.LovsDTO();
       lovs.setStatuses(statuses);
       wrapper.setLovs(lovs);
-
-      String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), wrapper);
+      ExportModel exportModel = new ExportModel();
+      exportModel.setButtonCheck("false");
+      httpSession.setAttribute("ExportCSV", exportModel);
+      String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2969,33 +2975,45 @@ public class MandatesResolutionUIController {
     }
   }
 
-  @PostMapping(
-      value = "/exportRequests",
-      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
-  )
-  public ResponseEntity<byte[]> exportRequestsPost(
-      HttpServletRequest request,
-      @RequestParam(name = "status", required = false) String status,
-      @RequestParam(name = "fromDate", required = false) String fromDate,
-      @RequestParam(name = "toDate", required = false) String toDate,
-      @RequestParam(name = "type", required = false) String type
-  ) {
-    return exportRequestsDebugInternal(request, status, fromDate, toDate, "POST");
+  @PostMapping(value = "/exportRequests", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<?> exportRequestsPost(@RequestParam Map<String, String> user) {
+
+    ExportModel exportModel = (ExportModel) httpSession.getAttribute("ExportCSV");
+    exportModel.setStatus(user.get("status"));
+    exportModel.setFromDate(user.get("fromDate"));
+    exportModel.setToDate(user.get("toDate"));
+    exportModel.setButtonCheck("true");
+    httpSession.setAttribute("ExportCSV", exportModel);
+
+    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    return ResponseEntity.ok(page);
   }
 
-  @GetMapping(
-      value = "/exportRequests",
-      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
-  )
-  public ResponseEntity<byte[]> exportRequestsGet(
-      HttpServletRequest request,
-      @RequestParam(name = "status", required = false) String status,
-      @RequestParam(name = "fromDate", required = false) String fromDate,
-      @RequestParam(name = "toDate", required = false) String toDate,
-      @RequestParam(name = "type", required = false) String type
-  ) {
-    return exportRequestsDebugInternal(request, status, fromDate, toDate, "GET");
+  @PostMapping(value = "/returnToExport", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<?> returnToExport() {
+    ExportModel exportModel = (ExportModel) httpSession.getAttribute("ExportCSV");
+    exportModel.setButtonCheck("false");
+    httpSession.setAttribute("ExportCSV", exportModel);
+    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    return ResponseEntity.ok(page);
   }
+
+  @GetMapping(value = "/downloadCSV", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+  public void exportRequestsGet(HttpServletResponse response) throws IOException {
+
+    ExportModel exportModel = (ExportModel) httpSession.getAttribute("ExportCSV");
+    byte[] fileBytes = mandatesResolutionService.exportCsv(exportModel);
+    response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    response.setHeader("Content-Disposition", "attachment; filename=\"requests_export.xlsx\"");
+    response.setContentLength(fileBytes.length);
+    ServletOutputStream out = response.getOutputStream();
+    out.write(fileBytes);
+    out.flush();
+    out.close();
+  }
+
 
   private ResponseEntity<byte[]> exportRequestsDebugInternal(
       HttpServletRequest request,
