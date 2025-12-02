@@ -68,6 +68,7 @@ public class RequestStagingDTO {
     private String idNumber;
     private String instructions;     // Add|Remove
     private LocalDateTime instructionsDate;
+    private Boolean signatoryConfirmCheck;
     private String capacity;
     private String groupCategory;
     private Boolean isActive = Boolean.TRUE;

@@ -985,7 +985,7 @@ public class MandatesResolutionService {
           model.setUserInAccount(++size);
           int sig = signatoryList.size();
           model.setUserInList(++sig);
-          model.setCheckDocConfirm("true");
+          model.setCheckDocConfirm(String.valueOf(signatoryDraft.getSignatoryConfirmCheck()));
           signatoryList.add(model);
         }
         addAccountModel.setListOfSignatory(signatoryList);
@@ -1084,6 +1084,8 @@ public class MandatesResolutionService {
           signatoryDraft.setIdNumber(signatoryModel.getIdNumber());
           signatoryDraft.setGroupCategory(signatoryModel.getGroup());
           signatoryDraft.setInstructions(signatoryModel.getInstruction());
+          signatoryDraft.setSignatoryConfirmCheck(
+              Boolean.valueOf(signatoryModel.getCheckDocConfirm()));
           listOfSignatory.add(signatoryDraft);
         }
         accountDraft.setSignatories(listOfSignatory);
