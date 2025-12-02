@@ -26,6 +26,9 @@ public class RequestStagingDTO {
   private String requestStatus;     // Draft|In Progress|Completed|On Hold
   private String requestSubStatus;
 
+  private Boolean draftWaiverConfirmCheck;
+  private Boolean draftSigmaConfirmCheck;
+
   //Waiver
   private String waiverUcn;
   private String waiverPermittedTools;
@@ -65,6 +68,7 @@ public class RequestStagingDTO {
     private String idNumber;
     private String instructions;     // Add|Remove
     private LocalDateTime instructionsDate;
+    private Boolean signatoryConfirmCheck;
     private String capacity;
     private String groupCategory;
     private Boolean isActive = Boolean.TRUE;
