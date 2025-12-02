@@ -865,31 +865,51 @@ public class MandatesResolutionService {
     String waiver = stagingDTO.getWaiverPermittedTools();
     List<String> listOfTools = Arrays.asList(waiver.split(","));
     if (listOfTools.size() > 0) {
-      requestWrapper.setToolOne(listOfTools.get(0));
+      if ("null".equalsIgnoreCase(listOfTools.get(0))) {
+        requestWrapper.setToolOne("");
+      } else {
+        requestWrapper.setToolOne(listOfTools.get(0));
+      }
     } else {
       requestWrapper.setToolOne(null);
     }
 
     if (listOfTools.size() > 1) {
-      requestWrapper.setToolTwo(listOfTools.get(1));
+      if ("null".equalsIgnoreCase(listOfTools.get(1))) {
+        requestWrapper.setToolTwo("");
+      } else {
+        requestWrapper.setToolTwo(listOfTools.get(1));
+      }
     } else {
       requestWrapper.setToolTwo(null);
     }
 
     if (listOfTools.size() > 2) {
-      requestWrapper.setToolThree(listOfTools.get(2));
+      if ("null".equalsIgnoreCase(listOfTools.get(2))) {
+        requestWrapper.setToolThree("");
+      } else {
+        requestWrapper.setToolThree(listOfTools.get(2));
+      }
     } else {
       requestWrapper.setToolThree(null);
     }
 
     if (listOfTools.size() > 3) {
-      requestWrapper.setToolFour(listOfTools.get(3));
+      if ("null".equalsIgnoreCase(listOfTools.get(3))) {
+        requestWrapper.setToolFour("");
+      } else {
+        requestWrapper.setToolFour(listOfTools.get(3));
+      }
     } else {
       requestWrapper.setToolFour(null);
     }
 
     if (listOfTools.size() > 4) {
-      requestWrapper.setToolFive(listOfTools.get(4));
+      if ("null".equalsIgnoreCase(listOfTools.get(4))) {
+        requestWrapper.setToolFive("");
+      } else {
+        requestWrapper.setToolFive(listOfTools.get(4));
+      }
     } else {
       requestWrapper.setToolFive(null);
     }
@@ -920,24 +940,24 @@ public class MandatesResolutionService {
     requestWrapper.setRequestType(stagingDTO.getRequestType());
     if ("Mandate and Resolution".equalsIgnoreCase(stagingDTO.getRequestType())) {
       requestWrapper.setCheckMandatesAndresolution("true");
-      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
-      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleOne(stagingDTO.getDraftSigmaConfirmCheck());
+      requestWrapper.setCheckStyleTwo(stagingDTO.getDraftWaiverConfirmCheck());
     } else {
       requestWrapper.setCheckMandatesAndresolution("false");
     }
 
     if ("Mandate".equalsIgnoreCase(stagingDTO.getRequestType())) {
       requestWrapper.setCheckMandates("true");
-      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
-      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleOne(stagingDTO.getDraftSigmaConfirmCheck());
+      requestWrapper.setCheckStyleTwo(stagingDTO.getDraftWaiverConfirmCheck());
     } else {
       requestWrapper.setCheckMandates("false");
     }
 
     if ("Resolution".equalsIgnoreCase(stagingDTO.getRequestType())) {
       requestWrapper.setCheckResolution("true");
-      requestWrapper.setCheckStyleOne(Boolean.parseBoolean("true"));
-      requestWrapper.setCheckStyleTwo(Boolean.parseBoolean("true"));
+      requestWrapper.setCheckStyleOne(stagingDTO.getDraftSigmaConfirmCheck());
+      requestWrapper.setCheckStyleTwo(stagingDTO.getDraftWaiverConfirmCheck());
     } else {
       requestWrapper.setCheckResolution("false");
     }
@@ -989,7 +1009,13 @@ public class MandatesResolutionService {
     if ("Step 1".equalsIgnoreCase(requestWrapper.getStepForSave())) {
       requestStagingDTO.setCompanyName(user.get("companyName"));
       requestStagingDTO.setCompanyAddress(user.get("companyAddress"));
-      requestStagingDTO.setRequestType(user.get("mandateResolution"));
+      if (user.get("mandateResolution").isBlank()) {
+        requestStagingDTO.setRequestType(null);
+      } else {
+        requestStagingDTO.setRequestType(user.get("mandateResolution"));
+        requestStagingDTO.setDraftSigmaConfirmCheck(Boolean.valueOf(user.get("check1")));
+        requestStagingDTO.setDraftWaiverConfirmCheck(Boolean.valueOf(user.get("check2")));
+      }
       //If Request Type is present setCheck Box
       String tools = String.join(",",
           user.get("toolOne"),
@@ -1002,8 +1028,14 @@ public class MandatesResolutionService {
     } else {
       requestStagingDTO.setCompanyName(requestWrapper.getRequest().getCompanyName());
       requestStagingDTO.setCompanyAddress(requestWrapper.getRequest().getCompanyAddress());
-      requestStagingDTO.setRequestType(requestWrapper.getRequestType());
-      //If Request Type is present setCheck Box
+      if ("".equalsIgnoreCase(requestWrapper.getRequestType())
+          || "null".equalsIgnoreCase(requestWrapper.getRequestType())) {
+        requestStagingDTO.setRequestType(null);
+      } else {
+        requestStagingDTO.setRequestType(requestWrapper.getRequestType());
+        requestStagingDTO.setDraftSigmaConfirmCheck(requestWrapper.isCheckStyleOne());
+        requestStagingDTO.setDraftWaiverConfirmCheck(requestWrapper.isCheckStyleTwo());
+      }
       String tools = String.join(",",
           requestWrapper.getToolOne(),
           requestWrapper.getToolTwo(),

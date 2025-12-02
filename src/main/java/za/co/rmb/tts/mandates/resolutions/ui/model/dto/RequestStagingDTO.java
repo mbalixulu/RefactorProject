@@ -26,6 +26,9 @@ public class RequestStagingDTO {
   private String requestStatus;     // Draft|In Progress|Completed|On Hold
   private String requestSubStatus;
 
+  private Boolean draftWaiverConfirmCheck;
+  private Boolean draftSigmaConfirmCheck;
+
   //Waiver
   private String waiverUcn;
   private String waiverPermittedTools;
