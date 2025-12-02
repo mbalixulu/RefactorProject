@@ -2927,11 +2927,11 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/exportCSV", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayExportCSV() {
-      ExportModel exportModel = new ExportModel();
-      exportModel.setButtonCheck("false");
-      httpSession.setAttribute("ExportCSV", exportModel);
-      String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
-      return ResponseEntity.ok(page);
+    ExportModel exportModel = new ExportModel();
+    exportModel.setButtonCheck("false");
+    httpSession.setAttribute("ExportCSV", exportModel);
+    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    return ResponseEntity.ok(page);
   }
 
   @PostMapping(value = "/exportRequests", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
