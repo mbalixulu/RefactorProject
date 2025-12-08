@@ -13,7 +13,7 @@
                 <comm:form comm:name="selectRequirementsForm" comm:action="">
                     <xsl:if test="requestWrapper/checkSignatureCard = 'true'">
                         <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="5">
                                 <comm:value>Please Fill Up All the Record before proceed !
                                 </comm:value>
                             </comm:symbol>

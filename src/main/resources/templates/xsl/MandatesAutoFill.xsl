@@ -12,7 +12,7 @@
                            comm:name="WrapupLandingForm">
                     <xsl:if test="requestWrapper/accountCheck = 'false'">
                         <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="5">
                                 <comm:value>Please Add your Account....(Without Account we can't
                                     Proceed).
                                 </comm:value>
