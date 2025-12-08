@@ -2301,7 +2301,7 @@ public class MandatesResolutionUIController {
     RequestDetails requestDetails = mandatesResolutionService.getRequestById(requestId);
     httpSession.setAttribute("RequestDetails", requestDetails);
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
-    if("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
       requestDetails.setCheckReassignee("true");
     } else {
       requestDetails.setCheckReassignee("false");
@@ -6078,7 +6078,7 @@ public class MandatesResolutionUIController {
       check = true;
     }
 
-    if(check) {
+    if (check) {
       String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
           requestDetails);
       return ResponseEntity.ok(page);
@@ -7103,8 +7103,9 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/updateSignatoryWithAccountEdit/{userInList}", produces =
       MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> updateSignatoryWithAccountEdit(@RequestParam Map<String, String> user,
-                                                           @PathVariable String userInList) {
+  public ResponseEntity<String> updateSignatoryWithAccountEdit(
+      @RequestParam Map<String, String> user,
+      @PathVariable String userInList) {
     String page = "";
     RequestDetails requestDetails =
         (RequestDetails) httpSession.getAttribute("RequestDetails");
@@ -7260,7 +7261,7 @@ public class MandatesResolutionUIController {
     String page = "";
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     for (DirectorModel director : requestDetails.getListOfDirector()) {
-        mandatesResolutionService.removeSpecificAdminResoEditWithIdUndo(director.getDirectorId());
+      mandatesResolutionService.removeSpecificAdminResoEditWithIdUndo(director.getDirectorId());
     }
     page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
