@@ -540,13 +540,13 @@
                                 </comm:boxSymbol>
                                 <xsl:for-each
                                         select="requestDetails/listOfInstruction">
-                                <comm:boxSymbol xsi:type="comm:textReadout"
-                                                comm:subHeading="">
-                                    <comm:value> .
-                                        <xsl:value-of
-                                                select="instruction"/>
-                                    </comm:value>
-                                </comm:boxSymbol>
+                                    <comm:boxSymbol xsi:type="comm:textReadout"
+                                                    comm:subHeading="">
+                                        <comm:value>.
+                                            <xsl:value-of
+                                                    select="instruction"/>
+                                        </comm:value>
+                                    </comm:boxSymbol>
                                 </xsl:for-each>
                                 <comm:boxSymbol xsi:type="comm:input"
                                                 comm:name="confirmationCheckMandate"
@@ -569,36 +569,72 @@
             </symbol>
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left"
                     comm:buttonAlign="right">
-                <xsl:if test="requestDetails/checkReassignee = 'true'">
-                <comm:baseButton comm:id="assign"
-                                 comm:url="app-domain/mandates-and-resolutions/adminReassign"
-                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
-                                 comm:label="Re-Assign"/>
+                <xsl:if test="requestDetails/checkStatus = 'false'">
+                    <xsl:if test="requestDetails/checkReassignee = 'true'">
+                        <comm:baseButton comm:id="assign"
+                                         comm:url="app-domain/mandates-and-resolutions/adminReassign"
+                                         comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                         comm:label="Re-Assign"/>
+                    </xsl:if>
+                    <comm:baseButton comm:id="edit"
+                                     comm:url="app-domain/mandates-and-resolutions/editRequest"
+                                     comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                     comm:label="Edit"/>
+                    <xsl:if test="requestDetails/status = 'In Progress' or requestDetails/status = 'Breached'">
+                        <comm:baseButton comm:id="hold"
+                                         comm:url="app-domain/mandates-and-resolutions/viewRequestHold/{requestDetails/requestId}"
+                                         comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                         comm:label="Hold"/>
+                    </xsl:if>
+                    <xsl:if test="requestDetails/status = 'On Hold'">
+                        <comm:baseButton comm:id="unhold"
+                                         comm:url="app-domain/mandates-and-resolutions/viewRequestUnhold/{requestDetails/requestId}"
+                                         comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                         comm:label="UnHold"/>
+                    </xsl:if>
+                    <xsl:if test="requestDetails/status = 'In Progress' or requestDetails/status = 'Breached'">
+                        <xsl:if test="requestDetails/checkHoganVarificationPending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <xsl:if test="requestDetails/checkWindeedVarificationPending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <xsl:if test="requestDetails/checkHanisVarificationPending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <xsl:if test="requestDetails/checkAdminApprovePending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <xsl:if test="requestDetails/checkHoganUpdatePending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <xsl:if test="requestDetails/checkDocumentUpdatePending = 'true'">
+                            <comm:baseButton comm:id="hogan"
+                                             comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                             comm:target="main" comm:formSubmit="true"
+                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                        </xsl:if>
+                        <comm:baseButton comm:id="reject"
+                                         comm:url="app-domain/mandates-and-resolutions/reject-validate/{requestDetails/requestId}"
+                                         comm:target="main" comm:formSubmit="true"
+                                         comm:tooltip="" comm:label="Reject"/>
+                    </xsl:if>
                 </xsl:if>
-                <comm:baseButton comm:id="edit"
-                                 comm:url="app-domain/mandates-and-resolutions/editRequest"
-                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
-                                 comm:label="Edit"/>
-                <xsl:if test="requestDetails/status = 'In Progress'">
-                <comm:baseButton comm:id="hold"
-                                 comm:url="app-domain/mandates-and-resolutions/viewRequestHold/{requestDetails/requestId}"
-                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
-                                 comm:label="Hold"/>
-                </xsl:if>
-                <xsl:if test="requestDetails/status = 'On Hold'">
-                <comm:baseButton comm:id="unhold"
-                                 comm:url="app-domain/mandates-and-resolutions/viewRequestUnhold/{requestDetails/requestId}"
-                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
-                                 comm:label="UnHold"/>
-                </xsl:if>
-                <comm:baseButton comm:id="hogan"
-                                 comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
-                                 comm:target="main" comm:formSubmit="true"
-                                 comm:tooltip="" comm:label="Verify for Hogan"/>
-                <comm:baseButton comm:id="reject"
-                                 comm:url="app-domain/mandates-and-resolutions/reject-validate"
-                                 comm:target="main" comm:formSubmit="false"
-                                 comm:tooltip="" comm:label="Reject"/>
                 <comm:baseButton comm:id="back"
                                  comm:url="app-domain/mandates-and-resolutions/finish"
                                  comm:target="main" comm:formSubmit="false"

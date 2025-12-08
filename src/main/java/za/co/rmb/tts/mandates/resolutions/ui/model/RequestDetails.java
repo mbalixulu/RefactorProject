@@ -39,7 +39,6 @@ public class RequestDetails {
   private String updatorRequest;
   private String createdReq;
   private String updatedReq;
-  private String lastModifiedBy;
   //ID exposed by backend entity getter
   private String requestIdForDisplay;
   private String ucn;
@@ -52,6 +51,16 @@ public class RequestDetails {
 
   private String checkReassignee;
   private String viewPageError;
+  private String checkStatus;
+
+  private String checkHoganVarificationPending;
+  private String checkWindeedVarificationPending;
+  private String checkHanisVarificationPending;
+  private String checkAdminApprovePending;
+  private String checkHoganUpdatePending;
+  private String checkDocumentUpdatePending;
+  private String checkHoldRecord;
+  private String checkUnHoldRecord;
 
 
 }
