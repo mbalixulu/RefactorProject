@@ -169,25 +169,27 @@
                                     </comm:boxSymbol>
                                     <comm:boxSymbol xsi:type="comm:boxSplit"
                                                     comm:width="25">
-                                        <xsl:if test="checkDelete = 'No'">
-                                            <comm:boxSplitSymbol xsi:type="comm:button"
-                                                                 comm:id="assignee"
-                                                                 comm:target="main"
-                                                                 comm:url="app-domain/mandates-and-resolutions/deleteAccount/{userInList}"
-                                                                 comm:label="Delete"
-                                                                 comm:width="3"
-                                                                 comm:formSubmit="false"
-                                                                 comm:type="paper"/>
-                                        </xsl:if>
-                                        <xsl:if test="checkDelete = 'Yes'">
-                                            <comm:boxSplitSymbol xsi:type="comm:button"
-                                                                 comm:id="assignee"
-                                                                 comm:target="main"
-                                                                 comm:url="app-domain/mandates-and-resolutions/deleteAccountUndo/{userInList}"
-                                                                 comm:label="Undo"
-                                                                 comm:width="3"
-                                                                 comm:formSubmit="false"
-                                                                 comm:type="paper"/>
+                                        <xsl:if test="checkDeleteButton = 'false'">
+                                            <xsl:if test="checkDelete = 'No'">
+                                                <comm:boxSplitSymbol xsi:type="comm:button"
+                                                                     comm:id="assignee"
+                                                                     comm:target="main"
+                                                                     comm:url="app-domain/mandates-and-resolutions/deleteAccount/{userInList}"
+                                                                     comm:label="Delete"
+                                                                     comm:width="3"
+                                                                     comm:formSubmit="false"
+                                                                     comm:type="paper"/>
+                                            </xsl:if>
+                                            <xsl:if test="checkDelete = 'Yes'">
+                                                <comm:boxSplitSymbol xsi:type="comm:button"
+                                                                     comm:id="assignee"
+                                                                     comm:target="main"
+                                                                     comm:url="app-domain/mandates-and-resolutions/deleteAccountUndo/{userInList}"
+                                                                     comm:label="Undo"
+                                                                     comm:width="3"
+                                                                     comm:formSubmit="false"
+                                                                     comm:type="paper"/>
+                                            </xsl:if>
                                         </xsl:if>
                                     </comm:boxSymbol>
                                     <comm:boxSymbol xsi:type="comm:boxSplit"
@@ -484,26 +486,26 @@
                                                 <comm:cellItem
                                                         xsi:type="comm:cellItem">
                                                     <xsl:if test="checkDelete = 'No'">
-                                                    <comm:item xsi:type="comm:button"
-                                                               comm:id="remove"
-                                                               comm:type="paper"
-                                                               comm:width="4"
-                                                               comm:url="app-domain/mandates-and-resolutions/removeDirectorResoEdit/{userInList}"
-                                                               comm:formSubmit="false"
-                                                               comm:target="main"
-                                                               comm:tooltip=""
-                                                               comm:label="Remove"/>
+                                                        <comm:item xsi:type="comm:button"
+                                                                   comm:id="remove"
+                                                                   comm:type="paper"
+                                                                   comm:width="4"
+                                                                   comm:url="app-domain/mandates-and-resolutions/removeDirectorResoEdit/{userInList}"
+                                                                   comm:formSubmit="false"
+                                                                   comm:target="main"
+                                                                   comm:tooltip=""
+                                                                   comm:label="Remove"/>
                                                     </xsl:if>
                                                     <xsl:if test="checkDelete = 'Yes'">
-                                                    <comm:item xsi:type="comm:button"
-                                                               comm:id="remove"
-                                                               comm:type="paper"
-                                                               comm:width="4"
-                                                               comm:url="app-domain/mandates-and-resolutions/undoEditDirector"
-                                                               comm:formSubmit="false"
-                                                               comm:target="main"
-                                                               comm:tooltip=""
-                                                               comm:label="Undo"/>
+                                                        <comm:item xsi:type="comm:button"
+                                                                   comm:id="remove"
+                                                                   comm:type="paper"
+                                                                   comm:width="4"
+                                                                   comm:url="app-domain/mandates-and-resolutions/undoEditDirector"
+                                                                   comm:formSubmit="false"
+                                                                   comm:target="main"
+                                                                   comm:tooltip=""
+                                                                   comm:label="Undo"/>
                                                     </xsl:if>
                                                 </comm:cellItem>
                                             </comm:cell>
@@ -514,6 +516,14 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
+                    <xsl:if test="requestDetails/checkDirectors = 'true'">
+                        <comm:sections comm:width="full">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="5">
+                                <comm:value>At least one Director is required for this request !
+                                </comm:value>
+                            </comm:symbol>
+                        </comm:sections>
+                    </xsl:if>
                 </comm:form>
             </symbol>
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left"
@@ -523,7 +533,7 @@
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="Back"/>
                 <comm:baseButton comm:id="next"
-                                 comm:url="app-domain/mandates-and-resolutions/updateDirectorsResoEdit/{directorModel/userInList}"
+                                 comm:url="app-domain/mandates-and-resolutions/updateAdminView"
                                  comm:target="main" comm:formSubmit="true" comm:tooltip=""
                                  comm:label="Update"/>
             </symbol>

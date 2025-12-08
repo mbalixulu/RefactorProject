@@ -1211,7 +1211,7 @@ public class MandatesResolutionService {
     List<DirectorModel> listOfDirectorModel = new ArrayList<>();
     for (MandateResolutionSubmissionResultDTO.Authority authority : listOfAuthority) {
       if (authority.getInstructions() != null
-          || authority.getInstructions() != "") {
+          && authority.getInstructions() != "") {
         DirectorModel directorModel = new DirectorModel();
         directorModel.setName(authority.getFirstname());
         directorModel.setSurname(authority.getSurname());
@@ -1247,6 +1247,7 @@ public class MandatesResolutionService {
         addAccountModel.setAccountName(account.getAccountName());
         addAccountModel.setAccountNumber(account.getAccountNumber());
         addAccountModel.setCheckDelete("No");
+        addAccountModel.setCheckDeleteButton("false");
         int size = listOfAddAccount.size();
         addAccountModel.setUserInList(++size);
         addAccountModel.setAccountId(account.getAccountId());

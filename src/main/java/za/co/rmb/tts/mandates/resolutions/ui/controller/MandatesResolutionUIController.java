@@ -2300,6 +2300,17 @@ public class MandatesResolutionUIController {
     httpSession.setAttribute("lastViewedRequestId", requestId);
     RequestDetails requestDetails = mandatesResolutionService.getRequestById(requestId);
     httpSession.setAttribute("RequestDetails", requestDetails);
+    if ("Mandate".equalsIgnoreCase(requestDetails.getType())
+        && requestDetails.getListOfAddAccountModel().size() == 1
+        || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())
+           && requestDetails.getListOfAddAccountModel().size() == 1) {
+      List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
+      for (int i = 0; i < listOfAddAccount.size(); i++) {
+        AddAccountModel addAccountModel = listOfAddAccount.get(i);
+        addAccountModel.setCheckDeleteButton("true");
+        listOfAddAccount.set(i, addAccountModel);
+      }
+    }
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
       requestDetails.setCheckReassignee("true");
@@ -2320,11 +2331,50 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
+  @PostMapping(value = "/statusRejected", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> statusRejected()
+      throws JsonProcessingException {
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    requestDetails = mandatesResolutionService.getRequestById(requestDetails.getRequestId());
+    httpSession.setAttribute("RequestDetails", requestDetails);
+    if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
+        || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
+      requestDetails.setCheckStatus("true");
+    } else {
+      requestDetails.setCheckStatus("false");
+    }
+    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+        (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    return ResponseEntity.ok(page);
+  }
+
   @PostMapping(value = "/adminViewBack", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminViewBack() {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateAdminView", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateAdminView() {
+
+    boolean check = false;
+    String page = "";
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    long activeDirector = requestDetails.getListOfDirector().stream()
+        .filter(dir -> "Yes".equalsIgnoreCase(dir.getCheckDelete()))
+        .count();
+
+    if (String.valueOf(activeDirector).equalsIgnoreCase(
+        String.valueOf(requestDetails.getListOfDirector().size()))) {
+      requestDetails.setCheckDirectors("true");
+      page = xsltProcessor.generatePages(xslPagePath("EditRequest"),
+          requestDetails);
+    } else {
+      page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+          requestDetails);
+    }
     return ResponseEntity.ok(page);
   }
 
@@ -6191,7 +6241,7 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> unholdRequest(
-      @PathVariable String requestId, @PathVariable String subStatus) {
+      @PathVariable String requestId) {
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     mandatesResolutionService.statusUpdated(Long.valueOf(requestId), "UnHold",
@@ -6903,6 +6953,7 @@ public class MandatesResolutionUIController {
     RequestDetails requestDetails =
         (RequestDetails) httpSession.getAttribute("RequestDetails");
     List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
+
     for (int i = 0; i < listOfAddAccount.size(); i++) {
       AddAccountModel model = listOfAddAccount.get(i);
       if (userInList.equalsIgnoreCase(String.valueOf(model.getUserInList()))) {
