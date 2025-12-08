@@ -25,5 +25,6 @@ public class AddAccountModel {
   private String checkDelete;
   private String editButton;
   private Long accountId;
+  private String checkDeleteButton;
 
 }

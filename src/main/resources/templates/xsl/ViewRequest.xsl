@@ -101,7 +101,7 @@
                                                      comm:color="ghostmedium">
                                     <comm:value>
                                         <xsl:value-of
-                                                select="requestDetails/lastModifiedBy"/>
+                                                select="requestDetails/updatorRequest"/>
                                     </comm:value>
                                 </comm:boxSplitSymbol>
                                 <comm:boxSplitSymbol xsi:type="comm:textReadout"
@@ -123,11 +123,13 @@
                             </comm:boxSymbol>
                         </comm:symbol>
                     </comm:sections>
+                    <xsl:if test="requestDetails/type = 'Mandate' or requestDetails/type = 'Mandate And Resolution'">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading" comm:align="left">
                             <comm:value>Account Signatories</comm:value>
                         </comm:symbol>
                     </comm:sections>
+                    </xsl:if>
                     <xsl:for-each
                             select="requestDetails/listOfAddAccountModel">
                         <comm:sections comm:align="left" comm:width="full">
@@ -387,6 +389,7 @@
                                     </comm:rowGroup>
                                     <xsl:for-each
                                             select="requestDetails/listOfDirector">
+
                                         <comm:row xsi:type="comm:fullTableRow"
                                                   comm:groupId="abc">
                                             <comm:cell xsi:type="comm:cell"
@@ -531,6 +534,7 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
+                    <xsl:if test="requestDetails/status != 'On Hold'">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="instructionsBox">
                             <comm:box xsi:type="comm:box">
@@ -565,6 +569,7 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
+                    </xsl:if>
                 </comm:form>
             </symbol>
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left"
