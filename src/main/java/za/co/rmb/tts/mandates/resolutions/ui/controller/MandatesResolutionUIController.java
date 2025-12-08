@@ -6168,7 +6168,7 @@ public class MandatesResolutionUIController {
   public ResponseEntity<String> holdRequest(@PathVariable String requestId) {
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
-    mandatesResolutionService.statusUpdated(Long.valueOf(requestId),"Hold",
+    mandatesResolutionService.statusUpdated(Long.valueOf(requestId), "Hold",
         requestDetails.getCheckHoldRecord(),
         "On Hold", users.getUsername());
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
@@ -6188,7 +6188,7 @@ public class MandatesResolutionUIController {
       @PathVariable String requestId, @PathVariable String subStatus) {
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
-    mandatesResolutionService.statusUpdated(Long.valueOf(requestId),"UnHold",
+    mandatesResolutionService.statusUpdated(Long.valueOf(requestId), "UnHold",
         requestDetails.getCheckUnHoldRecord(),
         "In Progress", users.getUsername());
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
