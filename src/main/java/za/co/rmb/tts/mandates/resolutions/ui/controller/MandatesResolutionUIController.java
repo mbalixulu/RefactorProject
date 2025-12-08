@@ -5566,13 +5566,14 @@ public class MandatesResolutionUIController {
       RestTemplate rt = new RestTemplate();
 
       // 1) Optional APPROVE comment (external)
+      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
       if (commentText != null && !commentText.trim().isEmpty()) {
         var payload = new java.util.HashMap<String, Object>();
         payload.put("requestId", requestId);
         payload.put("commentText", commentText.trim());
         payload.put("isInternal", Boolean.FALSE);
         String creator = (servletRequest.getUserPrincipal() != null)
-            ? servletRequest.getUserPrincipal().getName() : "ui";
+            ? servletRequest.getUserPrincipal().getName() : users.getUsername();
         payload.put("creator", creator);
         rt.postForEntity(
             mandatesResolutionsDaoURL + "/api/comment",
@@ -5614,7 +5615,6 @@ public class MandatesResolutionUIController {
 
       String next = nextSubStatus(currentSub, true);
       String newStatus = next.equals(SS_DONE) ? "Completed" : "In Progress";
-      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
       // 3) Update request (+ outcome=Approve to advance Camunda)
       var update = new java.util.HashMap<String, Object>();
       update.put("status", newStatus);
