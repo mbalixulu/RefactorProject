@@ -107,28 +107,6 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
-
-                   <!-- <comm:sections comm:align="left" comm:width="full">
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id=""
-                                     comm:target="main"
-                                     comm:url=""
-                                     comm:label=""
-                                     comm:width="1"
-                                     comm:formSubmit="true"
-                                     comm:align="right"
-                                     comm:type="primary"/>
-                        <comm:symbol xsi:type="comm:button"
-                                     comm:id=""
-                                     comm:target="main"
-                                     comm:url=""
-                                     comm:label=""
-                                     comm:width="1"
-                                     comm:formSubmit=""
-                                     comm:align="right"
-                                     comm:type="primary"/>
-                    </comm:sections>-->
-
                 </comm:form>
             </symbol>
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -139,7 +117,7 @@
                                  comm:target="main" comm:formSubmit="true" comm:tooltip=""
                                  comm:label="{$LAB_SUBMIT}"/>
                 <comm:baseButton comm:id="secondaryApprove"
-                                 comm:url="{$SECOND_URL}"
+                                 comm:url="app-domain/mandates-and-resolutions/adminViewBack"
                                  comm:target="main" comm:formSubmit="{$SECOND_SUBMIT}"
                                  comm:tooltip=""
                                  comm:label="{$SECOND_LABEL}"/>

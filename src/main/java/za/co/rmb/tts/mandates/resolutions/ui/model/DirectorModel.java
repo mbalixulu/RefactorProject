@@ -22,4 +22,7 @@ public class DirectorModel {
   private String instructions;
   private DirectorErrorModel directorErrorModel;
   private String checkDraft;
+  private String checkEdit;
+  private Long directorId;
+  private String checkDelete;
 }

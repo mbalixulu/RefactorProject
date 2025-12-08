@@ -88,6 +88,7 @@
             <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                     xsi:type="comm:footer" comm:text="" comm:textAlign="left"
                     comm:buttonAlign="right">
+                <xsl:if test="directorModel/checkEdit = 'true'">
                 <xsl:if test="directorModel/pageCheck = 'false'">
                     <comm:baseButton comm:id="cancel"
                                      comm:url="app-domain/mandates-and-resolutions/backDirectorPopup"
@@ -123,6 +124,17 @@
                                          comm:target="main" comm:formSubmit="true" comm:tooltip=""
                                          comm:label="Update"/>
                     </xsl:if>
+                </xsl:if>
+                </xsl:if>
+                <xsl:if test="directorModel/checkEdit = 'false'">
+                <comm:baseButton comm:id="cancel"
+                                 comm:url="app-domain/mandates-and-resolutions/editRequest"
+                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                 comm:label="Back"/>
+                <comm:baseButton comm:id="next"
+                                 comm:url="app-domain/mandates-and-resolutions/updateDirectorsResoEdit/{directorModel/userInList}"
+                                 comm:target="main" comm:formSubmit="true" comm:tooltip=""
+                                 comm:label="Update"/>
                 </xsl:if>
             </symbol>
         </page>

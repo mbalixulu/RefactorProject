@@ -8,17 +8,11 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
-import za.co.rmb.tts.mandates.resolutions.ui.model.error.ExportErrorModel;
-
 @Data
-@Setter
 @Getter
-@XmlRootElement(name = "exportModel")
+@Setter
+@XmlRootElement(name = "InstructionModel")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ExportModel {
-  private String status;
-  private String fromDate;
-  private String toDate;
-  private String buttonCheck;
-  private ExportErrorModel exportErrorModel;
+public class InstructionModel {
+  private String instruction;
 }

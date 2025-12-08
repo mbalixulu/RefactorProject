@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 @XmlRootElement(name = "authority")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class AuthorityDTO implements Serializable {
+public class AuthorityDTO {
   private Long authorityId;
   private Long companyId;
   private String firstname;

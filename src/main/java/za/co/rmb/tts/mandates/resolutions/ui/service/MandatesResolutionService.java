@@ -13,9 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,11 +29,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.CommentModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.ExportModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.InstructionModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.RequestDetails;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountResponseDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AuthorityDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CommentDto;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
@@ -98,6 +111,36 @@ public class MandatesResolutionService {
     listOfDirector.removeIf(user -> user.getUserInList() == userInList);
     addAccountModel.setListOfSignatory(listOfDirector);
     httpSession.setAttribute("Signatory", addAccountModel);
+  }
+
+  public void removeSpecificAdminResoEditWithId(Long directorId) {
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    List<DirectorModel> listOfDirector = requestDetails.getListOfDirector();
+    for (int i = 0; i < listOfDirector.size(); i++) {
+      DirectorModel model = listOfDirector.get(i);
+      if (model.getDirectorId() == directorId) {
+        model.setCheckDelete("Yes");
+        listOfDirector.set(i, model);
+      }
+    }
+    requestDetails.setListOfDirector(listOfDirector);
+    httpSession.setAttribute("RequestDetails", requestDetails);
+  }
+
+  public void removeSpecificAdminResoEditWithIdUndo(Long directorId) {
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    List<DirectorModel> listOfDirector = requestDetails.getListOfDirector();
+    for (int i = 0; i < listOfDirector.size(); i++) {
+      DirectorModel model = listOfDirector.get(i);
+      if (model.getDirectorId() == directorId) {
+        model.setCheckDelete("No");
+        listOfDirector.set(i, model);
+      }
+    }
+    requestDetails.setListOfDirector(listOfDirector);
+    httpSession.setAttribute("RequestDetails", requestDetails);
   }
 
   public DirectorModel getDirectorDetails(DirectorModel directorModel,
@@ -1124,5 +1167,133 @@ public class MandatesResolutionService {
         byte[].class
     );
     return response.getBody();
+  }
+
+  public RequestDetails getRequestById(Long requestId) throws JsonProcessingException {
+    String urlRequest = mandatesResolutionsDaoURL + "/api/submission/" + requestId;
+    ResponseEntity<MandateResolutionSubmissionResultDTO> subResp =
+        restTemplate.getForEntity(urlRequest, MandateResolutionSubmissionResultDTO.class);
+    MandateResolutionSubmissionResultDTO dto = subResp.getBody();
+    RequestDetails requestDetails = new RequestDetails();
+    requestDetails.setRequestId(dto.getRequest().getRequestId());
+    requestDetails.setCompanyName(dto.getCompany().getName());
+    requestDetails.setProcessId(dto.getRequest().getProcessId());
+    requestDetails.setSla(dto.getRequest().getSla());
+    requestDetails.setType(dto.getRequest().getType());
+    requestDetails.setUpdatedReq(String.valueOf(dto.getRequest().getUpdated()));
+    requestDetails.setLastModifiedBy(dto.getRequest().getUpdator());
+    requestDetails.setStatus(dto.getRequest().getStatus());
+    requestDetails.setSubStatus(dto.getRequest().getSubStatus());
+    requestDetails.setCreatorRequest(dto.getRequest().getCreator());
+    requestDetails.setCreatedReq(String.valueOf(dto.getRequest().getCreated()));
+    requestDetails.setAssignedUser(dto.getRequest().getAssignedUser());
+    String urlComment = mandatesResolutionsDaoURL
+                        + "/api/comment/request/" + requestId + "?newestFirst=true";
+
+    ResponseEntity<CommentDto[]> response = restTemplate.exchange(
+        urlComment,
+        HttpMethod.GET,
+        null,
+        CommentDto[].class
+    );
+    List<CommentDto> listOfComment = List.of(response.getBody());
+    List<CommentModel> listOfCommentModel = new ArrayList<>();
+    for (CommentDto commentDto : listOfComment) {
+      CommentModel commentModel = new CommentModel();
+      commentModel.setName(commentDto.getCreator());
+      commentModel.setCreatedDate(String.valueOf(commentDto.getCreated()));
+      commentModel.setCommentedText(commentDto.getCommentText());
+      listOfCommentModel.add(commentModel);
+    }
+    requestDetails.setListOfComment(listOfCommentModel);
+    List<MandateResolutionSubmissionResultDTO.Authority> listOfAuthority = dto.getAuthorities();
+    List<DirectorModel> listOfDirectorModel = new ArrayList<>();
+    for (MandateResolutionSubmissionResultDTO.Authority authority : listOfAuthority) {
+      if (authority.getInstructions() != null
+          || authority.getInstructions() != "") {
+        DirectorModel directorModel = new DirectorModel();
+        directorModel.setName(authority.getFirstname());
+        directorModel.setSurname(authority.getSurname());
+        directorModel.setDesignation(authority.getDesignation());
+        directorModel.setInstructions(authority.getInstructions());
+        directorModel.setDirectorId(authority.getAuthorityId());
+        int size = listOfDirectorModel.size();
+        directorModel.setUserInList(++size);
+        directorModel.setCheckDelete("No");
+        listOfDirectorModel.add(directorModel);
+      }
+    }
+    requestDetails.setListOfDirector(listOfDirectorModel);
+    HttpHeaders headers = new HttpHeaders();
+    HttpEntity<Void> entity = new HttpEntity<>(headers);
+    if ("Mandate".equalsIgnoreCase(dto.getRequest().getType())
+        || "Mandate And Resolution".equalsIgnoreCase(dto.getRequest().getType())) {
+      String urlAccount = mandatesResolutionsDaoURL + "/api/account/company/"
+                          + dto.getCompany().getCompanyId();
+
+
+      headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+      ResponseEntity<AccountResponseDTO[]> responseAccount = restTemplate.exchange(
+          urlAccount,
+          HttpMethod.GET,
+          entity,
+          AccountResponseDTO[].class
+      );
+      List<AccountResponseDTO> listOfAccount = List.of(responseAccount.getBody());
+      List<AddAccountModel> listOfAddAccount = new ArrayList<>();
+      for (AccountResponseDTO account : listOfAccount) {
+        AddAccountModel addAccountModel = new AddAccountModel();
+        addAccountModel.setAccountName(account.getAccountName());
+        addAccountModel.setAccountNumber(account.getAccountNumber());
+        addAccountModel.setCheckDelete("No");
+        int size = listOfAddAccount.size();
+        addAccountModel.setUserInList(++size);
+        addAccountModel.setAccountId(account.getAccountId());
+        List<SignatoryModel> listOfSignatory = new ArrayList<>();
+        for (AccountResponseDTO.Signatory signatory : account.getSignatories()) {
+          SignatoryModel signatoryModel = new SignatoryModel();
+          signatoryModel.setFullName(signatory.getFullName());
+          signatoryModel.setGroup(signatory.getGroupCategory());
+          signatoryModel.setCapacity(signatory.getCapacity());
+          signatoryModel.setInstruction(signatory.getInstructions());
+          signatoryModel.setIdNumber(signatory.getIdNumber());
+          signatoryModel.setCheckRemoveOption("no");
+          signatoryModel.setCheckEdit("false");
+          int sig = listOfSignatory.size();
+          signatoryModel.setUserInList(++sig);
+          signatoryModel.setUserInAccount(++size);
+          listOfSignatory.add(signatoryModel);
+        }
+        addAccountModel.setListOfSignatory(listOfSignatory);
+        listOfAddAccount.add(addAccountModel);
+      }
+      requestDetails.setListOfAddAccountModel(listOfAddAccount);
+    }
+    String url = mandatesResolutionsDaoURL + "/api/lov"
+                 + "?type=Readout&subType=Instructions&requestStatus="
+                 + dto.getRequest().getSubStatus();
+
+    ResponseEntity<ListOfValuesDTO[]> responseLov =
+        restTemplate.exchange(url, HttpMethod.GET, entity, ListOfValuesDTO[].class);
+
+    ListOfValuesDTO[] lovArray = responseLov.getBody();
+
+    String valueJson = lovArray[0].getValue();
+
+    ObjectMapper mapper = new ObjectMapper();
+    List<Map<String, String>> instructionMapList =
+        mapper.readValue(valueJson, new TypeReference<List<Map<String, String>>>() {
+        });
+    List<String> instructions = instructionMapList.stream()
+        .flatMap(map -> map.values().stream())
+        .collect(Collectors.toList());
+    List<InstructionModel> listOfInstruction = new ArrayList<>();
+    for (String str : instructions) {
+      InstructionModel instructionModel = new InstructionModel();
+      instructionModel.setInstruction(str);
+      listOfInstruction.add(instructionModel);
+    }
+    requestDetails.setListOfInstruction(listOfInstruction);
+    return requestDetails;
   }
 }
