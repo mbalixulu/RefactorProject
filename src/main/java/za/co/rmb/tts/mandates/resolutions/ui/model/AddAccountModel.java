@@ -26,5 +26,8 @@ public class AddAccountModel {
   private String editButton;
   private Long accountId;
   private String checkDeleteButton;
+  private String checkEditAccount;
+  private String creator;
+  private String updator;
 
 }

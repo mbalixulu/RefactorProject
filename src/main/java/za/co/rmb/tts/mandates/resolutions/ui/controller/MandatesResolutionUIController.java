@@ -2357,7 +2357,7 @@ public class MandatesResolutionUIController {
   }
 
   @PostMapping(value = "/updateAdminView", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> updateAdminView() {
+  public ResponseEntity<String> updateAdminView() throws JsonProcessingException {
 
     boolean check = false;
     String page = "";
@@ -2372,8 +2372,17 @@ public class MandatesResolutionUIController {
       page = xsltProcessor.generatePages(xslPagePath("EditRequest"),
           requestDetails);
     } else {
+      mandatesResolutionService.updateViewRequest(requestDetails);
+      requestDetails = mandatesResolutionService.getRequestById(requestDetails.getRequestId());
+      httpSession.setAttribute("RequestDetails", requestDetails);
+      if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
+          || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
+        requestDetails.setCheckStatus("true");
+      } else {
+        requestDetails.setCheckStatus("false");
+      }
       page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
-          requestDetails);
+          (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
     return ResponseEntity.ok(page);
   }
@@ -7041,6 +7050,7 @@ public class MandatesResolutionUIController {
           "yes".equalsIgnoreCase(sig.getCheckRemoveOption())
       );
       addAccountModel.setListOfSignatory(listOfSig);
+      addAccountModel.setCheckEditAccount("Yes");
       requestDetails.setListOfAddAccountModel(addAccountModelList);
       httpSession.setAttribute("RequestDetails", requestDetails);
       page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
