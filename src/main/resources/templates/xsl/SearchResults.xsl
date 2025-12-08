@@ -283,7 +283,7 @@
                     </comm:sections>
                     <xsl:if test="requestWrapper/checkDirectorEmpty = 'true'">
                         <comm:sections comm:width="full">
-                            <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="5">
                                 <comm:value>At least one Director is required for this request !
                                 </comm:value>
                             </comm:symbol>

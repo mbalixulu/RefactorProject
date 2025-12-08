@@ -51,7 +51,7 @@
                     xsi:type="comm:footer" comm:text="" comm:textAlign="left"
                     comm:buttonAlign="right">
                 <comm:baseButton comm:id="cancel"
-                                 comm:url="{concat('app-domain/mandates-and-resolutions/adminView/', /requestWrapper/request/requestId)}"
+                                 comm:url="app-domain/mandates-and-resolutions/adminViewBack"
                                  comm:target="main" comm:label="Cancel"
                                  comm:formSubmit="false"/>
                 <comm:baseButton

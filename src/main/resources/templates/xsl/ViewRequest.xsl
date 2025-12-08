@@ -603,31 +603,31 @@
                             <comm:baseButton comm:id="hogan"
                                              comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                              comm:target="main" comm:formSubmit="true"
-                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                                             comm:tooltip="" comm:label="Verify for Windeed"/>
                         </xsl:if>
                         <xsl:if test="requestDetails/checkHanisVarificationPending = 'true'">
                             <comm:baseButton comm:id="hogan"
                                              comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                              comm:target="main" comm:formSubmit="true"
-                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                                             comm:tooltip="" comm:label="Verify for Hanis"/>
                         </xsl:if>
                         <xsl:if test="requestDetails/checkAdminApprovePending = 'true'">
                             <comm:baseButton comm:id="hogan"
                                              comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                              comm:target="main" comm:formSubmit="true"
-                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                                             comm:tooltip="" comm:label="Verify for Admin Approve"/>
                         </xsl:if>
                         <xsl:if test="requestDetails/checkHoganUpdatePending = 'true'">
                             <comm:baseButton comm:id="hogan"
                                              comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                              comm:target="main" comm:formSubmit="true"
-                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                                             comm:tooltip="" comm:label="Verify for Hogan Update"/>
                         </xsl:if>
                         <xsl:if test="requestDetails/checkDocumentUpdatePending = 'true'">
                             <comm:baseButton comm:id="hogan"
                                              comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                              comm:target="main" comm:formSubmit="true"
-                                             comm:tooltip="" comm:label="Verify for Hogan"/>
+                                             comm:tooltip="" comm:label="Verify for Document"/>
                         </xsl:if>
                         <comm:baseButton comm:id="reject"
                                          comm:url="app-domain/mandates-and-resolutions/reject-validate/{requestDetails/requestId}"

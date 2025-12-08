@@ -1270,31 +1270,34 @@ public class MandatesResolutionService {
       }
       requestDetails.setListOfAddAccountModel(listOfAddAccount);
     }
-    String url = mandatesResolutionsDaoURL + "/api/lov"
-                 + "?type=Readout&subType=Instructions&requestStatus="
-                 + dto.getRequest().getSubStatus();
 
-    ResponseEntity<ListOfValuesDTO[]> responseLov =
-        restTemplate.exchange(url, HttpMethod.GET, entity, ListOfValuesDTO[].class);
+    if (!"On Hold".equalsIgnoreCase(requestDetails.getStatus())) {
+      String url = mandatesResolutionsDaoURL + "/api/lov"
+                   + "?type=Readout&subType=Instructions&requestStatus="
+                   + dto.getRequest().getSubStatus();
 
-    ListOfValuesDTO[] lovArray = responseLov.getBody();
+      ResponseEntity<ListOfValuesDTO[]> responseLov =
+          restTemplate.exchange(url, HttpMethod.GET, entity, ListOfValuesDTO[].class);
 
-    String valueJson = lovArray[0].getValue();
+      ListOfValuesDTO[] lovArray = responseLov.getBody();
 
-    ObjectMapper mapper = new ObjectMapper();
-    List<Map<String, String>> instructionMapList =
-        mapper.readValue(valueJson, new TypeReference<List<Map<String, String>>>() {
-        });
-    List<String> instructions = instructionMapList.stream()
-        .flatMap(map -> map.values().stream())
-        .collect(Collectors.toList());
-    List<InstructionModel> listOfInstruction = new ArrayList<>();
-    for (String str : instructions) {
-      InstructionModel instructionModel = new InstructionModel();
-      instructionModel.setInstruction(str);
-      listOfInstruction.add(instructionModel);
+      String valueJson = lovArray[0].getValue();
+
+      ObjectMapper mapper = new ObjectMapper();
+      List<Map<String, String>> instructionMapList =
+          mapper.readValue(valueJson, new TypeReference<List<Map<String, String>>>() {
+          });
+      List<String> instructions = instructionMapList.stream()
+          .flatMap(map -> map.values().stream())
+          .collect(Collectors.toList());
+      List<InstructionModel> listOfInstruction = new ArrayList<>();
+      for (String str : instructions) {
+        InstructionModel instructionModel = new InstructionModel();
+        instructionModel.setInstruction(str);
+        listOfInstruction.add(instructionModel);
+      }
+      requestDetails.setListOfInstruction(listOfInstruction);
     }
-    requestDetails.setListOfInstruction(listOfInstruction);
     return requestDetails;
   }
 
@@ -1381,4 +1384,26 @@ public class MandatesResolutionService {
     httpSession.setAttribute("RequestDetails", requestDetails);
   }
 
+  public RequestDetails updateViewRequest(RequestDetails requestDetails) {
+    Long requestId = requestDetails.getRequestId();
+    for (AddAccountModel acc : requestDetails.getListOfAddAccountModel()) {
+      if ("Yes".equalsIgnoreCase(acc.getCheckDelete())) {
+        restTemplate.delete(mandatesResolutionsDaoURL + "/api/account/" + acc.getAccountId());
+      }
+    }
+
+    for (DirectorModel director : requestDetails.getListOfDirector()) {
+      if ("Yes".equalsIgnoreCase(director.getCheckDelete())) {
+        restTemplate.delete(
+            mandatesResolutionsDaoURL + "/api/authority/" + director.getDirectorId());
+      }
+    }
+    RequestDetails updated =
+        restTemplate.getForObject(
+            mandatesResolutionsDaoURL + "/api/request/" + requestId,
+            RequestDetails.class
+        );
+
+    return updated;
+  }
 }

@@ -2384,6 +2384,8 @@ public class MandatesResolutionUIController {
       HttpServletRequest servletRequest
   ) {
     try {
+      RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+      requestId = requestDetails.getRequestId();
       //Debugging
       logger.info("adminReassignSubmit: Accept={}, Content-Type={}",
           servletRequest.getHeader("Accept"), servletRequest.getContentType());
@@ -2436,7 +2438,7 @@ public class MandatesResolutionUIController {
       var payload = new java.util.LinkedHashMap<String, Object>();
       payload.put("assignedUser", newAssignee);
       payload.put("updator", currentDisplayId(session, servletRequest));
-      payload.put("processOutcome", "ReAssign");
+      payload.put("processOutcome", "ReAssigned");
 
       //Headers
       org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
@@ -5438,11 +5440,14 @@ public class MandatesResolutionUIController {
           Object.class
       );
 
+      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+
       // 2) PUT: Completed + Rejected + processOutcome=Reject (triggers DAO -> reject-path)
       var update = new java.util.HashMap<String, Object>();
       update.put("status", "Completed");      // exact
-      update.put("subStatus", SS_REJECTED);   // "Rejected"
-      update.put("processOutcome", "Reject"); // IMPORTANT
+      update.put("subStatus", SS_REJECTED);
+      update.put("updator", users.getUsername());
+      update.put("processOutcome", "Rejected");
 
       var h = new org.springframework.http.HttpHeaders();
       h.setContentType(MediaType.APPLICATION_JSON);
@@ -5559,12 +5564,13 @@ public class MandatesResolutionUIController {
 
       String next = nextSubStatus(currentSub, true);
       String newStatus = next.equals(SS_DONE) ? "Completed" : "In Progress";
-
+      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
       // 3) Update request (+ outcome=Approve to advance Camunda)
       var update = new java.util.HashMap<String, Object>();
       update.put("status", newStatus);
       update.put("subStatus", next);
-      update.put("processOutcome", "Approve");   // DAO field name
+      update.put("updator", users.getUsername());
+      update.put("processOutcome", "Approved");   // DAO field name
 
       var h = new org.springframework.http.HttpHeaders();
       h.setContentType(MediaType.APPLICATION_JSON);
