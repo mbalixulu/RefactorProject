@@ -6,6 +6,7 @@ import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.Data;
@@ -68,6 +69,8 @@ public class RequestDTO {
 
   @XmlElement(name = "updator")
   private String updator;
+
+  private LocalDateTime updated;
 
   //Captures the dropdown choice ("1"|"2"|"3"), if posted by the widget
   @XmlElement(name = "mandateResolution")

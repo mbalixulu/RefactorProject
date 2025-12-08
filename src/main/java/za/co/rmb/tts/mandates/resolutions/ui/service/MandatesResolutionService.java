@@ -1181,11 +1181,12 @@ public class MandatesResolutionService {
     requestDetails.setSla(dto.getRequest().getSla());
     requestDetails.setType(dto.getRequest().getType());
     requestDetails.setUpdatedReq(String.valueOf(dto.getRequest().getUpdated()));
-    requestDetails.setLastModifiedBy(dto.getRequest().getUpdator());
     requestDetails.setStatus(dto.getRequest().getStatus());
     requestDetails.setSubStatus(dto.getRequest().getSubStatus());
     requestDetails.setCreatorRequest(dto.getRequest().getCreator());
     requestDetails.setCreatedReq(String.valueOf(dto.getRequest().getCreated()));
+    requestDetails.setUpdatedReq(String.valueOf(dto.getRequest().getUpdated()));
+    requestDetails.setUpdatorRequest(dto.getRequest().getUpdator());
     requestDetails.setAssignedUser(dto.getRequest().getAssignedUser());
     String urlComment = mandatesResolutionsDaoURL
                         + "/api/comment/request/" + requestId + "?newestFirst=true";
@@ -1295,5 +1296,35 @@ public class MandatesResolutionService {
     }
     requestDetails.setListOfInstruction(listOfInstruction);
     return requestDetails;
+  }
+
+  public void statusUpdated(Long requestId, String processOutcome, String subStatus,
+                             String status, String currentUser) {
+    String url = mandatesResolutionsDaoURL + "/api/request/" + requestId;
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    Map<String, Object> requestBody = new HashMap<>();
+    requestBody.put("processOutcome", processOutcome);
+    requestBody.put("subStatus", subStatus);
+    requestBody.put("status", status);
+    requestBody.put("updator", currentUser);
+
+    HttpEntity<Map<String, Object>> entity =
+        new HttpEntity<>(requestBody, headers);
+
+    ResponseEntity<RequestDTO> response = restTemplate.exchange(
+        url,
+        HttpMethod.PUT,
+        entity,
+        RequestDTO.class
+    );
+    RequestDTO dto = response.getBody();
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    requestDetails.setStatus(dto.getStatus());
+    requestDetails.setSubStatus(dto.getSubStatus());
+    requestDetails.setUpdatorRequest(dto.getUpdator());
+    requestDetails.setUpdatedReq(String.valueOf(dto.getUpdated()));
+    httpSession.setAttribute("RequestDetails", requestDetails);
   }
 }

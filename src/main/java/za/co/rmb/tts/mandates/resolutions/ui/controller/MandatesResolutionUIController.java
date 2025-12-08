@@ -2306,6 +2306,13 @@ public class MandatesResolutionUIController {
     } else {
       requestDetails.setCheckReassignee("false");
     }
+
+    if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
+        || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
+      requestDetails.setCheckStatus("true");
+    } else {
+      requestDetails.setCheckStatus("false");
+    }
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
     return ResponseEntity.ok(page);
   }
@@ -6087,23 +6094,24 @@ public class MandatesResolutionUIController {
     }
   }
 
-  @PostMapping(value = "/reject-validate", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> rejectValidate(
-      @RequestParam("requestId") Long requestId,
-      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
-      HttpSession session,
-      HttpServletRequest servletRequest
-  ) {
-    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
-    if (!checked) {
-      servletRequest.setAttribute(
-          "approveErr",
-          "Verification cannot proceed until the checkbox has been selected"
-      );
-      return displayViewRequest(requestId, session, servletRequest);
+  @PostMapping(value = "/reject-validate/{requestId}", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> rejectValidate(@PathVariable String requestId,
+                                               @RequestParam Map<String, String> user) {
+    boolean check = false;
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    if ("false".equalsIgnoreCase(user.get("confirmationCheckMandate"))) {
+      requestDetails.setViewPageError("Verification cannot proceed until the "
+                                      + "checkbox has been selected !");
+      check = true;
     }
 
-    return displayViewRequestRejectPage(requestId);
+    if (check) {
+      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+          requestDetails);
+      return ResponseEntity.ok(page);
+    } else {
+      return displayViewRequestRejectPage(Long.valueOf(requestId));
+    }
   }
 
   @PostMapping(value = "/admin-approve-validate", produces = MediaType.APPLICATION_XML_VALUE)
@@ -6149,88 +6157,23 @@ public class MandatesResolutionUIController {
 
 
   @RequestMapping(
-      value = "/viewRequestHold/{requestId}",
+      value = "/viewRequestHold/{requestId}/{subStatus}",
       method = { RequestMethod.GET,
           RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
-  public ResponseEntity<String> holdRequest(
-      @PathVariable String requestId,
-      @RequestParam(value = "origin", required = false) String origin,
-      HttpSession session,
-      HttpServletRequest servletRequest
-  ) {
-    try {
-      RestTemplate rt = new RestTemplate();
-
-      //1) Read current subStatus (fresh)
-      String currentSub = null;
-      try {
-        var resp = rt.getForEntity(
-            mandatesResolutionsDaoURL + "/api/request/{id}",
-            RequestDTO.class, requestId);
-        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-          currentSub = resp.getBody().getSubStatus();
-        }
-      } catch (Exception ignore) {
-        // intentionally empty
-      }
-
-      //2) Derive the correct DAO-legal Hold label from current pending subStatus
-      String holdLabel = toHoldLabel(currentSub); //uses helper
-
-      //3) PUT to DAO: status + subStatus + processOutcome=Hold (advances Camunda)
-      var payload = new java.util.LinkedHashMap<String, Object>();
-      payload.put("status", "On Hold");
-      payload.put("subStatus", holdLabel);
-      payload.put("processOutcome", "Hold");
-      payload.put("updator", currentDisplayId(session, servletRequest));
-
-      var headers = new org.springframework.http.HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-
-      String url = mandatesResolutionsDaoURL + "/api/request/{id}";
-      logger.info("Hold PUT {} payload={}",
-          url.replace("{id}", String.valueOf(requestId)), payload);
-
-      try {
-        var entity = new org.springframework.http.HttpEntity<>(payload, headers);
-        var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
-        logger.info("Hold DAO response status={}", resp.getStatusCode());
-      } catch (org.springframework.web.client.HttpServerErrorException e) {
-        if (e.getStatusCode().value() == 503) {
-          logger.warn("Hold: workflow unavailable for request {}. Body={}",
-              requestId, e.getResponseBodyAsString());
-          return ResponseEntity.ok()
-              .contentType(MediaType.APPLICATION_XML)
-              .body("""
-                    <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                      <error>The workflow service is temporarily unavailable, so
-                      we couldn't place the request on hold. Please try again shortly.</error>
-                    </page>
-                  """);
-        }
-        throw e;
-      }
-
-      //4) Return to the same screen the user was on
-      return "admin".equalsIgnoreCase(origin)
-          ? displayAdminView(Long.valueOf(requestId))
-          : displayViewRequest(Long.valueOf(requestId), session, servletRequest);
-
-    } catch (Exception e) {
-      logger.error("Hold failed: {}", e.getMessage(), e);
-      return ResponseEntity.ok("""
-          <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <error>Unable to place request on hold.</error>
-          </page>
-          """);
-    }
+  public ResponseEntity<String> holdRequest(@PathVariable String requestId,
+                                            @PathVariable String subStatus) {
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    mandatesResolutionService.statusUpdated(Long.valueOf(requestId),"Hold", subStatus,
+        "On Hold", users.getUsername());
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    return ResponseEntity.ok(page);
   }
 
   @RequestMapping(
-      value = "/viewRequestUnhold/{requestId}",
+      value = "/viewRequestUnhold/{requestId}/{subStatus}",
       method = {
           RequestMethod.GET,
           RequestMethod.POST
@@ -6238,132 +6181,13 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> unholdRequest(
-      @PathVariable String requestId,
-      @RequestParam(value = "origin", required = false) String origin,
-      HttpSession session,
-      HttpServletRequest servletRequest
-  ) {
-    try {
-      RestTemplate rt = new RestTemplate();
-
-      //1) Read current subStatus (should be the HOLD label)
-      String currentHoldLabel = null;
-      try {
-        var resp = rt.getForEntity(
-            mandatesResolutionsDaoURL + "/api/request/{id}",
-            RequestDTO.class, requestId);
-        if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-          currentHoldLabel = resp.getBody().getSubStatus();
-        }
-      } catch (Exception e) {
-        logger.warn("UnHold: GET "
-                    + "/api/request/{} failed (continuing): {}", requestId, e.getMessage());
-      }
-      
-      String restoredPending = fromHoldLabel(currentHoldLabel);
-      var headers = new org.springframework.http.HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-      String url = mandatesResolutionsDaoURL + "/api/request/{id}";
-
-      var wfPayload = new java.util.LinkedHashMap<String, Object>();
-      wfPayload.put("status", "In Progress");
-      wfPayload.put("subStatus", restoredPending);
-      wfPayload.put("processOutcome", "UnHold");          //adapter triggers Camunda lane
-      wfPayload.put("outcome", "UnHold");                 //BPMN gateway: ${outcome == 'UnHold'}
-      wfPayload.put("updator", currentDisplayId(session, servletRequest));
-
-      boolean workflowOk = false;
-      try {
-        //Small retry (handles transient hiccups)
-        for (int attempt = 1; attempt <= 2 && !workflowOk; attempt++) {
-          logger.info("UnHold WF PUT (attempt {}) {} payload={}",
-              attempt, url.replace("{id}", String.valueOf(requestId)), wfPayload);
-          var entity = new org.springframework.http.HttpEntity<>(wfPayload, headers);
-          var resp = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
-          logger.info("UnHold WF response status={}", resp.getStatusCode());
-          workflowOk = resp.getStatusCode().is2xxSuccessful();
-          if (!workflowOk) {
-            Thread.sleep(200L * attempt); // simple backoff
-          }
-        }
-      } catch (org.springframework.web.client.HttpServerErrorException e) {
-        if (e.getStatusCode().value() == 503) {
-          logger.warn("UnHold WF: workflow unavailable for request {}. Body={}",
-              requestId, e.getResponseBodyAsString());
-        } else {
-          throw e; //non-503 server error
-        }
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt();
-      }
-
-      if (workflowOk) {
-        //Workflow changer
-        var dbSync = new java.util.LinkedHashMap<String, Object>();
-        dbSync.put("status", "In Progress");
-        dbSync.put("subStatus", restoredPending);
-        dbSync.put("outcome", "In Progress");
-        dbSync.put("updator", currentDisplayId(session, servletRequest));
-
-        logger.info("UnHold DB-SYNC PUT {} payload={}",
-            url.replace("{id}", String.valueOf(requestId)), dbSync);
-
-        var entity = new org.springframework.http.HttpEntity<>(dbSync, headers);
-        var resp2 = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
-        logger.info("UnHold DB-SYNC response status={}", resp2.getStatusCode());
-      } else {
-        //FALLBACK: workflow down -> DB-only update so UI recovers state ----
-        var dbOnly = new java.util.LinkedHashMap<String, Object>();
-        dbOnly.put("status", "In Progress");
-        dbOnly.put("subStatus", restoredPending);
-        dbOnly.put("outcome", "In Progress");
-        dbOnly.put("updator", currentDisplayId(session, servletRequest));
-
-        try {
-          var entity = new org.springframework.http.HttpEntity<>(dbOnly, headers);
-          var resp2 = rt.exchange(url, HttpMethod.PUT, entity, Object.class, requestId);
-          logger.info("UnHold fallback (DB-only) status={}", resp2.getStatusCode());
-
-          //Add an internal audit note so ops can reconcile once workflow is healthy
-          try {
-            var comment = new java.util.LinkedHashMap<String, Object>();
-            comment.put("requestId", requestId);
-            comment.put("commentText", "UnHold applied without workflow sync "
-                                       + "(Camunda unavailable). Please reconcile once workflow "
-                                       + "is back.");
-            comment.put("isInternal", Boolean.TRUE);
-            comment.put("creator", currentDisplayId(session, servletRequest));
-            rt.postForEntity(mandatesResolutionsDaoURL + "/api/comment", comment, Object.class);
-          } catch (Exception ignore) { /* non-fatal */ }
-
-        } catch (Exception e2) {
-          return ResponseEntity.ok()
-              .contentType(MediaType.APPLICATION_XML)
-              .body("""
-                    <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                      <error>We couldn't take the request off hold, and the workflow 
-                      service is down.Please try again shortly.</error>
-                    </page>
-                  """);
-        }
-      }
-
-      //Return to appropriate view
-      return "admin".equalsIgnoreCase(origin)
-          ? displayAdminView(Long.valueOf(requestId))
-          : displayViewRequest(Long.valueOf(requestId), session, servletRequest);
-
-    } catch (Exception e) {
-      logger.error("UnHold failed", e);
-      return ResponseEntity.ok()
-          .contentType(MediaType.APPLICATION_XML)
-          .body("""
-                <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                  <error>Unable to take request off hold.</error>
-                </page>
-              """);
-    }
+      @PathVariable String requestId, @PathVariable String subStatus) {
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    mandatesResolutionService.statusUpdated(Long.valueOf(requestId),"UnHold", subStatus,
+        "In Progress", users.getUsername());
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    return ResponseEntity.ok(page);
   }
 
   @GetMapping(value = "/draft/view", produces = MediaType.APPLICATION_XML_VALUE)

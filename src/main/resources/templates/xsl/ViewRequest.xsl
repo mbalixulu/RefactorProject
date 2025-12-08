@@ -569,6 +569,7 @@
             </symbol>
             <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left"
                     comm:buttonAlign="right">
+                <xsl:if test="requestDetails/checkStatus = 'false'">
                 <xsl:if test="requestDetails/checkReassignee = 'true'">
                 <comm:baseButton comm:id="assign"
                                  comm:url="app-domain/mandates-and-resolutions/adminReassign"
@@ -579,26 +580,29 @@
                                  comm:url="app-domain/mandates-and-resolutions/editRequest"
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="Edit"/>
-                <xsl:if test="requestDetails/status = 'In Progress'">
+                <xsl:if test="requestDetails/status = 'In Progress' or requestDetails/status = 'Breached'">
                 <comm:baseButton comm:id="hold"
-                                 comm:url="app-domain/mandates-and-resolutions/viewRequestHold/{requestDetails/requestId}"
+                                 comm:url="app-domain/mandates-and-resolutions/viewRequestHold/{requestDetails/requestId}/{requestDetails/subStatus}"
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="Hold"/>
                 </xsl:if>
                 <xsl:if test="requestDetails/status = 'On Hold'">
                 <comm:baseButton comm:id="unhold"
-                                 comm:url="app-domain/mandates-and-resolutions/viewRequestUnhold/{requestDetails/requestId}"
+                                 comm:url="app-domain/mandates-and-resolutions/viewRequestUnhold/{requestDetails/requestId}/{requestDetails/subStatus}"
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="UnHold"/>
                 </xsl:if>
+                <xsl:if test="requestDetails/status = 'In Progress' or requestDetails/status = 'Breached'">
                 <comm:baseButton comm:id="hogan"
                                  comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
                                  comm:target="main" comm:formSubmit="true"
                                  comm:tooltip="" comm:label="Verify for Hogan"/>
                 <comm:baseButton comm:id="reject"
-                                 comm:url="app-domain/mandates-and-resolutions/reject-validate"
-                                 comm:target="main" comm:formSubmit="false"
+                                 comm:url="app-domain/mandates-and-resolutions/reject-validate/{requestDetails/requestId}"
+                                 comm:target="main" comm:formSubmit="true"
                                  comm:tooltip="" comm:label="Reject"/>
+                </xsl:if>
+                </xsl:if>
                 <comm:baseButton comm:id="back"
                                  comm:url="app-domain/mandates-and-resolutions/finish"
                                  comm:target="main" comm:formSubmit="false"
