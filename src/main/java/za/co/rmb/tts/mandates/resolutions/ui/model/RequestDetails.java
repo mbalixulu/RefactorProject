@@ -53,5 +53,14 @@ public class RequestDetails {
   private String viewPageError;
   private String checkStatus;
 
+  private String checkHoganVarificationPending;
+  private String checkWindeedVarificationPending;
+  private String checkHanisVarificationPending;
+  private String checkAdminApprovePending;
+  private String checkHoganUpdatePending;
+  private String checkDocumentUpdatePending;
+  private String checkHoldRecord;
+  private String checkUnHoldRecord;
+
 
 }

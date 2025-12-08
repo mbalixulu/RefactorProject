@@ -1299,7 +1299,7 @@ public class MandatesResolutionService {
   }
 
   public void statusUpdated(Long requestId, String processOutcome, String subStatus,
-                             String status, String currentUser) {
+                            String status, String currentUser) {
     String url = mandatesResolutionsDaoURL + "/api/request/" + requestId;
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1327,4 +1327,58 @@ public class MandatesResolutionService {
     requestDetails.setUpdatedReq(String.valueOf(dto.getUpdated()));
     httpSession.setAttribute("RequestDetails", requestDetails);
   }
+
+  public void statusCheck(String status) {
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    if ("Hogan Verification Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckHoganVarificationPending("true");
+      requestDetails.setCheckHoldRecord("Verification On Hold for Hogan");
+      requestDetails.setCheckUnHoldRecord("Hogan Verification Pending");
+    } else {
+      requestDetails.setCheckHoganVarificationPending("false");
+    }
+
+    if ("Windeed Verification Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckWindeedVarificationPending("true");
+      requestDetails.setCheckHoldRecord("Verification On Hold for Windeed");
+      requestDetails.setCheckUnHoldRecord("Windeed Verification Pending");
+    } else {
+      requestDetails.setCheckWindeedVarificationPending("false");
+    }
+
+    if ("Hanis Verification Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckHanisVarificationPending("true");
+      requestDetails.setCheckHoldRecord("Verification On Hold for Hanis");
+      requestDetails.setCheckUnHoldRecord("Hanis Verification Pending");
+    } else {
+      requestDetails.setCheckHanisVarificationPending("false");
+    }
+
+    if ("Admin Approval Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckAdminApprovePending("true");
+      requestDetails.setCheckHoldRecord("Admin Approval On Hold");
+      requestDetails.setCheckUnHoldRecord("Admin Approval Pending");
+    } else {
+      requestDetails.setCheckAdminApprovePending("false");
+    }
+
+    if ("Hogan Update Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckHoganUpdatePending("true");
+      requestDetails.setCheckHoldRecord("Update on Hold for Hogan");
+      requestDetails.setCheckUnHoldRecord("Hogan Update Pending");
+    } else {
+      requestDetails.setCheckHoganUpdatePending("false");
+    }
+
+    if ("Documentum Update Pending".equalsIgnoreCase(status)) {
+      requestDetails.setCheckDocumentUpdatePending("true");
+      requestDetails.setCheckHoldRecord("Update on Hold for Documentum");
+      requestDetails.setCheckUnHoldRecord("Documentum Update Pending");
+    } else {
+      requestDetails.setCheckDocumentUpdatePending("false");
+    }
+
+    httpSession.setAttribute("RequestDetails", requestDetails);
+  }
+
 }
