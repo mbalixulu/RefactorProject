@@ -25,4 +25,7 @@ public class SignatoryModel {
   private SignatoryErrorModel signatoryErrorModel;
   private String checkRemoveOption;
   private String checkEdit;
+  private String creator;
+  private String updator;
+  private Long signatoryId;
 }

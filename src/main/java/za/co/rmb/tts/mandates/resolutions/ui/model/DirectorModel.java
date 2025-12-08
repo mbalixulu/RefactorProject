@@ -25,4 +25,6 @@ public class DirectorModel {
   private String checkEdit;
   private Long directorId;
   private String checkDelete;
+  private String creator;
+  private String updator;
 }

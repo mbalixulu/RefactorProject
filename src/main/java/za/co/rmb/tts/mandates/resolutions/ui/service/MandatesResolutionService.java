@@ -36,6 +36,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.InstructionModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestDetails;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountRequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountResponseDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AuthorityDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CommentDto;
@@ -44,6 +45,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SignatoryDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 
 @Service
@@ -1221,6 +1223,8 @@ public class MandatesResolutionService {
         int size = listOfDirectorModel.size();
         directorModel.setUserInList(++size);
         directorModel.setCheckDelete("No");
+        directorModel.setCreator(authority.getCreator());
+        directorModel.setUpdator(authority.getUpdator());
         listOfDirectorModel.add(directorModel);
       }
     }
@@ -1251,6 +1255,8 @@ public class MandatesResolutionService {
         int size = listOfAddAccount.size();
         addAccountModel.setUserInList(++size);
         addAccountModel.setAccountId(account.getAccountId());
+        addAccountModel.setCreator(account.getCreator());
+        addAccountModel.setUpdator(account.getUpdator());
         List<SignatoryModel> listOfSignatory = new ArrayList<>();
         for (AccountResponseDTO.Signatory signatory : account.getSignatories()) {
           SignatoryModel signatoryModel = new SignatoryModel();
@@ -1264,6 +1270,9 @@ public class MandatesResolutionService {
           int sig = listOfSignatory.size();
           signatoryModel.setUserInList(++sig);
           signatoryModel.setUserInAccount(++size);
+          signatoryModel.setCreator(signatory.getCreator());
+          signatoryModel.setUpdator(signatory.getUpdator());
+          signatoryModel.setSignatoryId(signatory.getSignatoryId());
           listOfSignatory.add(signatoryModel);
         }
         addAccountModel.setListOfSignatory(listOfSignatory);
@@ -1385,26 +1394,95 @@ public class MandatesResolutionService {
     httpSession.setAttribute("RequestDetails", requestDetails);
   }
 
-  public RequestDetails updateViewRequest(RequestDetails requestDetails) {
-    Long requestId = requestDetails.getRequestId();
+  public void updateViewRequest(RequestDetails requestDetails) {
+    UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     for (AddAccountModel acc : requestDetails.getListOfAddAccountModel()) {
       if ("Yes".equalsIgnoreCase(acc.getCheckDelete())) {
         restTemplate.delete(mandatesResolutionsDaoURL + "/api/account/" + acc.getAccountId());
       }
     }
-
     for (DirectorModel director : requestDetails.getListOfDirector()) {
       if ("Yes".equalsIgnoreCase(director.getCheckDelete())) {
         restTemplate.delete(
             mandatesResolutionsDaoURL + "/api/authority/" + director.getDirectorId());
       }
     }
-    RequestDetails updated =
-        restTemplate.getForObject(
-            mandatesResolutionsDaoURL + "/api/request/" + requestId,
-            RequestDetails.class
-        );
 
-    return updated;
+    if ("Mandate".equalsIgnoreCase(requestDetails.getType())
+        || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())) {
+      for (AddAccountModel model : requestDetails.getListOfAddAccountModel()) {
+
+        if (model.getAccountId() != null
+            && "Yes".equalsIgnoreCase(model.getCheckEditAccount())) {
+          String url = mandatesResolutionsDaoURL + "/api/account/" + model.getAccountId();
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.APPLICATION_JSON);
+          AccountRequestDTO dto = new AccountRequestDTO();
+          dto.setCompanyId(requestDetails.getCompanyId());
+          dto.setAccountName(model.getAccountName());
+          dto.setAccountNumber(model.getAccountNumber());
+          dto.setIsActive(true);
+          dto.setCreator(model.getCreator());
+          dto.setUpdator(user.getUsername());
+          List<AccountRequestDTO.Signatory> listOfSignatory = new ArrayList<>();
+          for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
+            AccountRequestDTO.Signatory signatory = new AccountRequestDTO.Signatory();
+            signatory.setFullName(signatoryModel.getFullName());
+            signatory.setIdNumber(signatoryModel.getIdNumber());
+            signatory.setInstructions(signatoryModel.getInstruction());
+            signatory.setCapacity(signatoryModel.getCapacity());
+            signatory.setGroupCategory(signatoryModel.getGroup());
+            signatory.setCreator(signatoryModel.getCreator());
+            signatory.setUpdator(user.getUsername());
+            signatory.setSignatoryConfirmCheck(
+                Boolean.valueOf(signatoryModel.getCheckDocConfirm()));
+            listOfSignatory.add(signatory);
+          }
+          dto.setSignatories(listOfSignatory);
+          HttpEntity<AccountRequestDTO> entity = new HttpEntity<>(dto, headers);
+          ResponseEntity<AccountResponseDTO> response =
+              restTemplate.exchange(url, HttpMethod.PUT, entity, AccountResponseDTO.class);
+        }
+      }
+    }
+
+    if ("Resolution".equalsIgnoreCase(requestDetails.getType())
+        || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())) {
+      for (DirectorModel directorModel : requestDetails.getListOfDirector()) {
+        if (directorModel.getDirectorId() != null) {
+          String url = mandatesResolutionsDaoURL + "/api/authority" + directorModel.getDirectorId();
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.APPLICATION_JSON);
+          AuthorityDTO updated = new AuthorityDTO();
+          updated.setCompanyId(requestDetails.getCompanyId());
+          updated.setFirstname(directorModel.getName());
+          updated.setSurname(directorModel.getSurname());
+          updated.setDesignation(directorModel.getDesignation());
+          updated.setIsActive(true);
+          updated.setUpdator("admin.user");
+          updated.setCreator(directorModel.getCreator());
+          updated.setUpdator(user.getUsername());
+          HttpEntity<AuthorityDTO> entity = new HttpEntity<>(updated, headers);
+          ResponseEntity<AuthorityDTO> response =
+              restTemplate.exchange(url, HttpMethod.PUT, entity, AuthorityDTO.class);
+        } else {
+          String url = mandatesResolutionsDaoURL + "/api/authority";
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.APPLICATION_JSON);
+          AuthorityDTO authority = new AuthorityDTO();
+          authority.setCompanyId(requestDetails.getCompanyId());
+          authority.setFirstname(directorModel.getName());
+          authority.setSurname(directorModel.getSurname());
+          authority.setDesignation(directorModel.getDesignation());
+          authority.setIsActive(true);
+          authority.setCreator(user.getUsername());
+          authority.setUpdator(null);
+          HttpEntity<AuthorityDTO> entity = new HttpEntity<>(authority, headers);
+          ResponseEntity<AuthorityDTO> response =
+              restTemplate.exchange(url, HttpMethod.POST, entity, AuthorityDTO.class);
+        }
+      }
+
+    }
   }
 }
