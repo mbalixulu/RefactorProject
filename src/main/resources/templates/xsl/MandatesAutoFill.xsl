@@ -94,7 +94,7 @@
                                         </comm:boxSymbol>
                                     </comm:box>
                                 </comm:symbol>
-                                <!-- Directors Table -->
+
                                 <comm:symbol xsi:type="comm:fullTable"
                                              comm:id="directorsTable{position()}"
                                              comm:action="GBLanding"

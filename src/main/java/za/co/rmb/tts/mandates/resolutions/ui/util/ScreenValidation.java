@@ -3,6 +3,7 @@ package za.co.rmb.tts.mandates.resolutions.ui.util;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 
 import org.springframework.stereotype.Component;
 
@@ -68,4 +69,18 @@ public class ScreenValidation {
     }
     return (sum % 10 == 0);
   }
+
+  public boolean validateDates(String fromDateStr, String toDateStr) {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
+    boolean check = false;
+    LocalDate fromDate = LocalDate.parse(fromDateStr, formatter);
+    LocalDate toDate = LocalDate.parse(toDateStr, formatter);
+
+    if (!fromDate.isBefore(toDate)) {
+      check = true;
+    }
+
+    return check;
+  }
+
 }

@@ -91,7 +91,7 @@ public class MandateResolutionSubmissionResultDTO {
     private String updator;
     private LocalDateTime created;
     private LocalDateTime updated;
-    String instructions;
+    private String instructions;
   }
 
   @Data

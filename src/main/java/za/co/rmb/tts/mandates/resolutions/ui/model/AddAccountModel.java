@@ -22,5 +22,8 @@ public class AddAccountModel {
   private String buttonCheck;
   private String checkRemoveSignatory;
   private List<SignatoryModel> listOfSignatory;
+  private String checkDelete;
+  private String editButton;
+  private Long accountId;
 
 }

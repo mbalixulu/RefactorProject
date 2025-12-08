@@ -24,8 +24,9 @@
                                 <comm:boxSymbol
                                         xsi:type="comm:dropdown"
                                         comm:id="status"
-                                        comm:label="Status"
+                                        comm:label="Status *"
                                         comm:selectedValue="{exportModel/status}"
+                                        comm:errorMessage="{exportModel/exportErrorModel/status}"
                                         comm:required="true">
                                     <comm:label>In Progress</comm:label>
                                     <comm:value xsi:type="comm:eventValue">
@@ -48,17 +49,19 @@
                                 <comm:boxSymbol
                                         xsi:type="comm:date"
                                         comm:id="fromDate"
-                                        comm:label="From Date"
+                                        comm:label="From Date *"
                                         comm:placeholder="YYYY-MM-DD"
                                         comm:value="{exportModel/fromDate}"
+                                        comm:errorMessage="{exportModel/exportErrorModel/fromDate}"
                                         comm:required="true"/>
 
                                 <comm:boxSymbol
                                         xsi:type="comm:date"
                                         comm:id="toDate"
-                                        comm:label="To Date"
+                                        comm:label="To Date *"
                                         comm:placeholder="YYYY-MM-DD"
                                         comm:value="{exportModel/toDate}"
+                                        comm:errorMessage="{exportModel/exportErrorModel/toDate}"
                                         comm:required="true"/>
                             </comm:box>
                         </comm:symbol>

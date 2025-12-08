@@ -1,881 +1,609 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0"
-                xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-    <xsl:output method="xml" indent="yes"/>
-    <xsl:strip-space elements="*"/>
-
-    <!-- ===== Helpers ===== -->
-    <xsl:variable name="LOWER" select="'abcdefghijklmnopqrstuvwxyz'"/>
-    <xsl:variable name="UPPER" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"/>
-
-    <!-- ========= Pick the correct <request> (XPath 1.0 safe) ========= -->
-    <xsl:variable name="REQ1"
-                  select="(//*[local-name()='request'][
-                  .//*[local-name()='directors']/*[local-name()='director']
-                  or
-                  .//*[local-name()='authorities']/*[local-name()='authority']
-                ])[1]"/>
-    <xsl:variable name="REQ2" select="(//*[local-name()='request'])[1]"/>
-    <!-- Prefer REQ1 when it exists; otherwise fall back to REQ2 -->
-    <xsl:variable name="REQ" select="($REQ1 | $REQ2[not($REQ1)])[1]"/>
-    <xsl:variable name="STATUS_UP"
-                  select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
-
-    <!-- Request type flags -->
-    <xsl:variable name="TYPE_RAW" select="normalize-space($REQ/*[local-name()='type'])"/>
-    <xsl:variable name="TYPE_UP"  select="translate($TYPE_RAW, $LOWER, $UPPER)"/>
-    <xsl:variable name="IS_MANDATES"     select="contains($TYPE_UP,'MANDATE')"/>
-    <xsl:variable name="IS_RESOLUTIONS"  select="contains($TYPE_UP,'RESOLUTION')"/>
-    <xsl:variable name="IS_BOTH"         select="contains($TYPE_UP,'BOTH')"/>
-    <xsl:variable name="SHOW_MANDATES"    select="$IS_MANDATES or $IS_BOTH"/>
-    <xsl:variable name="SHOW_RESOLUTIONS" select="$IS_RESOLUTIONS or $IS_BOTH"/>
-
-    <!-- ===== Key for grouping signatories by (accountNumber|accountName) ===== -->
-    <xsl:key name="kAcctBySig"
-             match="signatories/*"
-             use="concat(
-             normalize-space(string((accountNumber|accountNo)[1])),
-             '|',
-             normalize-space(string((accountName|name)[1]))
-           )"/>
-
-    <!-- ===== Director/Authority sources (robust) ===== -->
-    <!-- Under the request (preferred) -->
-    <xsl:variable name="DIR_FROM_REQ"  select="$REQ//*[local-name()='directors']/*[local-name()='director']"/>
-    <xsl:variable name="AUTH_FROM_REQ" select="$REQ//*[local-name()='authorities']/*[local-name()='authority']"/>
-    <!-- Anywhere in the document (unscoped) -->
-    <xsl:variable name="DIR_ANY_UNSCOPED"
-                  select="//*[local-name()='directors']/*[local-name()='director']
-                        | //*[local-name()='authorities']/*[local-name()='authority']"/>
-    <!-- Last-resort: any node that looks like a director -->
-    <xsl:variable name="LOOKS_LIKE_DIR"
-                  select="//*[
-                  ( *[local-name()='firstname' or local-name()='firstName' or local-name()='name'] )
-                  and ( *[local-name()='surname' or local-name()='lastName' or local-name()='lastname'] )
-                  and ( *[local-name()='designation' or local-name()='role' or local-name()='title'] )
-                ]"/>
-    <!-- Prefer request-scoped; else unscoped; else heuristic -->
-    <xsl:variable name="DIR_SRC"
-                  select="($DIR_FROM_REQ | $AUTH_FROM_REQ)
-                        | ($DIR_ANY_UNSCOPED[count($DIR_FROM_REQ | $AUTH_FROM_REQ)=0])
-                        | ($LOOKS_LIKE_DIR[count($DIR_FROM_REQ | $AUTH_FROM_REQ | $DIR_ANY_UNSCOPED)=0])"/>
-
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+    <xsl:output method="xml"/>
     <xsl:template match="/">
-        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
+        <page xmlns:comm="http://ws.online.fnb.co.za/v1/common/"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id="viewRequest" title="View Request" template="main" version="1">
+              id="boxConatinerID"
+              title="Box Container" template="main" layout="" version="1">
+            <symbol xsi:type="comm:formLayout">
+                <comm:form comm:name="advancedSearchForm"
+                           comm:action="">
+                    <comm:sections comm:width="full">
+                        <comm:symbol xsi:type="comm:textHeading" comm:size="4">
+                            <comm:value>View Request:</comm:value>
+                        </comm:symbol>
+                        <comm:symbol xsi:type="comm:boxContainer"
+                                     comm:id="boxDiv">
+                            <comm:boxSymbol xsi:type="comm:textHeading"
+                                            comm:size="4">
+                                <comm:value></comm:value>
+                            </comm:boxSymbol>
 
-            <symbol xsi:type="ns1:subTabGroup" ns1:subTabGroupHeading="View Request"/>
+                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                            comm:width="50">
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Request ID:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/requestId"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Process ID:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/processId"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Request Type:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/type"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Status:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/status"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Sub Status:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/subStatus"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Assigned User:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/assignedUser"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                            </comm:boxSymbol>
+                            <comm:boxSymbol xsi:type="comm:boxSplit"
+                                            comm:width="50">
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Company Name:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/companyName"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="SLA (days):"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/sla"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Last Modified Date:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/updatedReq"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Last Modified By:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/lastModifiedBy"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Created Date:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/createdReq"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                                <comm:boxSplitSymbol xsi:type="comm:textReadout"
+                                                     comm:subHeading="Created By:"
+                                                     comm:color="ghostmedium">
+                                    <comm:value>
+                                        <xsl:value-of
+                                                select="requestDetails/creatorRequest"/>
+                                    </comm:value>
+                                </comm:boxSplitSymbol>
+                            </comm:boxSymbol>
+                        </comm:symbol>
+                    </comm:sections>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:textHeading" comm:align="left">
+                            <comm:value>Account Signatories</comm:value>
+                        </comm:symbol>
+                    </comm:sections>
+                    <xsl:for-each
+                            select="requestDetails/listOfAddAccountModel">
+                        <comm:sections comm:align="left" comm:width="full">
+                            <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
+                                <comm:box xsi:type="comm:box">
+                                    <comm:boxSymbol xsi:type="comm:textHeading" comm:size="4">
+                                        <comm:value>
+                                            <xsl:value-of
+                                                    select="accountName"/>
+                                            :
+                                            <xsl:value-of
+                                                    select="accountNumber"/>
+                                        </comm:value>
+                                    </comm:boxSymbol>
+                                    <comm:boxSymbol xsi:type="comm:textHeading" comm:size="5">
+                                        <comm:value>Added Signatories</comm:value>
+                                    </comm:boxSymbol>
+                                    <comm:boxSymbol xsi:type="comm:fullTable"
+                                                    comm:id="yxz{position()}"
+                                                    comm:heading="" comm:showTotal="false"
+                                                    comm:headingColor="black">
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="fullName"
+                                                          comm:heading="Full Name"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="idNumber"
+                                                          comm:heading="ID Number"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="capacity"
+                                                          comm:heading="Capacity"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="group"
+                                                          comm:heading="Group"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="instructions"
+                                                          comm:heading="Instruction"
+                                                          comm:disableSorting="true"/>
 
-            <symbol xsi:type="ns1:formLayout">
-                <ns1:form ns1:action="http://localhost:8080/bifrost/" ns1:name="salesForm">
-                    <ns1:sections ns1:align="left" ns1:width="full">
-                        <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="headerBox">
-                            <ns1:box xsi:type="ns1:box">
-                                <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Request ID" ns1:headingColor="ghostmedium">
-                                        <ns1:value>
-                                            <xsl:choose>
-                                                <xsl:when test="string-length(normalize-space($REQ/*[local-name()='requestIdForDisplay'])) &gt; 0">
-                                                    <xsl:value-of select="$REQ/*[local-name()='requestIdForDisplay']"/>
-                                                </xsl:when>
-                                                <xsl:otherwise>
-                                                    <xsl:value-of select="$REQ/*[local-name()='requestId']"/>
-                                                </xsl:otherwise>
-                                            </xsl:choose>
-                                        </ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Process ID" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='processId']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Request Type" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='type']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Status" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='status']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Sub Status" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='subStatus']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Assigned User" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='assignedUser']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                </ns1:boxSymbol>
+                                        <comm:rowGroup xsi:type="comm:rowGroup"
+                                                       comm:groupId="efg"
+                                                       comm:groupHeaderLabel="">
+                                            <comm:totalsRow comm:category=" ">
 
-                                <ns1:boxSymbol xsi:type="ns1:boxSplit" ns1:width="50">
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Company Name" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='companyName']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="SLA (days)" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='sla']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Last Modified Date" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='updated']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Last Modified By" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='updator']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created Date" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='created']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                    <ns1:boxSplitSymbol xsi:type="ns1:textReadout" ns1:subHeading="Created By" ns1:headingColor="ghostmedium">
-                                        <ns1:value><xsl:value-of select="$REQ/*[local-name()='creator']"/></ns1:value>
-                                    </ns1:boxSplitSymbol>
-                                </ns1:boxSymbol>
-                            </ns1:box>
-                        </ns1:symbol>
-                    </ns1:sections>
-
-                    <xsl:if test="$SHOW_MANDATES">
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
-                                <ns1:value>Account Signatories</ns1:value>
-                            </ns1:symbol>
-                        </ns1:sections>
-
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <xsl:variable name="ALL_SIGS" select="$REQ//*[local-name()='signatories']/*"/>
-
-                            <xsl:choose>
-                                <xsl:when test="count($ALL_SIGS) &gt; 0">
-                                    <!-- Distinct accounts by (number|name) -->
-                                    <xsl:for-each select="$ALL_SIGS[
-                    generate-id() =
-                    generate-id(
-                      key('kAcctBySig',
-                        concat(
-                          normalize-space(string((accountNumber|accountNo)[1])),
-                          '|',
-                          normalize-space(string((accountName|name)[1]))
-                        )
-                      )[1]
-                    )
-                  ]">
-                                        <xsl:variable name="pos" select="position()"/>
-                                        <xsl:variable name="accNameSig" select="normalize-space(string((accountName|name)[1]))"/>
-                                        <xsl:variable name="accNoSig"   select="normalize-space(string((accountNumber|accountNo)[1]))"/>
-                                        <xsl:variable name="accNameAnc"
-                                                      select="normalize-space(string((ancestor::*[accountName or name][1]/accountName
-                                     | ancestor::*[accountName or name][1]/name)[1]))"/>
-                                        <xsl:variable name="accNoAnc"
-                                                      select="normalize-space(string((ancestor::*[accountNumber or accountNo][1]/accountNumber
-                                     | ancestor::*[accountNumber or accountNo][1]/accountNo)[1]))"/>
-
-                                        <xsl:variable name="accNameEff">
-                                            <xsl:choose>
-                                                <xsl:when test="string-length($accNameSig) &gt; 0"><xsl:value-of select="$accNameSig"/></xsl:when>
-                                                <xsl:when test="string-length($accNameAnc) &gt; 0"><xsl:value-of select="$accNameAnc"/></xsl:when>
-                                                <xsl:otherwise>Account</xsl:otherwise>
-                                            </xsl:choose>
-                                        </xsl:variable>
-                                        <xsl:variable name="accNoEff">
-                                            <xsl:choose>
-                                                <xsl:when test="string-length($accNoSig) &gt; 0"><xsl:value-of select="$accNoSig"/></xsl:when>
-                                                <xsl:otherwise><xsl:value-of select="$accNoAnc"/></xsl:otherwise>
-                                            </xsl:choose>
-                                        </xsl:variable>
-
-                                        <xsl:variable name="gKey"
-                                                      select="concat(
-                                    normalize-space(string((accountNumber|accountNo)[1])),
-                                    '|',
-                                    normalize-space(string((accountName|name)[1]))
-                                  )"/>
-                                        <xsl:variable name="SIGS_THIS" select="key('kAcctBySig', $gKey)"/>
-
-                                        <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="{concat('acc_', $pos)}">
-                                            <ns1:box xsi:type="ns1:box">
-
-                                                <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="4">
-                                                    <ns1:value>
-                                                        <xsl:value-of select="$accNameEff"/>
-                                                        <xsl:text> (</xsl:text><xsl:value-of select="$accNoEff"/><xsl:text>)</xsl:text>
-                                                    </ns1:value>
-                                                </ns1:boxSymbol>
-
-                                                <!-- ===== Added Signatories ===== -->
-                                                <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="5">
-                                                    <ns1:value>Added Signatories</ns1:value>
-                                                </ns1:boxSymbol>
-
-                                                <ns1:boxSymbol xsi:type="ns1:fullTable"
-                                                               ns1:id="{concat('sigTableAdd_', $pos)}"
-                                                               ns1:heading="" ns1:showTotal="false" ns1:headingColor="black">
-                                                    <ns1:tableColumn ns1:align="left" ns1:fieldName="fullName"     ns1:heading="Full Name"    ns1:disableSorting="true"/>
-                                                    <ns1:tableColumn ns1:align="left" ns1:fieldName="idNumber"     ns1:heading="ID Number"    ns1:disableSorting="true"/>
-                                                    <ns1:tableColumn ns1:align="left" ns1:fieldName="capacity"     ns1:heading="Capacity"     ns1:disableSorting="true"/>
-                                                    <ns1:tableColumn ns1:align="left" ns1:fieldName="group"        ns1:heading="Group"        ns1:disableSorting="true"/>
-                                                    <ns1:tableColumn ns1:align="left" ns1:fieldName="instructions" ns1:heading="Instruction"  ns1:disableSorting="true"/>
-
-                                                    <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="{concat('gAdd_', $pos)}" ns1:groupHeaderLabel="">
-                                                        <ns1:totalsRow ns1:category=" ">
-                                                            <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
-                                                                <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                    <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                                </ns1:cellItem>
-                                                            </ns1:cell>
-                                                        </ns1:totalsRow>
-                                                    </ns1:rowGroup>
-
-                                                    <xsl:choose>
-                                                        <!-- Only count rows that are ADD and NOT completely blank -->
-                                                        <xsl:when test="count($SIGS_THIS[
-                                                                      translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD'
-                                                                      and (
-                                                                        string-length(normalize-space(string((fullName|fullname|name)[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((idNumber|id|identificationNumber)[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]))) &gt; 0
-                                                                      )
-                                                                    ]) &gt; 0">
-                                                            <xsl:for-each select="$SIGS_THIS[
-                                                                      translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='ADD'
-                                                                      and (
-                                                                        string-length(normalize-space(string((fullName|fullname|name)[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((idNumber|id|identificationNumber)[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]))) &gt; 0
-                                                                        or string-length(normalize-space(string((*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]))) &gt; 0
-                                                                      )
-                                                                    ]">
-                                                                <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="{concat('gAdd_', $pos)}">
-                                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
-                                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(fullName|fullname|name)[1]"/></ns1:value></ns1:item>
-                                                                        </ns1:cellItem>
-                                                                    </ns1:cell>
-                                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="idNumber">
-                                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(idNumber|id|identificationNumber)[1]"/></ns1:value></ns1:item>
-                                                                        </ns1:cellItem>
-                                                                    </ns1:cell>
-                                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="capacity">
-                                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                            <ns1:item xsi:type="ns1:simpleText">
-                                                                                <ns1:value><xsl:value-of select="(*[local-name()='capacity' or local-name()='signatoryCapacity'])[1]"/></ns1:value>
-                                                                            </ns1:item>
-                                                                        </ns1:cellItem>
-                                                                    </ns1:cell>
-                                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="group">
-                                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                            <ns1:item xsi:type="ns1:simpleText">
-                                                                                <ns1:value><xsl:value-of select="(*[local-name()='group' or local-name()='groupCategory' or local-name()='groupName' or local-name()='groupname' or local-name()='groupcategory'])[1]"/></ns1:value>
-                                                                            </ns1:item>
-                                                                        </ns1:cellItem>
-                                                                    </ns1:cell>
-                                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="instructions">
-                                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(instructions|instruction)[1]"/></ns1:value></ns1:item>
-                                                                        </ns1:cellItem>
-                                                                    </ns1:cell>
-                                                                </ns1:row>
-                                                            </xsl:for-each>
-
-                                                        </xsl:when>
-                                                        <xsl:otherwise>
-                                                            <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="{concat('gAdd_', $pos)}">
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value>None captured</ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="idNumber">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="capacity">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="group">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="instructions">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                            </ns1:row>
-                                                        </xsl:otherwise>
-                                                    </xsl:choose>
-                                                </ns1:boxSymbol>
-
-                                                <!-- ===== Removed Signatories ===== -->
-                                                <xsl:if test="count($SIGS_THIS[translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='REMOVE']) &gt; 0">
-                                                    <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="5">
-                                                        <ns1:value>Removed Signatories</ns1:value>
-                                                    </ns1:boxSymbol>
-
-                                                    <ns1:boxSymbol xsi:type="ns1:fullTable"
-                                                                   ns1:id="{concat('sigTableRem_', $pos)}"
-                                                                   ns1:heading="" ns1:showTotal="false" ns1:headingColor="black">
-                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="fullName"     ns1:heading="Full Name"    ns1:disableSorting="true"/>
-                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="idNumber"     ns1:heading="ID Number"    ns1:disableSorting="true"/>
-                                                        <!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="capacity"     ns1:heading="Capacity"     ns1:disableSorting="true"/>-->
-                                                        <!--                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="group"        ns1:heading="Group"        ns1:disableSorting="true"/>-->
-                                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="instructions" ns1:heading="Instruction"  ns1:disableSorting="true"/>
-
-                                                        <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="{concat('gRem_', $pos)}" ns1:groupHeaderLabel="">
-                                                            <ns1:totalsRow ns1:category=" ">
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                            </ns1:totalsRow>
-                                                        </ns1:rowGroup>
-
-                                                        <xsl:for-each select="$SIGS_THIS[translate(normalize-space((instructions|instruction)[1]), $LOWER, $UPPER)='REMOVE']">
-                                                            <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="{concat('gRem_', $pos)}">
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="fullName">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(fullName|fullname|name)[1]"/></ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="idNumber">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(idNumber|id|identificationNumber)[1]"/></ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="instructions">
-                                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="(instructions|instruction)[1]"/></ns1:value></ns1:item>
-                                                                    </ns1:cellItem>
-                                                                </ns1:cell>
-                                                            </ns1:row>
-                                                        </xsl:for-each>
-                                                    </ns1:boxSymbol>
-                                                </xsl:if>
-
-                                            </ns1:box>
-                                        </ns1:symbol>
-                                    </xsl:for-each>
-                                </xsl:when>
-
-                                <xsl:otherwise>
-                                    <ns1:symbol xsi:type="ns1:textParagraph">
-                                        <ns1:value>No account/signatory data found.</ns1:value>
-                                    </ns1:symbol>
-                                </xsl:otherwise>
-                            </xsl:choose>
-                        </ns1:sections>
-                    </xsl:if>
-                    <xsl:if test="$SHOW_RESOLUTIONS">
-                        <xsl:variable name="D" select="$DIR_SRC"/>
-
-                        <!-- Build 'removed' set -->
-                        <xsl:variable name="REM_SET"
-                                      select="$D[
-                                          contains(
-                                            translate(
-                                              normalize-space(string((
-                                                *[local-name()='instructions' or local-name()='instruction' or local-name()='action'
-                                                  or local-name()='change' or local-name()='changeType' or local-name()='status'][1]
-                                                | @instructions | @instruction | @action | @change | @changeType | @status
-                                              ))),
-                                              $LOWER, $UPPER
-                                            ),
-                                            'REMOVE'
-                                          )
-                                          or translate(normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))), $LOWER, $UPPER) = 'FALSE'
-                                          or normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))) = '0'
-                                        ]"/>
-
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
-                                <ns1:value>Appointed Directors</ns1:value>
-                            </ns1:symbol>
-                        </ns1:sections>
-
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="directorsBox">
-                                <ns1:box xsi:type="ns1:box">
-
-                                    <!-- Added Directors -->
-                                    <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="5">
-                                        <ns1:value>Added Directors</ns1:value>
-                                    </ns1:boxSymbol>
-
-                                    <ns1:boxSymbol xsi:type="ns1:fullTable" ns1:id="dirAddTbl"
-                                                   ns1:heading="" ns1:showTotal="false" ns1:headingColor="black">
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="firstName"   ns1:heading="First Name"   ns1:disableSorting="true"/>
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="surname"     ns1:heading="Surname"      ns1:disableSorting="true"/>
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="designation" ns1:heading="Designation"  ns1:disableSorting="true"/>
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="instruction" ns1:heading="Instruction"  ns1:disableSorting="true"/>
-
-                                        <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="dir_add_g" ns1:groupHeaderLabel="">
-                                            <ns1:totalsRow ns1:category=" ">
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="firstName">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                            </ns1:totalsRow>
-                                        </ns1:rowGroup>
-
-                                        <!-- Inline the predicate so it's evaluated per node -->
-                                        <xsl:choose>
-                                            <xsl:when test="count($D[
-                    not(contains(
-                      translate(
-                        normalize-space(string((
-                          *[local-name()='instructions' or local-name()='instruction' or local-name()='action'
-                            or local-name()='change' or local-name()='changeType' or local-name()='status'][1]
-                          | @instructions | @instruction | @action | @change | @changeType | @status
-                        ))),
-                        $LOWER, $UPPER
-                      ),
-                      'REMOVE'
-                    ))
-                    and
-                    not( translate(normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))), $LOWER, $UPPER) = 'FALSE'
-                         or normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))) = '0' )
-                  ]) &gt; 0">
-
-                                                <xsl:for-each select="$D[
-                    not(contains(
-                      translate(
-                        normalize-space(string((
-                          *[local-name()='instructions' or local-name()='instruction' or local-name()='action'
-                            or local-name()='change' or local-name()='changeType' or local-name()='status'][1]
-                          | @instructions | @instruction | @action | @change | @changeType | @status
-                        ))),
-                        $LOWER, $UPPER
-                      ),
-                      'REMOVE'
-                    ))
-                    and
-                    not( translate(normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))), $LOWER, $UPPER) = 'FALSE'
-                         or normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))) = '0' )
-                  ]">
-                                                    <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="dir_add_g">
-                                                        <ns1:cell xsi:type="ns1:cell" ns1:col_id="firstName">
-                                                            <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='firstName'] | *[local-name()='firstname'] | *[local-name()='name'] )[1]"/></ns1:value></ns1:item>
-                                                            </ns1:cellItem>
-                                                        </ns1:cell>
-                                                        <ns1:cell xsi:type="ns1:cell" ns1:col_id="surname">
-                                                            <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='surname'] | *[local-name()='lastName'] | *[local-name()='lastname'] )[1]"/></ns1:value></ns1:item>
-                                                            </ns1:cellItem>
-                                                        </ns1:cell>
-                                                        <ns1:cell xsi:type="ns1:cell" ns1:col_id="designation">
-                                                            <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='designation'] | *[local-name()='role'] | *[local-name()='title'] )[1]"/></ns1:value></ns1:item>
-                                                            </ns1:cellItem>
-                                                        </ns1:cell>
-                                                        <ns1:cell xsi:type="ns1:cell" ns1:col_id="instruction">
-                                                            <ns1:cellItem xsi:type="ns1:cellItem">
-                                                                <ns1:item xsi:type="ns1:simpleText">
-                                                                    <ns1:value>
-                                                                        <xsl:variable name="instRaw" select="normalize-space(string((
-                            *[local-name()='instructions' or local-name()='instruction' or local-name()='action'
-                              or local-name()='change' or local-name()='changeType' or local-name()='status'][1]
-                            | @instructions | @instruction | @action | @change | @changeType | @status
-                          )))"/>
-                                                                        <xsl:choose>
-                                                                            <xsl:when test="string-length($instRaw) &gt; 0"><xsl:value-of select="$instRaw"/></xsl:when>
-                                                                            <xsl:otherwise>Add</xsl:otherwise>
-                                                                        </xsl:choose>
-                                                                    </ns1:value>
-                                                                </ns1:item>
-                                                            </ns1:cellItem>
-                                                        </ns1:cell>
-                                                    </ns1:row>
-                                                </xsl:for-each>
-
-                                            </xsl:when>
-                                            <xsl:otherwise>
-                                                <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="dir_add_g">
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="firstName">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value>None captured</ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="surname">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="designation">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="instruction">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value>-</ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                </ns1:row>
-                                            </xsl:otherwise>
-                                        </xsl:choose>
-                                    </ns1:boxSymbol>
-
-                                    <!-- Removed Directors -->
-                                    <xsl:if test="count($REM_SET) &gt; 0">
-                                        <ns1:boxSymbol xsi:type="ns1:textHeading" ns1:size="5">
-                                            <ns1:value>Removed Directors</ns1:value>
-                                        </ns1:boxSymbol>
-
-                                        <ns1:boxSymbol xsi:type="ns1:fullTable" ns1:id="dirRemTbl"
-                                                       ns1:heading="" ns1:showTotal="false" ns1:headingColor="black">
-                                            <ns1:tableColumn ns1:align="left" ns1:fieldName="firstName"   ns1:heading="First Name"   ns1:disableSorting="true"/>
-                                            <ns1:tableColumn ns1:align="left" ns1:fieldName="surname"     ns1:heading="Surname"      ns1:disableSorting="true"/>
-                                            <ns1:tableColumn ns1:align="left" ns1:fieldName="designation" ns1:heading="Designation"  ns1:disableSorting="true"/>
-                                            <ns1:tableColumn ns1:align="left" ns1:fieldName="instruction" ns1:heading="Instruction"  ns1:disableSorting="true"/>
-
-                                            <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="dir_rem_g" ns1:groupHeaderLabel="">
-                                                <ns1:totalsRow ns1:category=" ">
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="firstName">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                </ns1:totalsRow>
-                                            </ns1:rowGroup>
-
-                                            <xsl:for-each select="$REM_SET">
-                                                <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="dir_rem_g">
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="firstName">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='firstName'] | *[local-name()='firstname'] | *[local-name()='name'] )[1]"/></ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="surname">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='surname'] | *[local-name()='lastName'] | *[local-name()='lastname'] )[1]"/></ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="designation">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="( *[local-name()='designation'] | *[local-name()='role'] | *[local-name()='title'] )[1]"/></ns1:value></ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                    <ns1:cell xsi:type="ns1:cell" ns1:col_id="instruction">
-                                                        <ns1:cellItem xsi:type="ns1:cellItem">
-                                                            <ns1:item xsi:type="ns1:simpleText">
-                                                                <ns1:value>
-                                                                    <xsl:variable name="instRaw" select="normalize-space(string((
-                          *[local-name()='instructions' or local-name()='instruction' or local-name()='action'
-                            or local-name()='change' or local-name()='changeType' or local-name()='status'][1]
-                          | @instructions | @instruction | @action | @change | @changeType | @status
-                        )))"/>
-                                                                    <xsl:choose>
-                                                                        <xsl:when test="string-length($instRaw) &gt; 0"><xsl:value-of select="$instRaw"/></xsl:when>
-                                                                        <xsl:otherwise>Remove</xsl:otherwise>
-                                                                    </xsl:choose>
-                                                                </ns1:value>
-                                                            </ns1:item>
-                                                        </ns1:cellItem>
-                                                    </ns1:cell>
-                                                </ns1:row>
-                                            </xsl:for-each>
-                                        </ns1:boxSymbol>
-                                    </xsl:if>
-
-                                </ns1:box>
-                            </ns1:symbol>
-                        </ns1:sections>
-                    </xsl:if>
-
-                    <!-- ================= Combined Comments (working version) ================= -->
-                    <xsl:variable name="APP_IN_REQ" select="$REQ/*[local-name()='approvedComments']/*"/>
-                    <xsl:variable name="REJ_IN_REQ" select="$REQ/*[local-name()='rejectedComments']/*"/>
-
-                    <xsl:variable name="APP_CMTS"
-                                  select="$APP_IN_REQ
-                          | (//*[local-name()='approvedComments']/*)[count($APP_IN_REQ)=0]"/>
-                    <xsl:variable name="REJ_CMTS"
-                                  select="$REJ_IN_REQ
-                          | (//*[local-name()='rejectedComments']/*)[count($REJ_IN_REQ)=0]"/>
-                    <xsl:variable name="ALL_CMTS" select="$APP_CMTS | $REJ_CMTS"/>
-
-                    <xsl:if test="count($ALL_CMTS) &gt; 0">
-                        <!-- Header -->
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
-                                <ns1:value>Comments</ns1:value>
-                            </ns1:symbol>
-                        </ns1:sections>
-
-                        <!-- Boxed table -->
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="commentsBox">
-                                <ns1:box xsi:type="ns1:box">
-
-                                    <ns1:boxSymbol xsi:type="ns1:fullTable"
-                                                   ns1:id="commentsTbl"
-                                                   ns1:heading=""
-                                                   ns1:showTotal="false"
-                                                   ns1:headingColor="black">
-
-                                        <!-- Columns -->
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="creator"     ns1:heading="Creator"      ns1:disableSorting="true"/>
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="createdDate" ns1:heading="Created Date" ns1:disableSorting="true"/>
-                                        <ns1:tableColumn ns1:align="left" ns1:fieldName="comment"     ns1:heading="Comment"      ns1:disableSorting="true"/>
-
-                                        <ns1:rowGroup xsi:type="ns1:rowGroup" ns1:groupId="cmt_g" ns1:groupHeaderLabel="">
-                                            <ns1:totalsRow ns1:category=" ">
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="creator">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="createdDate">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="comment">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value/></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                            </ns1:totalsRow>
-                                        </ns1:rowGroup>
-
-                                        <!-- Pick one node per comment "record" -->
-                                        <xsl:variable name="RECORD_LIKE"
-                                                      select="$ALL_CMTS[
-                                               @creator or @created or @createdDate or @date or @createdAt or @createdOn or @timestamp
-                                               or *[local-name()='creator' or local-name()='created' or local-name()='createdDate'
-                                                     or local-name()='date' or local-name()='createdAt' or local-name()='createdOn'
-                                                     or local-name()='timestamp' or local-name()='comment' or local-name()='commentText'
-                                                     or local-name()='text' or local-name()='message' or local-name()='body']
-                                             ]"/>
-
-                                        <!-- If we don't have record-like nodes, dedupe parents of leaf fields to get one row per parent -->
-                                        <xsl:variable name="LEAF_FIELDS"
-                                                      select="$ALL_CMTS[local-name()='creator'
-                                        or local-name()='created' or local-name()='createdDate'
-                                        or local-name()='date' or local-name()='createdAt' or local-name()='createdOn'
-                                        or local-name()='timestamp'
-                                        or local-name()='comment' or local-name()='commentText'
-                                        or local-name()='text' or local-name()='message' or local-name()='body']"/>
-
-                                        <xsl:for-each select="
-                                            $RECORD_LIKE
-                                            | ( $LEAF_FIELDS
-                                                  [ not(preceding::*
-                                                      [local-name()='creator' or local-name()='created' or local-name()='createdDate'
-                                                       or local-name()='date' or local-name()='createdAt' or local-name()='createdOn'
-                                                       or local-name()='timestamp'
-                                                       or local-name()='comment' or local-name()='commentText'
-                                                       or local-name()='text' or local-name()='message' or local-name()='body']
-                                                      [ generate-id(..) = generate-id(current()/..) ]
-                                                    )
-                                                  ]/..
-                                              )[count($RECORD_LIKE)=0]
-                                          ">
-                                            <!-- Sort newest first -->
-                                            <xsl:sort select="normalize-space(string(
-                                                 ( @created | *[local-name()='created']
-                                                 | @createdDate | *[local-name()='createdDate']
-                                                 | @date | *[local-name()='date']
-                                                 | @createdAt | *[local-name()='createdAt']
-                                                 | @createdOn | *[local-name()='createdOn']
-                                                 | @timestamp | *[local-name()='timestamp']
-                                                 | *[local-name()='dateTime'] | *[local-name()='datetime'] )[1]))"
-                                                      data-type="text" order="descending"/>
-
-                                            <!-- Extract fields -->
-                                            <xsl:variable name="vCreator" select="normalize-space(string(
-                                                    ( @creator | *[local-name()='creator']
-                                                    | @createdBy | *[local-name()='createdBy']
-                                                    | @user | *[local-name()='user']
-                                                    | @author | *[local-name()='author']
-                                                    | @username | *[local-name()='username']
-                                                    | *[local-name()='userName'] | *[local-name()='name']
-                                                    | @owner | *[local-name()='owner'] )[1]))"/>
-
-                                            <xsl:variable name="vCreated" select="normalize-space(string(
-                                                ( @created | *[local-name()='created']
-                                                | @createdDate | *[local-name()='createdDate']
-                                                | @date | *[local-name()='date']
-                                                | @createdAt | *[local-name()='createdAt']
-                                                | @createdOn | *[local-name()='createdOn']
-                                                | @timestamp | *[local-name()='timestamp']
-                                                | *[local-name()='dateTime'] | *[local-name()='datetime'] )[1]))"/>
-
-                                            <xsl:variable name="vCommentGuess" select="normalize-space(string(
-                                                ( @comment | *[local-name()='comment'] | *[local-name()='commentText']
-                                                | @text | *[local-name()='text']
-                                                | @message | *[local-name()='message']
-                                                | *[local-name()='body'] | *[local-name()='content']
-                                                | *[local-name()='note'] | *[local-name()='description']
-                                                | text() )[1]))"/>
-
-                                            <!-- Only fall back to empty if no explicit comment fields -->
-                                            <xsl:variable name="vComment">
-                                                <xsl:choose>
-                                                    <xsl:when test="string-length($vCommentGuess) &gt; 0">
-                                                        <xsl:value-of select="$vCommentGuess"/>
-                                                    </xsl:when>
-                                                    <xsl:otherwise/>
-                                                </xsl:choose>
-                                            </xsl:variable>
-
-                                            <ns1:row xsi:type="ns1:fullTableRow" ns1:groupId="cmt_g">
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="creator">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="$vCreator"/></ns1:value></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="createdDate">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="$vCreated"/></ns1:value></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                                <ns1:cell xsi:type="ns1:cell" ns1:col_id="comment">
-                                                    <ns1:cellItem xsi:type="ns1:cellItem">
-                                                        <ns1:item xsi:type="ns1:simpleText"><ns1:value><xsl:value-of select="$vComment"/></ns1:value></ns1:item>
-                                                    </ns1:cellItem>
-                                                </ns1:cell>
-                                            </ns1:row>
-
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="fullName">
+                                                    <comm:cellItem xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText">
+                                                            <comm:value/>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                            </comm:totalsRow>
+                                        </comm:rowGroup>
+                                        <xsl:for-each
+                                                select="listOfSignatory">
+                                            <xsl:if test="instruction = 'Add'">
+                                                <comm:row xsi:type="comm:fullTableRow"
+                                                          comm:groupId="abc">
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="fullName">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="fullName"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="idNumber">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="idNumber"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="capacity">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="capacity"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="group">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="group"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="instructions">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="instruction"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                </comm:row>
+                                            </xsl:if>
                                         </xsl:for-each>
+                                    </comm:boxSymbol>
 
-                                    </ns1:boxSymbol>
-                                </ns1:box>
-                            </ns1:symbol>
-                        </ns1:sections>
-                    </xsl:if>
-                    <!-- ===== Instructions  ===== -->
-                    <xsl:if test="not(contains($STATUS_UP,'COMPLETED'))">
-                        <ns1:sections ns1:align="left" ns1:width="full">
-                            <ns1:symbol xsi:type="ns1:input" ns1:name="requestId"
-                                        ns1:inputType="hidden">
-                                <ns1:value>
-                                    <xsl:value-of select="$REQ/*[local-name()='requestId']"/>
-                                </ns1:value>
-                            </ns1:symbol>
+                                    <comm:boxSymbol xsi:type="comm:textHeading" comm:size="5">
+                                        <comm:value>Removed Signatories</comm:value>
+                                    </comm:boxSymbol>
 
-                            <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="instructionsBox">
-                                <ns1:box xsi:type="ns1:box">
+                                    <comm:boxSymbol xsi:type="comm:fullTable"
+                                                    comm:id="yxzs{position()}"
+                                                    comm:heading="" comm:showTotal="false"
+                                                    comm:headingColor="black">
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="fullName"
+                                                          comm:heading="Full Name"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="idNumber"
+                                                          comm:heading="ID Number"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="instructions"
+                                                          comm:heading="Instruction"
+                                                          comm:disableSorting="true"/>
+                                        <comm:rowGroup xsi:type="comm:rowGroup"
+                                                       comm:groupId="efg"
+                                                       comm:groupHeaderLabel="">
+                                            <comm:totalsRow comm:category=" ">
 
-                                    <!-- List of instructions -->
-                                    <ns1:boxSymbol xsi:type="ns1:textList"
-                                                   ns1:subHeading="Instructions">
-                                        <ns1:value/>
-                                        <xsl:choose>
-                                            <xsl:when
-                                                    test="count(//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']) &gt; 0">
-                                                <xsl:for-each
-                                                        select="//*[local-name()='lovs']/*[local-name()='instructions']/*[local-name()='instruction']">
-                                                    <ns1:textListItem>
-                                                        <ns1:value>
-                                                            <xsl:value-of select="."/>
-                                                        </ns1:value>
-                                                    </ns1:textListItem>
-                                                </xsl:for-each>
-                                            </xsl:when>
-                                            <xsl:otherwise>
-                                                <ns1:textListItem>
-                                                    <ns1:value>No specific instructions for this
-                                                        status.
-                                                    </ns1:value>
-                                                </ns1:textListItem>
-                                            </xsl:otherwise>
-                                        </xsl:choose>
-                                    </ns1:boxSymbol>
-                                    <ns1:boxSymbol xsi:type="ns1:input"
-                                                   ns1:name="confirmationCheckMandate"
-                                                   ns1:inputType="checkbox"
-                                                   ns1:unCheckedValue="No"
-                                                   ns1:selected="false"
-                                                   ns1:errorMessage="{//*[local-name()='approveRejectErrorModel']/*[local-name()='confirmationCheckMandate']}">
-                                        <ns1:value/>
-                                        <ns1:inputItem ns1:id="confirmationCheckMandate"
-                                                       ns1:label="I confirm that the Instructions have been followed as mentioned above."
-                                                       ns1:type="checkbox"
-                                                       ns1:value="1"
-                                                       ns1:unCheckedValue="No"
-                                                       ns1:selected="false"/>
-                                    </ns1:boxSymbol>
-                                </ns1:box>
-                            </ns1:symbol>
-                        </ns1:sections>
-                    </xsl:if>
-                </ns1:form>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="fullName">
+                                                    <comm:cellItem xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText">
+                                                            <comm:value/>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                            </comm:totalsRow>
+                                        </comm:rowGroup>
+                                        <xsl:for-each
+                                                select="listOfSignatory">
+                                            <xsl:if test="instruction = 'Remove'">
+                                                <comm:row xsi:type="comm:fullTableRow"
+                                                          comm:groupId="abc">
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="fullName">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="fullName"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="idNumber">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="idNumber"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                    <comm:cell xsi:type="comm:cell"
+                                                               comm:col_id="instructions">
+                                                        <comm:cellItem xsi:type="comm:cellItem">
+                                                            <comm:item
+                                                                    xsi:type="comm:simpleText">
+                                                                <comm:value>
+                                                                    <xsl:value-of
+                                                                            select="instruction"/>
+                                                                </comm:value>
+                                                            </comm:item>
+                                                        </comm:cellItem>
+                                                    </comm:cell>
+                                                </comm:row>
+                                            </xsl:if>
+                                        </xsl:for-each>
+                                    </comm:boxSymbol>
+                                </comm:box>
+                            </comm:symbol>
+                        </comm:sections>
+                    </xsl:for-each>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:textHeading" comm:align="left">
+                            <comm:value>Appointed Directors</comm:value>
+                        </comm:symbol>
+                    </comm:sections>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
+                            <comm:box xsi:type="comm:box">
+                                <comm:boxSymbol xsi:type="comm:textHeading" comm:size="5">
+                                    <comm:value>Added Directors</comm:value>
+                                </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:fullTable"
+                                                comm:id="Directors"
+                                                comm:heading="" comm:showTotal="false"
+                                                comm:headingColor="black">
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="fullName"
+                                                      comm:heading="First Name"
+                                                      comm:disableSorting="true"/>
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="Surname"
+                                                      comm:heading="Surname"
+                                                      comm:disableSorting="true"/>
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="Designation"
+                                                      comm:heading="Designation"
+                                                      comm:disableSorting="true"/>
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="instructions"
+                                                      comm:heading="instructions"
+                                                      comm:disableSorting="true"/>
+                                    <comm:rowGroup xsi:type="comm:rowGroup"
+                                                   comm:groupId="efg"
+                                                   comm:groupHeaderLabel="">
+                                        <comm:totalsRow comm:category=" ">
+
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="fullName">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item xsi:type="comm:simpleText">
+                                                        <comm:value/>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                        </comm:totalsRow>
+                                    </comm:rowGroup>
+                                    <xsl:for-each
+                                            select="requestDetails/listOfDirector">
+                                        <comm:row xsi:type="comm:fullTableRow"
+                                                  comm:groupId="abc">
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="fullName">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="name"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="Surname">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="surname"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="Designation">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="designation"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="instructions">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="instructions"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                        </comm:row>
+                                    </xsl:for-each>
+                                </comm:boxSymbol>
+                            </comm:box>
+                        </comm:symbol>
+                    </comm:sections>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:textHeading" comm:align="left">
+                            <comm:value>Comments</comm:value>
+                        </comm:symbol>
+                    </comm:sections>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
+                            <comm:box xsi:type="comm:box">
+                                <comm:boxSymbol xsi:type="comm:textHeading" comm:size="5">
+                                    <comm:value></comm:value>
+                                </comm:boxSymbol>
+                                <comm:boxSymbol xsi:type="comm:fullTable"
+                                                comm:id="comment"
+                                                comm:heading="" comm:showTotal="false"
+                                                comm:headingColor="black">
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="fullName"
+                                                      comm:heading="Name"
+                                                      comm:disableSorting="true"/>
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="Surname"
+                                                      comm:heading="Created Date"
+                                                      comm:disableSorting="true"/>
+                                    <comm:tableColumn comm:align="left"
+                                                      comm:fieldName="Designation"
+                                                      comm:heading="Comments"
+                                                      comm:disableSorting="true"/>
+                                    <comm:rowGroup xsi:type="comm:rowGroup"
+                                                   comm:groupId="efg"
+                                                   comm:groupHeaderLabel="">
+                                        <comm:totalsRow comm:category=" ">
+
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="fullName">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item xsi:type="comm:simpleText">
+                                                        <comm:value/>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                        </comm:totalsRow>
+                                    </comm:rowGroup>
+                                    <xsl:for-each
+                                            select="requestDetails/listOfComment">
+                                        <comm:row xsi:type="comm:fullTableRow"
+                                                  comm:groupId="abc">
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="fullName">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="name"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="Surname">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="createdDate"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                            <comm:cell xsi:type="comm:cell"
+                                                       comm:col_id="Designation">
+                                                <comm:cellItem xsi:type="comm:cellItem">
+                                                    <comm:item
+                                                            xsi:type="comm:simpleText">
+                                                        <comm:value>
+                                                            <xsl:value-of
+                                                                    select="commentedText"/>
+                                                        </comm:value>
+                                                    </comm:item>
+                                                </comm:cellItem>
+                                            </comm:cell>
+                                        </comm:row>
+                                    </xsl:for-each>
+                                </comm:boxSymbol>
+                            </comm:box>
+                        </comm:symbol>
+                    </comm:sections>
+                    <comm:sections comm:align="left" comm:width="full">
+                        <comm:symbol xsi:type="comm:boxContainer" comm:id="instructionsBox">
+                            <comm:box xsi:type="comm:box">
+                                <comm:boxSymbol xsi:type="comm:textList"
+                                                comm:subHeading="Instructions">
+                                    <comm:value/>
+                                </comm:boxSymbol>
+                                <xsl:for-each
+                                        select="requestDetails/listOfInstruction">
+                                <comm:boxSymbol xsi:type="comm:textReadout"
+                                                comm:subHeading="">
+                                    <comm:value> .
+                                        <xsl:value-of
+                                                select="instruction"/>
+                                    </comm:value>
+                                </comm:boxSymbol>
+                                </xsl:for-each>
+                                <comm:boxSymbol xsi:type="comm:input"
+                                                comm:name="confirmationCheckMandate"
+                                                comm:inputType="checkbox"
+                                                comm:unCheckedValue="No"
+                                                comm:errorMessage="{requestDetails/viewPageError}"
+                                                comm:selected="false">
+                                    <comm:value/>
+                                    <comm:inputItem comm:id="confirmationCheckMandate"
+                                                    comm:label="I confirm that the Instructions have been followed as mentioned above."
+                                                    comm:type="checkbox"
+                                                    comm:value="1"
+                                                    comm:unCheckedValue="false"
+                                                    comm:selected="false"/>
+                                </comm:boxSymbol>
+                            </comm:box>
+                        </comm:symbol>
+                    </comm:sections>
+                </comm:form>
             </symbol>
-
-            <!-- ===== Dynamic action labels based on subStatus (and optional status) ===== -->
-            <xsl:variable name="SUB_RAW" select="normalize-space($REQ/*[local-name()='subStatus'])"/>
-            <xsl:variable name="SUB_UP"  select="translate($SUB_RAW, $LOWER, $UPPER)"/>
-            <xsl:variable name="STATUS_UP" select="translate(normalize-space($REQ/*[local-name()='status']), $LOWER, $UPPER)"/>
-            <xsl:variable name="LAB_APPROVE">
-                <xsl:choose>
-                    <xsl:when test="contains($SUB_UP,'HOGAN VERIFICATION PENDING')">Verify for Hogan</xsl:when>
-                    <xsl:when test="contains($SUB_UP,'WINDEED VERIFICATION PENDING')">Verify for Windeed</xsl:when>
-                    <xsl:when test="contains($SUB_UP,'HANIS VERIFICATION PENDING')">Verify for Hanis</xsl:when>
-                    <xsl:when test="contains($SUB_UP,'ADMIN APPROVAL PENDING')">Approve</xsl:when>
-                    <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan</xsl:when>
-                    <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Update for Documentum</xsl:when>
-                    <xsl:when test="$SUB_UP='SUBMITTED'">Submit Approve</xsl:when>
-                    <xsl:otherwise>Approve</xsl:otherwise>
-                </xsl:choose>
-            </xsl:variable>
-
-            <xsl:variable name="LAB_REJECT">
-                <xsl:choose>
-                    <xsl:when test="$SUB_UP='SUBMITTED'">Submit Reject</xsl:when>
-                    <xsl:otherwise>Reject</xsl:otherwise>
-                </xsl:choose>
-            </xsl:variable>
-
-            <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns1:footer"
-                    ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
-                <xsl:choose>
-                    <!-- Completed: only Back -->
-                    <xsl:when test="contains($STATUS_UP,'COMPLETED')">
-                        <ns1:baseButton ns1:id="back"
-                                        ns1:url="app-domain/mandates-and-resolutions/finish" ns1:target="main"
-                                        ns1:formSubmit="false" ns1:label="Back"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                        <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
-                            <ns1:baseButton ns1:id="reassignBtn"
-                                            ns1:url="app-domain/mandates-and-resolutions/adminReassign"
-                                            ns1:target="main" ns1:formSubmit="false"
-                                            ns1:label="Re Assign"/>
-                        </xsl:if>
-                        <ns1:baseButton ns1:id="editBtn"
-                                        ns1:url="{concat('app-domain/mandates-and-resolutions/editRequest/', $REQ/*[local-name()='requestId'])}"
-                                        ns1:target="main" ns1:formSubmit="false" ns1:label="Edit"/>
-                        <xsl:if test="not(contains($STATUS_UP,'ON HOLD'))">
-                            <ns1:baseButton ns1:id="hold"
-                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestHold?requestId=', $REQ/*[local-name()='requestId'])}"
-                                            ns1:target="main" ns1:formSubmit="false" ns1:label="Hold"/>
-                        </xsl:if>
-                        <xsl:if test="contains($STATUS_UP,'ON HOLD')">
-                            <ns1:baseButton ns1:id="unHold"
-                                            ns1:url="{concat('app-domain/mandates-and-resolutions/viewRequestUnhold?requestId=', $REQ/*[local-name()='requestId'])}"
-                                            ns1:target="main" ns1:formSubmit="false" ns1:label="UnHold"/>
-                        </xsl:if>
-
-                        <ns1:baseButton ns1:id="approve"
-                                        ns1:url="app-domain/mandates-and-resolutions/approve-validate"
-                                        ns1:target="main"
-                                        ns1:formSubmit="true"
-                                        ns1:label="{$LAB_APPROVE}"/>
-                        <ns1:baseButton ns1:id="reject"
-                                        ns1:url="app-domain/mandates-and-resolutions/reject-validate"
-                                        ns1:target="main" ns1:formSubmit="true" ns1:label="{$LAB_REJECT}"/>
-                        <ns1:baseButton ns1:id="back"
-                                        ns1:url="app-domain/mandates-and-resolutions/finish"
-                                        ns1:target="main"
-                                        ns1:formSubmit="false" ns1:label="Back"/>
-                    </xsl:otherwise>
-                </xsl:choose>
+            <symbol xsi:type="comm:footer" comm:text="" comm:textAlign="left"
+                    comm:buttonAlign="right">
+                <xsl:if test="requestDetails/checkReassignee = 'true'">
+                <comm:baseButton comm:id="assign"
+                                 comm:url="app-domain/mandates-and-resolutions/adminReassign"
+                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                 comm:label="Re-Assign"/>
+                </xsl:if>
+                <comm:baseButton comm:id="edit"
+                                 comm:url="app-domain/mandates-and-resolutions/editRequest"
+                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                 comm:label="Edit"/>
+                <xsl:if test="requestDetails/status = 'In Progress'">
+                <comm:baseButton comm:id="hold"
+                                 comm:url="app-domain/mandates-and-resolutions/viewRequestHold/{requestDetails/requestId}"
+                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                 comm:label="Hold"/>
+                </xsl:if>
+                <xsl:if test="requestDetails/status = 'On Hold'">
+                <comm:baseButton comm:id="unhold"
+                                 comm:url="app-domain/mandates-and-resolutions/viewRequestUnhold/{requestDetails/requestId}"
+                                 comm:target="main" comm:formSubmit="false" comm:tooltip=""
+                                 comm:label="UnHold"/>
+                </xsl:if>
+                <comm:baseButton comm:id="hogan"
+                                 comm:url="app-domain/mandates-and-resolutions/approve/{requestDetails/requestId}"
+                                 comm:target="main" comm:formSubmit="true"
+                                 comm:tooltip="" comm:label="Verify for Hogan"/>
+                <comm:baseButton comm:id="reject"
+                                 comm:url="app-domain/mandates-and-resolutions/reject-validate"
+                                 comm:target="main" comm:formSubmit="false"
+                                 comm:tooltip="" comm:label="Reject"/>
+                <comm:baseButton comm:id="back"
+                                 comm:url="app-domain/mandates-and-resolutions/finish"
+                                 comm:target="main" comm:formSubmit="false"
+                                 comm:tooltip="" comm:label="Back"/>
             </symbol>
-
         </page>
     </xsl:template>
 </xsl:stylesheet>

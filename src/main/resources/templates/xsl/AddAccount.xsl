@@ -259,6 +259,7 @@
         </symbol>
         <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="comm:footer"
                 comm:text="" comm:textAlign="left" comm:buttonAlign="right">
+            <xsl:if test="addAccountModel/editButton = 'true'">
             <comm:baseButton comm:id="proceed" comm:target="main"
                              comm:url="app-domain/mandates-and-resolutions/cancelAddAccount"
                              comm:label="Cancel" comm:formSubmit="true"/>
@@ -271,6 +272,15 @@
                 <comm:baseButton comm:id="backSearch" comm:target="main"
                                  comm:url="app-domain/mandates-and-resolutions/updateSignatoryWithAccount/{addAccountModel/userInList}"
                                  comm:label="Update" comm:formSubmit="true"/>
+            </xsl:if>
+            </xsl:if>
+            <xsl:if test="addAccountModel/editButton = 'false'">
+            <comm:baseButton comm:id="proceed" comm:target="main"
+                             comm:url="app-domain/mandates-and-resolutions/editRequest"
+                             comm:label="Cancel" comm:formSubmit="true"/>
+            <comm:baseButton comm:id="backSearch" comm:target="main"
+                             comm:url="app-domain/mandates-and-resolutions/updateSignatoryWithAccountEdit/{addAccountModel/userInList}"
+                             comm:label="Update" comm:formSubmit="true"/>
             </xsl:if>
         </symbol>
 

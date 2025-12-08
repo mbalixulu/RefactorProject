@@ -24,6 +24,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -58,6 +59,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.ExportModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.RequestDetails;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestTableWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
@@ -73,6 +75,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SubmissionPayload;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ApproveRejectErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.DirectorErrorModel;
+import za.co.rmb.tts.mandates.resolutions.ui.model.error.ExportErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesAutoFillErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.MandatesSignatureCardErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.ResolutionsAutoFillErrorModel;
@@ -385,6 +388,7 @@ public class MandatesResolutionUIController {
     DirectorModel directorModel = new DirectorModel();
     directorModel.setButtonCheck("true");
     directorModel.setPageCheck("false");
+    directorModel.setCheckEdit("true");
     httpSession.setAttribute("Dirctors", directorModel);
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
@@ -396,6 +400,7 @@ public class MandatesResolutionUIController {
     DirectorModel directorModel = new DirectorModel();
     directorModel.setButtonCheck("true");
     directorModel.setPageCheck("true");
+    directorModel.setCheckEdit("true");
     httpSession.setAttribute("DirctorsNew", directorModel);
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
@@ -526,8 +531,7 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/removeDirectorReso/{userInList}", produces =
       MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> removeDirectorReso(@PathVariable String userInList,
-                                                   @RequestParam Map<String, String> user) {
+  public ResponseEntity<String> removeDirectorReso(@PathVariable String userInList) {
     String page = "";
     mandatesResolutionService.removeSpecificAdminReso(Integer.valueOf(userInList));
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
@@ -547,6 +551,7 @@ public class MandatesResolutionUIController {
         userInList);
     directorModels.setButtonCheck("false");
     directorModels.setPageCheck("false");
+    directorModels.setCheckEdit("true");
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
@@ -563,6 +568,7 @@ public class MandatesResolutionUIController {
         userInList);
     directorModels.setButtonCheck("false");
     directorModels.setPageCheck("true");
+    directorModels.setCheckEdit("true");
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
@@ -577,6 +583,9 @@ public class MandatesResolutionUIController {
     List<DirectorModel> directorModelList = requestWrapper.getDirectorModels();
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("Dirctors");
+    if (listofDirectors == null) {
+      listofDirectors = new DirectorModel();
+    }
     if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
@@ -595,6 +604,11 @@ public class MandatesResolutionUIController {
     if (check) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
       listofDirectors.setButtonCheck("false");
+      listofDirectors.setName(admin.get("name"));
+      listofDirectors.setSurname(admin.get("surname"));
+      listofDirectors.setDesignation(admin.get("designation"));
+      listofDirectors.setCheckEdit("true");
+      listofDirectors.setPageCheck("false");
       page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
     } else {
       directorModelList =
@@ -788,6 +802,7 @@ public class MandatesResolutionUIController {
           || requestWrapper.getListOfAddAccount().isEmpty()) {
         AddAccountModel addAccountModel = new AddAccountModel();
         addAccountModel.setButtonCheck("false");
+        addAccountModel.setEditButton("true");
         httpSession.setAttribute("Signatory", addAccountModel);
         httpSession.setAttribute("RequestWrapper", requestWrapper);
         page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
@@ -873,12 +888,43 @@ public class MandatesResolutionUIController {
     } else {
       mandatesResolutionService.sendRequestStaging();
     }
-    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
-    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
-      return displayAdminApproval();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new ArrayList<>();
+    List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
+    RequestDTO requestDTO = new RequestDTO();
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDTO.setSubStatus("Admin");
     } else {
-      return goToDisplayRequestTable();
+      requestDTO.setSubStatus("User");
     }
+    for (RequestStagingDTO src : list) {
+      RequestTableDTO r = new RequestTableDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                 && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      }
+    }
+    wrapper.setRequest(rows);
+    wrapper.setRequestDTO(requestDTO);
+    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   @PostMapping(value = "/backToAccountSearch", produces = MediaType.APPLICATION_XML_VALUE)
@@ -898,6 +944,7 @@ public class MandatesResolutionUIController {
     String page = "";
     AddAccountModel addAccountModel = new AddAccountModel();
     addAccountModel.setButtonCheck("false");
+    addAccountModel.setEditButton("true");
     httpSession.setAttribute("Signatory", addAccountModel);
     page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
@@ -933,14 +980,6 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/signatoryTablePopup", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> openSignatoryPopup(@RequestParam Map<String, String> user) {
     String page = "";
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-
-    if (requestWrapper.getListOfAddAccount() == null) {
-      requestWrapper.setAccountCheck("false");
-    } else {
-      requestWrapper.setAccountCheck("true");
-    }
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
     addAccountModel.setAccountName(user.get("accountName"));
@@ -949,7 +988,6 @@ public class MandatesResolutionUIController {
     signatoryModel.setButtonCheck("true");
     addAccountModel.setCheckSignatoryList("false");
     httpSession.setAttribute("Signatory", addAccountModel);
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
     return ResponseEntity.ok(page);
   }
@@ -957,16 +995,8 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/backToAddAccount", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> backToAddAccount() {
     String page = "";
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
-    if (requestWrapper.getListOfAddAccount() == null) {
-      requestWrapper.setAccountCheck("false");
-    } else {
-      requestWrapper.setAccountCheck("true");
-    }
-    httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
@@ -1211,12 +1241,43 @@ public class MandatesResolutionUIController {
     } else {
       mandatesResolutionService.sendRequestStaging();
     }
-    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
-    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
-      return displayAdminApproval();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new ArrayList<>();
+    List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
+    RequestDTO requestDTO = new RequestDTO();
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDTO.setSubStatus("Admin");
     } else {
-      return goToDisplayRequestTable();
+      requestDTO.setSubStatus("User");
     }
+    for (RequestStagingDTO src : list) {
+      RequestTableDTO r = new RequestTableDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                 && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      }
+    }
+    wrapper.setRequest(rows);
+    wrapper.setRequestDTO(requestDTO);
+    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   @PostMapping(value = "/editSignatoryWithAccount/{userInList}", produces =
@@ -1229,6 +1290,7 @@ public class MandatesResolutionUIController {
     AddAccountModel addAccountModel =
         mandatesResolutionService.getAccount(requestWrapper.getListOfAddAccount(), userInList);
     addAccountModel.setButtonCheck("true");
+    addAccountModel.setEditButton("true");
     httpSession.setAttribute("Signatory", addAccountModel);
     page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
@@ -1405,12 +1467,43 @@ public class MandatesResolutionUIController {
     } else {
       mandatesResolutionService.sendRequestSignatureCard();
     }
-    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
-    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
-      return displayAdminApproval();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new ArrayList<>();
+    List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
+    RequestDTO requestDTO = new RequestDTO();
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDTO.setSubStatus("Admin");
     } else {
-      return goToDisplayRequestTable();
+      requestDTO.setSubStatus("User");
     }
+    for (RequestStagingDTO src : list) {
+      RequestTableDTO r = new RequestTableDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                 && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      }
+    }
+    wrapper.setRequest(rows);
+    wrapper.setRequestDTO(requestDTO);
+    page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   @PostMapping(value = "/backSignatureCard",
@@ -1514,11 +1607,43 @@ public class MandatesResolutionUIController {
       mandatesResolutionService.sendRequestStaging();
     }
     UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
-    if ("ADMIN".equalsIgnoreCase(dto.getUserRole())) {
-      return displayAdminApproval();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new ArrayList<>();
+    List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
+    RequestDTO requestDTO = new RequestDTO();
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDTO.setSubStatus("Admin");
     } else {
-      return goToDisplayRequestTable();
+      requestDTO.setSubStatus("User");
     }
+    for (RequestStagingDTO src : list) {
+      RequestTableDTO r = new RequestTableDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                 && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      }
+    }
+    wrapper.setRequest(rows);
+    wrapper.setRequestDTO(requestDTO);
+    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   @PostMapping(value = "/submitFinalRecord",
@@ -2169,366 +2294,28 @@ public class MandatesResolutionUIController {
 
   //Admin View Page
   @PostMapping(value = "/adminView/{requestId}", produces = MediaType.APPLICATION_XML_VALUE)
-  public ResponseEntity<String> displayAdminView(
-      @PathVariable Long requestId,
-      HttpSession session,
-      HttpServletRequest servletRequest
-  ) {
-    try {
-      //Remember last opened request for Cancel / fallbacks
-      session.setAttribute("lastViewedRequestId", requestId);
+  public ResponseEntity<String> displayAdminView(@PathVariable Long requestId)
+      throws JsonProcessingException {
 
-      RestTemplate rt = new RestTemplate();
-
-      //Resolve display name
-      za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO user =
-          (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO) session.getAttribute(
-              "currentUser");
-
-      String displayName = currentDisplayId(session, servletRequest);
-
-      //1) Load submission
-      String submissionUrl = mandatesResolutionsDaoURL + "/api/submission/" + requestId;
-      ResponseEntity<za.co.rmb.tts.mandates.resolutions
-          .ui.model.dto.MandateResolutionSubmissionResultDTO>
-          subResp =
-          rt.getForEntity(submissionUrl,
-              za.co.rmb.tts.mandates.resolutions
-                  .ui.model.dto.MandateResolutionSubmissionResultDTO.class);
-
-      if (!subResp.getStatusCode().is2xxSuccessful() || subResp.getBody() == null) {
-        throw new RuntimeException("Failed to fetch submission " + requestId);
-      }
-      var sub = subResp.getBody();
-
-      //2) Fetch comments (DAO) — newestFirst=true
-      String commentsUrl =
-          mandatesResolutionsDaoURL + "/api/comment/request/" + requestId + "?newestFirst=true";
-      ResponseEntity<java.util.List<java.util.Map<String, Object>>> commentsResp = rt.exchange(
-          commentsUrl,
-          HttpMethod.GET,
-          null,
-          new org.springframework.core.ParameterizedTypeReference
-              <java.util.List<java.util.Map<String, Object>>>() {
-          }
-      );
-
-      java.time.format.DateTimeFormatter viewFmt =
-          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-      java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO> approvedRows =
-          new java.util.ArrayList<>();
-      java.util.List<za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO> rejectedRows =
-          new java.util.ArrayList<>();
-
-      if (commentsResp.getStatusCode().is2xxSuccessful() && commentsResp.getBody() != null) {
-        for (var c : commentsResp.getBody()) {
-          String text =
-              (c.get("commentText") == null) ? "" : String.valueOf(c.get("commentText")).trim();
-          if (text.isEmpty()) {
-            continue;
-          }
-
-          Object isInt = c.getOrDefault("isInternal", c.getOrDefault("isinternal", null));
-          boolean reject = (isInt instanceof Boolean) ? ((Boolean) isInt)
-              : "true".equalsIgnoreCase(String.valueOf(isInt));
-
-          String creator =
-              (c.get("creator") == null) ? "" : String.valueOf(c.get("creator")).trim();
-          if (creator.isBlank() || "ui".equalsIgnoreCase(creator)) {
-            creator = displayName;
-          }
-
-          String createdStr = "";
-          Object created = c.get("created");
-          if (created != null) {
-            String raw = String.valueOf(created).trim();
-            try {
-              if (isAllDigits(raw)) {
-                long val = Long.parseLong(raw);
-                createdStr = formatEpochMillis(val, viewFmt);
-              } else {
-                createdStr = tryFormatIso(raw, viewFmt);
-              }
-            } catch (Exception ignore) {
-              createdStr = raw;
-            }
-          }
-
-          var row = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.ViewCommentDTO();
-          row.setCreator(creator);
-          row.setCreated(createdStr);
-          row.setText(text);
-
-          if (reject) {
-            rejectedRows.add(row);
-          } else {
-            approvedRows.add(row);
-          }
-        }
-      }
-
-      //3) Helpers
-      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
-      java.util.function.Function<String, String> keyN =
-          s -> s == null ? "" : s.trim().toUpperCase();
-      java.util.function.BiFunction<String, String, String> accKey = (num, name) -> {
-        String n = nz.apply(num);
-        if (!n.isEmpty()) {
-          return "NUM#" + n;
-        }
-        return "NAME#" + keyN.apply(name);
-      };
-
-      //4) Seed accounts map
-      java.util.Map<String, AccountDTO> accountsByKey = new java.util.LinkedHashMap<>();
-      if (sub.getAccounts() != null) {
-        for (var a : sub.getAccounts()) {
-          String k = accKey.apply(a.getAccountNumber(), a.getAccountName());
-          AccountDTO bucket = accountsByKey.computeIfAbsent(k, kk -> {
-            AccountDTO ad = new AccountDTO();
-            ad.setAccountName(nz.apply(a.getAccountName()));
-            ad.setAccountNumber(nz.apply(a.getAccountNumber()));
-            ad.setSignatories(new java.util.ArrayList<>());
-            return ad;
-          });
-          var apiSigs = a.getSignatories();
-          if (apiSigs != null) {
-            for (var s : apiSigs) {
-              SignatoryDTO sd = new SignatoryDTO();
-              sd.setFullName(nz.apply(s.getFullName()));
-              sd.setIdNumber(nz.apply(s.getIdNumber()));
-              sd.setInstructions(nz.apply(s.getInstructions()));
-              sd.setCapacity(nz.apply(s.getCapacity()));
-              sd.setGroupCategory(nz.apply(s.getGroupCategory()));
-              sd.setAccountName(bucket.getAccountName());
-              sd.setAccountNumber(bucket.getAccountNumber());
-              bucket.getSignatories().add(sd);
-            }
-          }
-        }
-      }
-
-      //5) Build wrapper for XSL
-      RequestTableDTO view = new RequestTableDTO();
-      if (sub.getRequest() != null) {
-        view.setRequestId(sub.getRequest().getRequestId());
-        view.setCompanyId(sub.getRequest().getCompanyId());
-        view.setSla(sub.getRequest().getSla());
-        view.setType(sub.getRequest().getType());
-        view.setStatus(sub.getRequest().getStatus());
-        view.setSubStatus(sub.getRequest().getSubStatus());
-        view.setCreated(
-            sub.getRequest().getCreated() != null ? sub.getRequest().getCreated().toString() :
-                null);
-        view.setUpdated(
-            sub.getRequest().getUpdated() != null ? sub.getRequest().getUpdated().toString() :
-                null);
-        view.setProcessId(sub.getRequest().getProcessId());
-        view.setAssignedUser(sub.getRequest().getAssignedUser());
-        view.setRequestIdForDisplay(sub.getRequest().getRequestIdForDisplay());
-
-        //Creator/Updator coming from the API payload (Display when viewing a request)
-        String creator = nz.apply(sub.getRequest().getCreator());
-        if (creator.isEmpty()) {
-          creator = displayName; // fallback
-        }
-        view.setCreator(creator);
-
-        String updator = nz.apply(sub.getRequest().getUpdator());
-        if (updator.isEmpty()) {
-          updator = displayName; // fallback
-        }
-        view.setUpdator(updator);
-
-        //Directors from submission / fallbacks
-        var dirs =
-            new java.util.ArrayList<za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO>();
-        boolean submissionHasInstr = false;
-
-        var authsSub = sub.getAuthorities();
-        if (authsSub != null && !authsSub.isEmpty()) {
-          for (var a : authsSub) {
-            boolean hasInstr = java.util.Arrays.stream(a.getClass().getMethods())
-                .anyMatch(m -> m.getName().equals("getInstructions"));
-            if (hasInstr) {
-              submissionHasInstr = true;
-            }
-
-            String first = null;
-            String last = null;
-            String role = null;
-            try {
-              first = (String) a.getClass().getMethod("getFirstname").invoke(a);
-            } catch (Exception ignore) {
-              // intentionally empty
-            }
-            try {
-              last = (String) a.getClass().getMethod("getSurname").invoke(a);
-            } catch (Exception ignore) {
-              // intentionally empty
-            }
-            try {
-              role = (String) a.getClass().getMethod("getDesignation").invoke(a);
-            } catch (Exception ignore) {
-              // intentionally empty
-            }
-
-            String instEff = extractInstruction(a);
-
-            var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
-            dd.setName(nz.apply(first));
-            dd.setSurname(nz.apply(last));
-            dd.setDesignation(nz.apply(role));
-            dd.setInstruction(instEff);
-            if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
-                .isEmpty())) {
-              dirs.add(dd);
-            }
-          }
-        }
-
-        if (!submissionHasInstr && sub.getRequest() != null
-            && sub.getRequest().getCompanyId() != null) {
-          try {
-            Long companyId = sub.getRequest().getCompanyId();
-            String url = mandatesResolutionsDaoURL + "/api/authority/company/" + companyId;
-            var resp = rt.exchange(
-                url, HttpMethod.GET, null,
-                new org.springframework.core.ParameterizedTypeReference<
-                    java.util.List<za.co.rmb.tts.mandates.resolutions
-                        .ui.model.dto.AuthorityDTO>>() {
-                }
-            );
-            var authsApi = (resp.getStatusCode().is2xxSuccessful()) ? resp.getBody() : null;
-            if (authsApi != null && !authsApi.isEmpty()) {
-              dirs.clear();
-              for (var a : authsApi) {
-                var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
-                dd.setName(nz.apply(a.getFirstname()));
-                dd.setSurname(nz.apply(a.getSurname()));
-                dd.setDesignation(nz.apply(a.getDesignation()));
-                String instr = nz.apply(a.getInstructions());
-                if (instr.isEmpty()) {
-                  Boolean active = a.getIsActive();
-                  instr = (Boolean.FALSE.equals(active)) ? "Remove" : "Add";
-                }
-                dd.setInstruction(instr);
-                if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
-                    .isEmpty())) {
-                  dirs.add(dd);
-                }
-              }
-            }
-          } catch (Exception ignore) {
-            // intentionally empty
-          }
-        }
-
-        if (dirs.isEmpty() && sub.getRequest() != null) {
-          try {
-            var sourceDirs =
-                (java.util.List<?>) sub.getRequest().getClass().getMethod("getDirectors")
-                    .invoke(sub.getRequest());
-            if (sourceDirs != null) {
-              for (Object d : sourceDirs) {
-                String name = null;
-                String surname = null;
-                String designation = null;
-                String instruction = null;
-                try {
-                  name = (String) d.getClass().getMethod("getName").invoke(d);
-                } catch (Exception ignore) {
-                  // intentionally empty
-                }
-                try {
-                  surname = (String) d.getClass().getMethod("getSurname").invoke(d);
-                } catch (Exception ignore) {
-                  // intentionally empty
-                }
-                try {
-                  designation = (String) d.getClass().getMethod("getDesignation").invoke(d);
-                } catch (Exception ignore) {
-                  // intentionally empty
-                }
-                try {
-                  instruction = (String) d.getClass().getMethod("getInstruction").invoke(d);
-                } catch (Exception ignore) {
-                  // intentionally empty
-                }
-
-                var dd = new za.co.rmb.tts.mandates.resolutions.ui.model.dto.DirectorDTO();
-                dd.setName(nz.apply(name));
-                dd.setSurname(nz.apply(surname));
-                dd.setDesignation(nz.apply(designation));
-                dd.setInstruction(nz.apply(instruction));
-
-                if (!(dd.getName().isEmpty() && dd.getSurname().isEmpty() && dd.getDesignation()
-                    .isEmpty())) {
-                  dirs.add(dd);
-                }
-              }
-            }
-          } catch (ReflectiveOperationException ignore) {
-            // intentionally empty
-          }
-        }
-
-        view.setDirectors(dirs);
-      } else {
-        view.setRequestId(requestId);
-      }
-
-      view.setCompanyName(
-          (sub.getCompany() != null && sub.getCompany().getName() != null)
-              ? sub.getCompany().getName() : "Unknown"
-      );
-
-      view.setApprovedComments(approvedRows);
-      view.setRejectedComments(rejectedRows);
-
-      view.setAccounts(new java.util.ArrayList<>(accountsByKey.values()));
-      view.setSignatories(null);
-
-      RequestTableWrapper wrapper = new RequestTableWrapper();
-      wrapper.setRequest(java.util.List.of(view));
-
-      populateInstructions(wrapper, view.getSubStatus(), mandatesResolutionsDaoURL);
-
-      Object approveErr = servletRequest.getAttribute("approveErr");
-      String errParam = servletRequest.getParameter("err");
-      if (approveErr != null || "chk".equalsIgnoreCase(String.valueOf(errParam))) {
-        ApproveRejectErrorModel em = new ApproveRejectErrorModel();
-        em.setConfirmationCheckMandate(
-            (approveErr != null)
-                ? String.valueOf(approveErr)
-                : "Verification cannot proceed until the checkbox has been selected"
-        );
-        wrapper.setApproveRejectErrorModel(em);
-      }
-      UserDTO users = (UserDTO) session.getAttribute("currentUser");
-      RequestDTO requestDTO = new RequestDTO();
-      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
-        requestDTO.setSubStatus("Admin");
-      } else {
-        requestDTO.setSubStatus("User");
-      }
-      wrapper.setRequestDTO(requestDTO);
-
-      String page = xsltProcessor.generatePage(xslPagePath("ViewRequest"), wrapper);
-      return ResponseEntity.ok(page);
-
-    } catch (Exception e) {
-      String fallbackError =
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-          +
-          "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
-          +
-          "    <error>Unable to load request for admin viewing.</error>\n"
-          +
-          "</page>\n";
-      return ResponseEntity.ok(fallbackError);
+    httpSession.setAttribute("lastViewedRequestId", requestId);
+    RequestDetails requestDetails = mandatesResolutionService.getRequestById(requestId);
+    httpSession.setAttribute("RequestDetails", requestDetails);
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDetails.setCheckReassignee("true");
+    } else {
+      requestDetails.setCheckReassignee("false");
     }
+    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/adminViewBack", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> displayAdminViewBack() {
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    return ResponseEntity.ok(page);
   }
 
   @PostMapping(value = "/adminReassign", produces = MediaType.APPLICATION_XML_VALUE)
@@ -2656,7 +2443,7 @@ public class MandatesResolutionUIController {
 
       //Back to Admin View
       session.setAttribute("lastViewedRequestId", requestId);
-      return displayAdminView(requestId, session, servletRequest);
+      return displayAdminView(requestId);
 
     } catch (Exception e) {
       logger.error("Reassign submit failed", e);
@@ -2939,13 +2726,32 @@ public class MandatesResolutionUIController {
   public ResponseEntity<?> exportRequestsPost(@RequestParam Map<String, String> user) {
 
     ExportModel exportModel = (ExportModel) httpSession.getAttribute("ExportCSV");
-    exportModel.setStatus(user.get("status"));
-    exportModel.setFromDate(user.get("fromDate"));
-    exportModel.setToDate(user.get("toDate"));
-    exportModel.setButtonCheck("true");
-    httpSession.setAttribute("ExportCSV", exportModel);
+    boolean check = false;
+    String page = "";
+    ExportErrorModel exportErrorModel = new ExportErrorModel();
+    if (user.get("status").isBlank()) {
+      exportErrorModel.setStatus("Status can't be empty !");
+      check = true;
+    }
 
-    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    if (screenValidation.validateDates(user.get("fromDate"), user.get("toDate"))) {
+      exportErrorModel.setFromDate("From-Date can't be greater than To-Date and can't be equal !");
+      check = true;
+    }
+
+    if (check) {
+      exportModel.setFromDate(user.get("fromDate"));
+      exportModel.setToDate(user.get("toDate"));
+      exportModel.setExportErrorModel(exportErrorModel);
+      page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    } else {
+      exportModel.setStatus(user.get("status"));
+      exportModel.setFromDate(user.get("fromDate"));
+      exportModel.setToDate(user.get("toDate"));
+      exportModel.setButtonCheck("true");
+      httpSession.setAttribute("ExportCSV", exportModel);
+      page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    }
     return ResponseEntity.ok(page);
   }
 
@@ -6259,23 +6065,26 @@ public class MandatesResolutionUIController {
     }
   }
 
-  @PostMapping(value = "/approve-validate", produces = MediaType.APPLICATION_XML_VALUE)
+  @PostMapping(value = "/approve/{requestId}", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> approveValidate(
-      @RequestParam("requestId") Long requestId,
-      @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
-      HttpSession session,
-      HttpServletRequest servletRequest
-  ) {
-    boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
-    if (!checked) {
-      servletRequest.setAttribute(
-          "approveErr",
-          "Verification cannot proceed until the checkbox has been selected"
-      );
-      return displayViewRequest(requestId, session, servletRequest);
+      @PathVariable String requestId,
+      @RequestParam Map<String, String> user) {
+
+    boolean check = false;
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    if ("false".equalsIgnoreCase(user.get("confirmationCheckMandate"))) {
+      requestDetails.setViewPageError("Verification cannot proceed until the "
+                                               + "checkbox has been selected !");
+      check = true;
     }
 
-    return displayViewRequestApprovePage(requestId);
+    if (check) {
+      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+          requestDetails);
+      return ResponseEntity.ok(page);
+    } else {
+      return displayViewRequestApprovePage(Long.valueOf(requestId));
+    }
   }
 
   @PostMapping(value = "/reject-validate", produces = MediaType.APPLICATION_XML_VALUE)
@@ -6303,14 +6112,14 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpSession session,
       HttpServletRequest servletRequest
-  ) {
+  ) throws JsonProcessingException {
     boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
     if (!checked) {
       servletRequest.setAttribute(
           "approveErr",
           "Verification cannot proceed until the checkbox has been selected"
       );
-      return displayAdminView(requestId, session, servletRequest);
+      return displayAdminView(requestId);
     }
 
     return displayViewRequestApprovePage(requestId);
@@ -6322,7 +6131,7 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpSession session,
       HttpServletRequest servletRequest
-  ) {
+  ) throws JsonProcessingException {
     //Same gating rule as Approve: checkbox must be selected
     boolean checked = "1".equals(confirm) || "true".equalsIgnoreCase(String.valueOf(confirm));
     if (!checked) {
@@ -6331,7 +6140,7 @@ public class MandatesResolutionUIController {
           "Verification cannot proceed until the checkbox has been selected"
       );
       //Re-render the main ViewRequest page (no popup)
-      return displayAdminView(requestId, session, servletRequest);
+      return displayAdminView(requestId);
     }
 
     //Open reject page
@@ -6339,14 +6148,14 @@ public class MandatesResolutionUIController {
   }
 
 
-  @org.springframework.web.bind.annotation.RequestMapping(
-      value = "/viewRequestHold",
-      method = { org.springframework.web.bind.annotation.RequestMethod.GET,
-          org.springframework.web.bind.annotation.RequestMethod.POST },
+  @RequestMapping(
+      value = "/viewRequestHold/{requestId}",
+      method = { RequestMethod.GET,
+          RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> holdRequest(
-      @RequestParam("requestId") Long requestId,
+      @PathVariable String requestId,
       @RequestParam(value = "origin", required = false) String origin,
       HttpSession session,
       HttpServletRequest servletRequest
@@ -6407,8 +6216,8 @@ public class MandatesResolutionUIController {
 
       //4) Return to the same screen the user was on
       return "admin".equalsIgnoreCase(origin)
-          ? displayAdminView(requestId, session, servletRequest)
-          : displayViewRequest(requestId, session, servletRequest);
+          ? displayAdminView(Long.valueOf(requestId))
+          : displayViewRequest(Long.valueOf(requestId), session, servletRequest);
 
     } catch (Exception e) {
       logger.error("Hold failed: {}", e.getMessage(), e);
@@ -6420,17 +6229,16 @@ public class MandatesResolutionUIController {
     }
   }
 
-  // === UNHOLD ===
-  @org.springframework.web.bind.annotation.RequestMapping(
-      value = "/viewRequestUnhold",
+  @RequestMapping(
+      value = "/viewRequestUnhold/{requestId}",
       method = {
-          org.springframework.web.bind.annotation.RequestMethod.GET,
-          org.springframework.web.bind.annotation.RequestMethod.POST
+          RequestMethod.GET,
+          RequestMethod.POST
       },
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> unholdRequest(
-      @RequestParam("requestId") Long requestId,
+      @PathVariable String requestId,
       @RequestParam(value = "origin", required = false) String origin,
       HttpSession session,
       HttpServletRequest servletRequest
@@ -6451,16 +6259,13 @@ public class MandatesResolutionUIController {
         logger.warn("UnHold: GET "
                     + "/api/request/{} failed (continuing): {}", requestId, e.getMessage());
       }
-
-      //2)Compute target pending subStatus
+      
       String restoredPending = fromHoldLabel(currentHoldLabel);
-
       var headers = new org.springframework.http.HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
       headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
       String url = mandatesResolutionsDaoURL + "/api/request/{id}";
 
-      // WORKFLOW-FIRST
       var wfPayload = new java.util.LinkedHashMap<String, Object>();
       wfPayload.put("status", "In Progress");
       wfPayload.put("subStatus", restoredPending);
@@ -6546,8 +6351,8 @@ public class MandatesResolutionUIController {
 
       //Return to appropriate view
       return "admin".equalsIgnoreCase(origin)
-          ? displayAdminView(requestId, session, servletRequest)
-          : displayViewRequest(requestId, session, servletRequest);
+          ? displayAdminView(Long.valueOf(requestId))
+          : displayViewRequest(Long.valueOf(requestId), session, servletRequest);
 
     } catch (Exception e) {
       logger.error("UnHold failed", e);
@@ -6630,6 +6435,7 @@ public class MandatesResolutionUIController {
     DirectorModel directorModel = new DirectorModel();
     directorModel.setButtonCheck("true");
     directorModel.setPageCheck("false");
+    directorModel.setCheckEdit("true");
     httpSession.setAttribute("Dirctors", directorModel);
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
@@ -6700,6 +6506,7 @@ public class MandatesResolutionUIController {
           || requestWrapper.getListOfAddAccount().isEmpty()) {
         AddAccountModel addAccountModel = new AddAccountModel();
         addAccountModel.setButtonCheck("false");
+        addAccountModel.setEditButton("true");
         httpSession.setAttribute("Signatory", addAccountModel);
         httpSession.setAttribute("RequestWrapper", requestWrapper);
         page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
@@ -7199,7 +7006,7 @@ public class MandatesResolutionUIController {
 // Takes you to the View Request page once the edit is successful,
 // and ALWAYS return valid XML to the UI.
       HttpSession session = request.getSession(false);
-      ResponseEntity<String> view = displayAdminView(requestId, session, request);
+      ResponseEntity<String> view = displayAdminView(requestId);
       String body = (view != null ? view.getBody() : null);
 
 // If the body is null/blank or doesn't start with '<', wrap a valid <page> so XSLT can parse it.
@@ -7228,46 +7035,237 @@ public class MandatesResolutionUIController {
     }
   }
 
-  //============ USER EDIT REQUEST ENDPOINTS ============
-
-  //Edit request page
   @RequestMapping(
-      value = "/editRequest/{requestId}",
+      value = "/editRequest",
       method = { RequestMethod.GET, RequestMethod.POST },
       produces = MediaType.APPLICATION_XML_VALUE
   )
-  public ResponseEntity<String> displayEditRequest(@PathVariable Long requestId,
-                                                   HttpSession session,
-                                                   HttpServletRequest servletRequest) {
-    try {
-      String displayName = currentDisplayId(session, servletRequest);
+  public ResponseEntity<String> displayEditRequest() {
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), requestDetails);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
+  }
 
-      RequestTableWrapper wrapper = buildEditWrapper(requestId);
+  @PostMapping(value = "/editAccount/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editAccount(@PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    AddAccountModel addAccountModel =
+        mandatesResolutionService.getAccount(requestDetails.getListOfAddAccountModel(), userInList);
+    addAccountModel.setEditButton("false");
+    httpSession.setAttribute("Signatory", addAccountModel);
+    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+        (AddAccountModel) httpSession.getAttribute("Signatory"));
+    return ResponseEntity.ok(page);
+  }
 
-      //Normalize creator/updator
-      java.util.function.Function<String, String> nz = s -> s == null ? "" : s.trim();
-      RequestTableDTO view = (wrapper.getRequest() != null && !wrapper.getRequest().isEmpty())
-          ? wrapper.getRequest().get(0) : null;
-      if (view != null) {
-        String creator = nz.apply(view.getCreator());
-        if (creator.isEmpty() || "ui".equalsIgnoreCase(creator)) {
-          view.setCreator(displayName);
-        }
-        String updator = nz.apply(view.getUpdator());
-        if (updator.isEmpty() || "ui".equalsIgnoreCase(updator)) {
-          view.setUpdator(displayName);
-        }
+  @PostMapping(value = "/deleteAccount/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> deleteAccount(@PathVariable String userInList) {
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
+    for (int i = 0; i < listOfAddAccount.size(); i++) {
+      AddAccountModel model = listOfAddAccount.get(i);
+      if (userInList.equalsIgnoreCase(String.valueOf(model.getUserInList()))) {
+        model.setCheckDelete("Yes");
+        listOfAddAccount.set(i, model);
       }
-
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
-      logWrapperAndPage("EditRequest", requestId, wrapper, page);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
-    } catch (Exception e) {
-      logger.error("Error fetching request for edit: {}", e.getMessage(), e);
-      return ResponseEntity.ok()
-          .contentType(MediaType.APPLICATION_XML)
-          .body("<page><error>Unable to load request for editing.</error></page>");
     }
+    requestDetails.setListOfAddAccountModel(listOfAddAccount);
+    httpSession.setAttribute("RequestDetails", requestDetails);
+    String page = xsltProcessor.generatePage(
+        xslPagePath("EditRequest"), requestDetails);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/deleteAccountUndo/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> deleteAccountUndo(@PathVariable String userInList) {
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
+    for (int i = 0; i < listOfAddAccount.size(); i++) {
+      AddAccountModel model = listOfAddAccount.get(i);
+      if (userInList.equalsIgnoreCase(String.valueOf(model.getUserInList()))) {
+        model.setCheckDelete("No");
+        listOfAddAccount.set(i, model);
+      }
+    }
+    requestDetails.setListOfAddAccountModel(listOfAddAccount);
+    httpSession.setAttribute("RequestDetails", requestDetails);
+    String page = xsltProcessor.generatePage(
+        xslPagePath("EditRequest"), requestDetails);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateSignatoryWithAccountEdit/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateSignatoryWithAccountEdit(
+      @RequestParam Map<String, String> user,
+      @PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    AddAccountModel addAccountModel = (AddAccountModel) httpSession.getAttribute("Signatory");
+    boolean check = false;
+    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
+    if (user.get("accountName").isBlank()) {
+      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      check = true;
+    }
+
+    if (user.get("accountNo").isBlank()) {
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      check = true;
+    }
+    List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
+    boolean allYes = signatoryModelList.stream()
+        .allMatch(s -> "yes".equalsIgnoreCase(s.getCheckRemoveOption()));
+    if (signatoryModelList.size() == 1
+        && "yes".equalsIgnoreCase(signatoryModelList.get(0).getCheckRemoveOption())) {
+      addAccountModel.setCheckSignatoryList("true");
+      check = true;
+    } else if (allYes) {
+      addAccountModel.setCheckSignatoryList("true");
+      check = true;
+    } else {
+      addAccountModel.setCheckSignatoryList("false");
+    }
+    if (check) {
+      addAccountModel.setAccountName(user.get("accountName"));
+      addAccountModel.setAccountNumber(user.get("accountNo"));
+      addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
+      addAccountModel.setEditButton("false");
+      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    } else {
+      List<AddAccountModel> addAccountModelList =
+          mandatesResolutionService.updateAccount(requestDetails.getListOfAddAccountModel(),
+              userInList,
+              user);
+      addAccountModel =
+          mandatesResolutionService.updateAccountSingle(requestDetails.getListOfAddAccountModel(),
+              userInList,
+              user);
+      List<SignatoryModel> listOfSig = addAccountModel.getListOfSignatory();
+      listOfSig.removeIf(sig ->
+          "yes".equalsIgnoreCase(sig.getCheckRemoveOption())
+      );
+      addAccountModel.setListOfSignatory(listOfSig);
+      requestDetails.setListOfAddAccountModel(addAccountModelList);
+      httpSession.setAttribute("RequestDetails", requestDetails);
+      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+          (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    }
+
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/tablePopupResoEdit", produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> tablePopupResoEdit(@RequestParam Map<String, String> wave) {
+    String page = "";
+    DirectorModel directorModel = new DirectorModel();
+    directorModel.setButtonCheck("true");
+    directorModel.setPageCheck("true");
+    directorModel.setCheckEdit("false");
+    httpSession.setAttribute("DirctorsNew", directorModel);
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateDirectorsResoEdit/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateDirectorsResoEdit(@RequestParam Map<String, String> admin,
+                                                    @PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestDetails.getListOfDirector();
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("instructions").isBlank()
+        || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+
+    if (check) {
+      listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      listofDirectors.setButtonCheck("false");
+      listofDirectors.setCheckEdit("false");
+      listofDirectors.setName(admin.get("name"));
+      listofDirectors.setSurname(admin.get("surname"));
+      listofDirectors.setDesignation(admin.get("designation"));
+      listofDirectors.setInstructions(admin.get("instructions"));
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+    } else {
+      DirectorModel directorModel = new DirectorModel();
+      directorModel.setName(admin.get("name"));
+      directorModel.setSurname(admin.get("surname"));
+      directorModel.setDesignation(admin.get("designation"));
+      directorModel.setInstructions(admin.get("instructions"));
+      directorModel.setCheckDelete("No");
+      int size = directorModelList.size();
+      directorModel.setUserInList(++size);
+      directorModelList.add(directorModel);
+      requestDetails.setListOfDirector(directorModelList);
+      httpSession.setAttribute("RequestDetails", requestDetails);
+      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+          (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/removeDirectorResoEdit/{userInList}", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> removeDirectorResoEdit(@PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    int userIndex = Integer.parseInt(userInList);
+
+    requestDetails.getListOfDirector().removeIf(directorModel ->
+        userIndex == directorModel.getUserInList()
+        && directorModel.getDirectorId() == null
+    );
+    for (DirectorModel director : requestDetails.getListOfDirector()) {
+      if (director.getDirectorId() != null && userIndex == director.getUserInList()) {
+        mandatesResolutionService.removeSpecificAdminResoEditWithId(director.getDirectorId());
+      }
+    }
+    page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+        (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/undoEditDirector", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> undoEditDirector() {
+    String page = "";
+    RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+    for (DirectorModel director : requestDetails.getListOfDirector()) {
+      mandatesResolutionService.removeSpecificAdminResoEditWithIdUndo(director.getDirectorId());
+    }
+    page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+        (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    return ResponseEntity.ok(page);
   }
 
   //Add one blank signatory row to account at 1-based index {addSignatoryAt} ===
@@ -9816,10 +9814,10 @@ public class MandatesResolutionUIController {
       if (arr != null) {
         for (var it : arr) {
           if (it != null && (it.getIsActive() == null || Boolean.TRUE.equals(it.getIsActive()))) {
-            String v = it.getValue();
-            if (v != null && !v.isBlank()) {
+           // String v = it.getValue();
+           /* if (v != null && !v.isBlank()) {
               out.add(v.trim());
-            }
+            }*/
           }
         }
       }
