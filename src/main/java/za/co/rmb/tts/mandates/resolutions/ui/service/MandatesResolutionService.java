@@ -1392,17 +1392,40 @@ public class MandatesResolutionService {
     httpSession.setAttribute("RequestDetails", requestDetails);
   }
 
-  public void updateViewRequest(RequestDetails requestDetails) {
-    UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
-    for (AddAccountModel acc : requestDetails.getListOfAddAccountModel()) {
-      if ("Yes".equalsIgnoreCase(acc.getCheckDelete())) {
-        restTemplate.delete(mandatesResolutionsDaoURL + "/api/account/" + acc.getAccountId());
+  public List<DirectorModel> setUpdatedDirector(List<DirectorModel> listOfDirector,
+                                                Map<String, String> user, int userInList) {
+    for (int i = 0; i < listOfDirector.size(); i++) {
+      DirectorModel director = listOfDirector.get(i);
+      if (userInList == director.getUserInList()) {
+        director.setName(user.get("name"));
+        director.setSurname(user.get("surname"));
+        director.setDesignation(user.get("designation"));
+        director.setInstructions(user.get("instructions"));
+        director.setCheckUpdatedFlag("Yes");
+        listOfDirector.set(i, director);
       }
     }
-    for (DirectorModel director : requestDetails.getListOfDirector()) {
-      if ("Yes".equalsIgnoreCase(director.getCheckDelete())) {
-        restTemplate.delete(
-            mandatesResolutionsDaoURL + "/api/authority/" + director.getDirectorId());
+    return listOfDirector;
+  }
+
+  public void updateViewRequest(RequestDetails requestDetails) {
+    UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
+    if (requestDetails.getListOfAddAccountModel() != null
+        && !requestDetails.getListOfAddAccountModel().isEmpty()) {
+      for (AddAccountModel acc : requestDetails.getListOfAddAccountModel()) {
+        if ("Yes".equalsIgnoreCase(acc.getCheckDelete())) {
+          restTemplate.delete(mandatesResolutionsDaoURL + "/api/account/" + acc.getAccountId());
+        }
+      }
+    }
+
+    if (requestDetails.getListOfDirector() != null
+        && !requestDetails.getListOfDirector().isEmpty()) {
+      for (DirectorModel director : requestDetails.getListOfDirector()) {
+        if ("Yes".equalsIgnoreCase(director.getCheckDelete())) {
+          restTemplate.delete(
+              mandatesResolutionsDaoURL + "/api/authority/" + director.getDirectorId());
+        }
       }
     }
 
@@ -1447,7 +1470,8 @@ public class MandatesResolutionService {
     if ("Resolution".equalsIgnoreCase(requestDetails.getType())
         || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())) {
       for (DirectorModel directorModel : requestDetails.getListOfDirector()) {
-        if (directorModel.getDirectorId() != null) {
+        if (directorModel.getDirectorId() != null
+            && "Yes".equalsIgnoreCase(directorModel.getCheckUpdatedFlag())) {
           String url = mandatesResolutionsDaoURL + "/api/authority" + directorModel.getDirectorId();
           HttpHeaders headers = new HttpHeaders();
           headers.setContentType(MediaType.APPLICATION_JSON);

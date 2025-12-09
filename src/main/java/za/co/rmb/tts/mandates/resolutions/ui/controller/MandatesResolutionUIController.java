@@ -581,12 +581,21 @@ public class MandatesResolutionUIController {
         (RequestDetails) httpSession.getAttribute("RequestDetails");
     List<DirectorModel> listOfDirector = requestDetails.getListOfDirector();
     DirectorModel directorModels = (DirectorModel) httpSession.getAttribute("DirctorsNew");
+    for (DirectorModel directorModel : listOfDirector) {
+      if (userInList.equals(directorModel.getUserInList())) {
+        directorModels.setName(directorModel.getName());
+        directorModels.setSurname(directorModel.getSurname());
+        directorModels.setDesignation(directorModel.getDesignation());
+        directorModels.setInstructions(directorModel.getInstructions());
+      }
+    }
     directorModels = mandatesResolutionService.getDirectorDetailsReso(directorModels,
         listOfDirector,
         userInList);
-    directorModels.setButtonCheck("false");
+
     directorModels.setPageCheck("true");
-    directorModels.setCheckEdit("true");
+    directorModels.setCheckEdit("false");
+    directorModels.setCheckEditAdd("false");
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
@@ -6142,9 +6151,38 @@ public class MandatesResolutionUIController {
         requestDTO.setSubStatus("User");
       }
 
+      RequestDetails requestDetails = mandatesResolutionService.getRequestById(requestId);
+      httpSession.setAttribute("RequestDetails", requestDetails);
+      if ("Mandate".equalsIgnoreCase(requestDetails.getType())
+          && requestDetails.getListOfAddAccountModel().size() == 1
+          || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())
+             && requestDetails.getListOfAddAccountModel().size() == 1) {
+        List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
+        for (int i = 0; i < listOfAddAccount.size(); i++) {
+          AddAccountModel addAccountModel = listOfAddAccount.get(i);
+          addAccountModel.setCheckDeleteButton("true");
+          listOfAddAccount.set(i, addAccountModel);
+        }
+      }
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        requestDetails.setCheckReassignee("true");
+      } else {
+        requestDetails.setCheckReassignee("false");
+      }
+
+      if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
+          || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
+        requestDetails.setCheckStatus("true");
+      } else {
+        requestDetails.setCheckStatus("false");
+      }
+
+      mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
+
 
       // Render
-      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), wrapper);
+      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+          (RequestDetails) httpSession.getAttribute("RequestDetails"));
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -7085,6 +7123,7 @@ public class MandatesResolutionUIController {
     directorModel.setButtonCheck("true");
     directorModel.setPageCheck("true");
     directorModel.setCheckEdit("false");
+    directorModel.setCheckEditAdd("true");
     httpSession.setAttribute("DirctorsNew", directorModel);
     page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
@@ -7094,6 +7133,58 @@ public class MandatesResolutionUIController {
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> updateDirectorsResoEdit(@RequestParam Map<String, String> admin,
                                                     @PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    boolean check = false;
+    List<DirectorModel> directorModelList = requestDetails.getListOfDirector();
+    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
+    DirectorModel listofDirectors = new DirectorModel();
+    if (admin.get("name").isBlank()) {
+      dirctorErrorModel.setName("Name can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("designation").isBlank()) {
+      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("surname").isBlank()) {
+      dirctorErrorModel.setSurname("Surname can't be empty !");
+      check = true;
+    }
+
+    if (admin.get("instructions").isBlank()
+        || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      check = true;
+    }
+
+    if (check) {
+      listofDirectors.setDirectorErrorModel(dirctorErrorModel);
+      listofDirectors.setButtonCheck("false");
+      listofDirectors.setCheckEdit("false");
+      listofDirectors.setName(admin.get("name"));
+      listofDirectors.setSurname(admin.get("surname"));
+      listofDirectors.setDesignation(admin.get("designation"));
+      listofDirectors.setInstructions(admin.get("instructions"));
+      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+    } else {
+      List<DirectorModel> listOfDirectors =
+          mandatesResolutionService.setUpdatedDirector(requestDetails.getListOfDirector(),
+              admin, Integer.parseInt(userInList));
+      requestDetails.setListOfDirector(listOfDirectors);
+      httpSession.setAttribute("RequestDetails", requestDetails);
+      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+          (RequestDetails) httpSession.getAttribute("RequestDetails"));
+    }
+    return ResponseEntity.ok(page);
+  }
+
+  @PostMapping(value = "/updateDirectorsEditAdd", produces =
+      MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> updateDirectorsEditAdd(@RequestParam Map<String, String> admin) {
     String page = "";
     RequestDetails requestDetails =
         (RequestDetails) httpSession.getAttribute("RequestDetails");
@@ -7126,6 +7217,7 @@ public class MandatesResolutionUIController {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
       listofDirectors.setButtonCheck("false");
       listofDirectors.setCheckEdit("false");
+      listofDirectors.setCheckEditAdd("true");
       listofDirectors.setName(admin.get("name"));
       listofDirectors.setSurname(admin.get("surname"));
       listofDirectors.setDesignation(admin.get("designation"));
