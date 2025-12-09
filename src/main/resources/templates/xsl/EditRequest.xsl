@@ -300,6 +300,7 @@
                             </comm:symbol>
                         </comm:sections>
                     </xsl:for-each>
+                    <xsl:if test="requestDetails/type !='Mandate'">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
                             <comm:box xsi:type="comm:box">
@@ -464,7 +465,7 @@
                                                                comm:id="edit"
                                                                comm:type="paper"
                                                                comm:width="4"
-                                                               comm:url="app-domain/mandates-and-resolutions/editDirectorReso/{userInList}"
+                                                               comm:url="app-domain/mandates-and-resolutions/editDirectorUpdate/{userInList}"
                                                                comm:formSubmit="false"
                                                                comm:target="main"
                                                                comm:tooltip=""
@@ -516,6 +517,7 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
+                    </xsl:if>
                     <xsl:if test="requestDetails/checkDirectors = 'true'">
                         <comm:sections comm:width="full">
                             <comm:symbol xsi:type="comm:textHeading" comm:size="5">

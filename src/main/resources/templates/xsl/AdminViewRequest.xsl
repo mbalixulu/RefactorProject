@@ -404,13 +404,12 @@
                                           or translate(normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))), $LOWER, $UPPER) = 'FALSE'
                                           or normalize-space(string(( *[local-name()='isActive'][1] | @isActive ))) = '0'
                                         ]"/>
-
-                        <ns1:sections ns1:align="left" ns1:width="full">
+                        <xsl:if test="requestDetails/type !='Mandate'">
+                            <ns1:sections ns1:align="left" ns1:width="full">
                             <ns1:symbol xsi:type="ns1:textHeading" ns1:align="left">
                                 <ns1:value>Appointed Directors</ns1:value>
                             </ns1:symbol>
                         </ns1:sections>
-
                         <ns1:sections ns1:align="left" ns1:width="full">
                             <ns1:symbol xsi:type="ns1:boxContainer" ns1:id="directorsBox">
                                 <ns1:box xsi:type="ns1:box">
@@ -601,6 +600,7 @@
                                 </ns1:box>
                             </ns1:symbol>
                         </ns1:sections>
+                        </xsl:if>
                     </xsl:if>
 
                     <!-- ================= Combined Comments (working version) ================= -->
