@@ -341,6 +341,7 @@
                             </comm:symbol>
                         </comm:sections>
                     </xsl:for-each>
+                    <xsl:if test="requestDetails/type !='Mandate'">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading" comm:align="left">
                             <comm:value>Appointed Directors</comm:value>
@@ -446,6 +447,7 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
+                    </xsl:if>
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:textHeading" comm:align="left">
                             <comm:value>Comments</comm:value>
@@ -534,7 +536,7 @@
                             </comm:box>
                         </comm:symbol>
                     </comm:sections>
-                    <xsl:if test="requestDetails/status != 'On Hold'">
+                    <xsl:if test="requestDetails/status != 'On Hold' and requestDetails/status != 'Completed' and requestDetails/status != 'Auto Closed'">
                     <comm:sections comm:align="left" comm:width="full">
                         <comm:symbol xsi:type="comm:boxContainer" comm:id="instructionsBox">
                             <comm:box xsi:type="comm:box">

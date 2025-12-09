@@ -37,7 +37,7 @@
             <!-- Finish back to the exact ADMIN view -->
             <symbol xsi:type="ns1:footer" ns1:text="" ns1:textAlign="left" ns1:buttonAlign="right">
                 <ns1:baseButton ns1:id="finishBtn"
-                                ns1:url="{concat('app-domain/mandates-and-resolutions/adminView/', /requestWrapper/request/requestId)}"
+                                ns1:url="app-domain/mandates-and-resolutions/statusRejected"
                                 ns1:target="main"
                                 ns1:formSubmit="false"
                                 ns1:label="Finish"/>

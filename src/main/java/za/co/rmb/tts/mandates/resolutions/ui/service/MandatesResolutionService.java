@@ -2,8 +2,6 @@ package za.co.rmb.tts.mandates.resolutions.ui.service;
 
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -20,7 +18,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -45,7 +42,6 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
-import za.co.rmb.tts.mandates.resolutions.ui.model.dto.SignatoryDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 
 @Service
@@ -1281,7 +1277,9 @@ public class MandatesResolutionService {
       requestDetails.setListOfAddAccountModel(listOfAddAccount);
     }
 
-    if (!"On Hold".equalsIgnoreCase(requestDetails.getStatus())) {
+    if (!"On Hold".equalsIgnoreCase(requestDetails.getStatus())
+        && !"Completed".equalsIgnoreCase(requestDetails.getStatus())
+        && !"Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
       String url = mandatesResolutionsDaoURL + "/api/lov"
                    + "?type=Readout&subType=Instructions&requestStatus="
                    + dto.getRequest().getSubStatus();

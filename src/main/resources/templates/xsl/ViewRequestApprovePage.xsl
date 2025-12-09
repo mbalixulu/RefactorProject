@@ -31,8 +31,7 @@
                 </xsl:when>
                 <xsl:when test="contains($SUB_UP,'HOGAN UPDATE PENDING')">Update for Hogan
                 </xsl:when>
-                <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Updated
-                    successfully
+                <xsl:when test="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')">Verify for Documentum
                 </xsl:when>
                 <xsl:when test="contains($SUB_UP,'REQUEST UPDATED SUCCESSFULLY')">Updated
                     Successfully
@@ -45,7 +44,7 @@
         <xsl:variable name="IS_DOCU" select="contains($SUB_UP,'DOCUMENTUM UPDATE PENDING')"/>
         <xsl:variable name="SECOND_LABEL">
             <xsl:choose>
-                <xsl:when test="$IS_DOCU">Reject</xsl:when>
+                <xsl:when test="$IS_DOCU">Cancel</xsl:when>
                 <xsl:otherwise>Cancel</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>

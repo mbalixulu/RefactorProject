@@ -573,6 +573,24 @@ public class MandatesResolutionUIController {
     return ResponseEntity.ok(page);
   }
 
+  @PostMapping(value = "/editDirectorUpdate/{userInList}",
+      produces = MediaType.APPLICATION_XML_VALUE)
+  public ResponseEntity<String> editDirectorUpdate(@PathVariable String userInList) {
+    String page = "";
+    RequestDetails requestDetails =
+        (RequestDetails) httpSession.getAttribute("RequestDetails");
+    List<DirectorModel> listOfDirector = requestDetails.getListOfDirector();
+    DirectorModel directorModels = (DirectorModel) httpSession.getAttribute("DirctorsNew");
+    directorModels = mandatesResolutionService.getDirectorDetailsReso(directorModels,
+        listOfDirector,
+        userInList);
+    directorModels.setButtonCheck("false");
+    directorModels.setPageCheck("true");
+    directorModels.setCheckEdit("true");
+    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    return ResponseEntity.ok(page);
+  }
+
   @PostMapping(value = "/updateDirectors/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> updateDirectors(@RequestParam Map<String, String> admin,
                                                 @PathVariable String userInList) {
