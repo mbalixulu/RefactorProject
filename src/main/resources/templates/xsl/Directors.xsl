@@ -131,10 +131,18 @@
                                  comm:url="app-domain/mandates-and-resolutions/editRequest"
                                  comm:target="main" comm:formSubmit="false" comm:tooltip=""
                                  comm:label="Back"/>
+                    <xsl:if test="directorModel/checkEditAdd = 'true'">
+                        <comm:baseButton comm:id="next"
+                                         comm:url="app-domain/mandates-and-resolutions/updateDirectorsEditAdd"
+                                         comm:target="main" comm:formSubmit="true" comm:tooltip=""
+                                         comm:label="Add +"/>
+                    </xsl:if>
+                    <xsl:if test="directorModel/checkEditAdd = 'false'">
                 <comm:baseButton comm:id="next"
                                  comm:url="app-domain/mandates-and-resolutions/updateDirectorsResoEdit/{directorModel/userInList}"
                                  comm:target="main" comm:formSubmit="true" comm:tooltip=""
                                  comm:label="Update"/>
+                    </xsl:if>
                 </xsl:if>
             </symbol>
         </page>

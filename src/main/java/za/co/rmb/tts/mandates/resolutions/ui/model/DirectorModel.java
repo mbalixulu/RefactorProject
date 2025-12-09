@@ -27,4 +27,6 @@ public class DirectorModel {
   private String checkDelete;
   private String creator;
   private String updator;
+  private String checkEditAdd;
+  private String checkUpdatedFlag;
 }
