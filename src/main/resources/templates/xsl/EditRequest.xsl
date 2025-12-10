@@ -123,11 +123,13 @@
                             </comm:boxSymbol>
                         </comm:symbol>
                     </comm:sections>
-                    <comm:sections comm:align="left" comm:width="full">
-                        <comm:symbol xsi:type="comm:textHeading" comm:align="left">
-                            <comm:value>Account Signatories</comm:value>
-                        </comm:symbol>
-                    </comm:sections>
+                    <xsl:if test="requestDetails/type = 'Mandate' or requestDetails/type = 'Mandate and Resolution'">
+                        <comm:sections comm:align="left" comm:width="full">
+                            <comm:symbol xsi:type="comm:textHeading" comm:align="left">
+                                <comm:value>Account Signatories</comm:value>
+                            </comm:symbol>
+                        </comm:sections>
+                    </xsl:if>
                     <xsl:for-each
                             select="requestDetails/listOfAddAccountModel">
                         <comm:sections comm:width="full">
@@ -169,27 +171,25 @@
                                     </comm:boxSymbol>
                                     <comm:boxSymbol xsi:type="comm:boxSplit"
                                                     comm:width="25">
-                                        <xsl:if test="checkDeleteButton = 'false'">
-                                            <xsl:if test="checkDelete = 'No'">
-                                                <comm:boxSplitSymbol xsi:type="comm:button"
-                                                                     comm:id="assignee"
-                                                                     comm:target="main"
-                                                                     comm:url="app-domain/mandates-and-resolutions/deleteAccount/{userInList}"
-                                                                     comm:label="Delete"
-                                                                     comm:width="3"
-                                                                     comm:formSubmit="false"
-                                                                     comm:type="paper"/>
-                                            </xsl:if>
-                                            <xsl:if test="checkDelete = 'Yes'">
-                                                <comm:boxSplitSymbol xsi:type="comm:button"
-                                                                     comm:id="assignee"
-                                                                     comm:target="main"
-                                                                     comm:url="app-domain/mandates-and-resolutions/deleteAccountUndo/{userInList}"
-                                                                     comm:label="Undo"
-                                                                     comm:width="3"
-                                                                     comm:formSubmit="false"
-                                                                     comm:type="paper"/>
-                                            </xsl:if>
+                                        <xsl:if test="checkDelete = 'No'">
+                                            <comm:boxSplitSymbol xsi:type="comm:button"
+                                                                 comm:id="assignee"
+                                                                 comm:target="main"
+                                                                 comm:url="app-domain/mandates-and-resolutions/deleteAccount/{userInList}"
+                                                                 comm:label="Delete"
+                                                                 comm:width="3"
+                                                                 comm:formSubmit="false"
+                                                                 comm:type="paper"/>
+                                        </xsl:if>
+                                        <xsl:if test="checkDelete = 'Yes'">
+                                            <comm:boxSplitSymbol xsi:type="comm:button"
+                                                                 comm:id="assignee"
+                                                                 comm:target="main"
+                                                                 comm:url="app-domain/mandates-and-resolutions/deleteAccountUndo/{userInList}"
+                                                                 comm:label="Undo"
+                                                                 comm:width="3"
+                                                                 comm:formSubmit="false"
+                                                                 comm:type="paper"/>
                                         </xsl:if>
                                     </comm:boxSymbol>
                                     <comm:boxSymbol xsi:type="comm:boxSplit"
@@ -300,223 +300,232 @@
                             </comm:symbol>
                         </comm:sections>
                     </xsl:for-each>
+                    <xsl:if test="requestDetails/checkAccounts = 'true'">
+                        <comm:sections comm:width="full">
+                            <comm:symbol xsi:type="comm:textHeading" comm:size="5">
+                                <comm:value>Please Add your Account....(Without Account we can't
+                                    Proceed).
+                                </comm:value>
+                            </comm:symbol>
+                        </comm:sections>
+                    </xsl:if>
                     <xsl:if test="requestDetails/type !='Mandate'">
-                    <comm:sections comm:align="left" comm:width="full">
-                        <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
-                            <comm:box xsi:type="comm:box">
-                                <comm:boxSymbol xsi:type="comm:fullTable"
-                                                comm:id="MyTable2"
-                                                comm:action="GBLanding" comm:downloadLink=""
-                                                comm:endpoint=""
-                                                comm:heading="Appointed Directors"
-                                                comm:showTotal="false"
-                                                comm:showSaveAndPrint="true"
-                                                comm:defaultSortIndex="1"
-                                                comm:headingColor="black">
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="title"
-                                                      comm:groupId="group1"
-                                                      comm:heading="Name"
-                                                      comm:id="title" comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"/>
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="fullName"
-                                                      comm:groupId="group1"
-                                                      comm:heading="Surname"
-                                                      comm:id="fullName"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"/>
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="idPassport"
-                                                      comm:groupId="idPassport"
-                                                      comm:heading="Designation"
-                                                      comm:id="idPassport"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"/>
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="idPassport"
-                                                      comm:groupId="instruction"
-                                                      comm:heading="Instruction"
-                                                      comm:id="instruction"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"/>
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="edit"
-                                                      comm:groupId="group1"
-                                                      comm:heading=""
-                                                      comm:id="space"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="5"
-                                                      comm:disableSorting="true"/>
-                                    <comm:tableColumn comm:align="left"
-                                                      comm:fieldName="edit"
-                                                      comm:groupId="group1"
-                                                      comm:heading="Edit Director"
-                                                      comm:id="editScreen"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"
-                                                      comm:disableSorting="true"/>
-                                    <comm:tableColumn comm:align="center"
-                                                      comm:fieldName="edit"
-                                                      comm:groupId="group1"
-                                                      comm:heading=""
-                                                      comm:id="space"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="1"
-                                                      comm:disableSorting="true"/>
-                                    <comm:tableColumn comm:align="left"
-                                                      comm:fieldName="phoneNumber"
-                                                      comm:groupId="group1"
-                                                      comm:heading="Remove"
-                                                      comm:id="Remove"
-                                                      comm:calcTotal="false"
-                                                      comm:selectAll="false"
-                                                      comm:widthPercent="30"
-                                                      comm:disableSorting="true"/>
-                                    <comm:rowGroup xsi:type="comm:rowGroup"
-                                                   comm:groupId="xxxx"
-                                                   comm:groupHeaderLabel="Label XXXXX">
-                                        <comm:groupTableButton xsi:type="comm:imageButton"
-                                                               comm:tooltip="true"
-                                                               comm:formName="selectRequirementsForm"
-                                                               comm:tip="" comm:target="main"
-                                                               comm:url="app-domain/mandates-and-resolutions/tablePopupResoEdit"
-                                                               comm:id="gp1"/>
-                                    </comm:rowGroup>
+                        <comm:sections comm:align="left" comm:width="full">
+                            <comm:symbol xsi:type="comm:boxContainer" comm:id="trs">
+                                <comm:box xsi:type="comm:box">
+                                    <comm:boxSymbol xsi:type="comm:fullTable"
+                                                    comm:id="MyTable2"
+                                                    comm:action="GBLanding" comm:downloadLink=""
+                                                    comm:endpoint=""
+                                                    comm:heading="Appointed Directors"
+                                                    comm:showTotal="false"
+                                                    comm:showSaveAndPrint="true"
+                                                    comm:defaultSortIndex="1"
+                                                    comm:headingColor="black">
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="title"
+                                                          comm:groupId="group1"
+                                                          comm:heading="Name"
+                                                          comm:id="title" comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"/>
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="fullName"
+                                                          comm:groupId="group1"
+                                                          comm:heading="Surname"
+                                                          comm:id="fullName"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"/>
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="idPassport"
+                                                          comm:groupId="idPassport"
+                                                          comm:heading="Designation"
+                                                          comm:id="idPassport"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"/>
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="idPassport"
+                                                          comm:groupId="instruction"
+                                                          comm:heading="Instruction"
+                                                          comm:id="instruction"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"/>
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="edit"
+                                                          comm:groupId="group1"
+                                                          comm:heading=""
+                                                          comm:id="space"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="5"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="edit"
+                                                          comm:groupId="group1"
+                                                          comm:heading="Edit Director"
+                                                          comm:id="editScreen"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="center"
+                                                          comm:fieldName="edit"
+                                                          comm:groupId="group1"
+                                                          comm:heading=""
+                                                          comm:id="space"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="1"
+                                                          comm:disableSorting="true"/>
+                                        <comm:tableColumn comm:align="left"
+                                                          comm:fieldName="phoneNumber"
+                                                          comm:groupId="group1"
+                                                          comm:heading="Remove"
+                                                          comm:id="Remove"
+                                                          comm:calcTotal="false"
+                                                          comm:selectAll="false"
+                                                          comm:widthPercent="30"
+                                                          comm:disableSorting="true"/>
+                                        <comm:rowGroup xsi:type="comm:rowGroup"
+                                                       comm:groupId="xxxx"
+                                                       comm:groupHeaderLabel="Label XXXXX">
+                                            <comm:groupTableButton xsi:type="comm:imageButton"
+                                                                   comm:tooltip="true"
+                                                                   comm:formName="selectRequirementsForm"
+                                                                   comm:tip="" comm:target="main"
+                                                                   comm:url="app-domain/mandates-and-resolutions/tablePopupResoEdit"
+                                                                   comm:id="gp1"/>
+                                        </comm:rowGroup>
 
-                                    <xsl:for-each
-                                            select="requestDetails/listOfDirector">
-                                        <comm:row xsi:type="comm:fullTableRow"
-                                                  comm:groupId="xxxx">
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="title">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item xsi:type="comm:simpleText"
-                                                               comm:align="center">
-                                                        <comm:value>
-                                                            <xsl:value-of
-                                                                    select="name"/>
-                                                        </comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="fullName">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item xsi:type="comm:simpleText"
-                                                               comm:align="center">
-                                                        <comm:value>
-                                                            <xsl:value-of
-                                                                    select="surname"/>
-                                                        </comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="idPassport">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item xsi:type="comm:simpleText"
-                                                               comm:align="center">
-                                                        <comm:value>
-                                                            <xsl:value-of
-                                                                    select="designation"/>
-                                                        </comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="instruction">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item xsi:type="comm:simpleText"
-                                                               comm:align="center">
-                                                        <comm:value>
-                                                            <xsl:value-of
-                                                                    select="instructions"/>
-                                                        </comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="space">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item
-                                                            xsi:type="comm:textReadout">
-                                                        <comm:value>-</comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="editScreen">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item xsi:type="comm:button"
-                                                               comm:id="edit"
-                                                               comm:type="paper"
-                                                               comm:width="4"
-                                                               comm:url="app-domain/mandates-and-resolutions/editDirectorUpdate/{userInList}"
-                                                               comm:formSubmit="false"
-                                                               comm:target="main"
-                                                               comm:tooltip=""
-                                                               comm:label="Edit"/>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="space">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <comm:item
-                                                            xsi:type="comm:textReadout">
-                                                        <comm:value>-</comm:value>
-                                                    </comm:item>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                            <comm:cell xsi:type="comm:cell"
-                                                       comm:col_id="Remove">
-                                                <comm:cellItem
-                                                        xsi:type="comm:cellItem">
-                                                    <xsl:if test="checkDelete = 'No'">
+                                        <xsl:for-each
+                                                select="requestDetails/listOfDirector">
+                                            <comm:row xsi:type="comm:fullTableRow"
+                                                      comm:groupId="xxxx">
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="title">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText"
+                                                                   comm:align="center">
+                                                            <comm:value>
+                                                                <xsl:value-of
+                                                                        select="name"/>
+                                                            </comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="fullName">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText"
+                                                                   comm:align="center">
+                                                            <comm:value>
+                                                                <xsl:value-of
+                                                                        select="surname"/>
+                                                            </comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="idPassport">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText"
+                                                                   comm:align="center">
+                                                            <comm:value>
+                                                                <xsl:value-of
+                                                                        select="designation"/>
+                                                            </comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="instruction">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item xsi:type="comm:simpleText"
+                                                                   comm:align="center">
+                                                            <comm:value>
+                                                                <xsl:value-of
+                                                                        select="instructions"/>
+                                                            </comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="space">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item
+                                                                xsi:type="comm:textReadout">
+                                                            <comm:value>-</comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="editScreen">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
                                                         <comm:item xsi:type="comm:button"
-                                                                   comm:id="remove"
+                                                                   comm:id="edit"
                                                                    comm:type="paper"
                                                                    comm:width="4"
-                                                                   comm:url="app-domain/mandates-and-resolutions/removeDirectorResoEdit/{userInList}"
+                                                                   comm:url="app-domain/mandates-and-resolutions/editDirectorUpdate/{userInList}"
                                                                    comm:formSubmit="false"
                                                                    comm:target="main"
                                                                    comm:tooltip=""
-                                                                   comm:label="Remove"/>
-                                                    </xsl:if>
-                                                    <xsl:if test="checkDelete = 'Yes'">
-                                                        <comm:item xsi:type="comm:button"
-                                                                   comm:id="remove"
-                                                                   comm:type="paper"
-                                                                   comm:width="4"
-                                                                   comm:url="app-domain/mandates-and-resolutions/undoEditDirector"
-                                                                   comm:formSubmit="false"
-                                                                   comm:target="main"
-                                                                   comm:tooltip=""
-                                                                   comm:label="Undo"/>
-                                                    </xsl:if>
-                                                </comm:cellItem>
-                                            </comm:cell>
-                                        </comm:row>
-                                    </xsl:for-each>
-                                    <comm:tableNavigator comm:pageSize="10"/>
-                                </comm:boxSymbol>
-                            </comm:box>
-                        </comm:symbol>
-                    </comm:sections>
+                                                                   comm:label="Edit"/>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="space">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <comm:item
+                                                                xsi:type="comm:textReadout">
+                                                            <comm:value>-</comm:value>
+                                                        </comm:item>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                                <comm:cell xsi:type="comm:cell"
+                                                           comm:col_id="Remove">
+                                                    <comm:cellItem
+                                                            xsi:type="comm:cellItem">
+                                                        <xsl:if test="checkDelete = 'No'">
+                                                            <comm:item xsi:type="comm:button"
+                                                                       comm:id="remove"
+                                                                       comm:type="paper"
+                                                                       comm:width="4"
+                                                                       comm:url="app-domain/mandates-and-resolutions/removeDirectorResoEdit/{userInList}"
+                                                                       comm:formSubmit="false"
+                                                                       comm:target="main"
+                                                                       comm:tooltip=""
+                                                                       comm:label="Remove"/>
+                                                        </xsl:if>
+                                                        <xsl:if test="checkDelete = 'Yes'">
+                                                            <comm:item xsi:type="comm:button"
+                                                                       comm:id="remove"
+                                                                       comm:type="paper"
+                                                                       comm:width="4"
+                                                                       comm:url="app-domain/mandates-and-resolutions/undoEditDirector"
+                                                                       comm:formSubmit="false"
+                                                                       comm:target="main"
+                                                                       comm:tooltip=""
+                                                                       comm:label="Undo"/>
+                                                        </xsl:if>
+                                                    </comm:cellItem>
+                                                </comm:cell>
+                                            </comm:row>
+                                        </xsl:for-each>
+                                        <comm:tableNavigator comm:pageSize="10"/>
+                                    </comm:boxSymbol>
+                                </comm:box>
+                            </comm:symbol>
+                        </comm:sections>
                     </xsl:if>
                     <xsl:if test="requestDetails/checkDirectors = 'true'">
                         <comm:sections comm:width="full">

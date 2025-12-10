@@ -63,6 +63,7 @@ public class RequestDetails {
   private String checkUnHoldRecord;
 
   private String checkDirectors;
+  private String checkAccounts;
 
 
 }

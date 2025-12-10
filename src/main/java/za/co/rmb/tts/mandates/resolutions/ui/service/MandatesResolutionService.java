@@ -1174,6 +1174,7 @@ public class MandatesResolutionService {
     MandateResolutionSubmissionResultDTO dto = subResp.getBody();
     RequestDetails requestDetails = new RequestDetails();
     requestDetails.setRequestId(dto.getRequest().getRequestId());
+    requestDetails.setCompanyId(dto.getCompany().getCompanyId());
     requestDetails.setCompanyName(dto.getCompany().getName());
     requestDetails.setProcessId(dto.getRequest().getProcessId());
     requestDetails.setSla(dto.getRequest().getSla());
@@ -1247,7 +1248,6 @@ public class MandatesResolutionService {
         addAccountModel.setAccountName(account.getAccountName());
         addAccountModel.setAccountNumber(account.getAccountNumber());
         addAccountModel.setCheckDelete("No");
-        addAccountModel.setCheckDeleteButton("false");
         int size = listOfAddAccount.size();
         addAccountModel.setUserInList(++size);
         addAccountModel.setAccountId(account.getAccountId());
@@ -1411,7 +1411,8 @@ public class MandatesResolutionService {
   public void updateViewRequest(RequestDetails requestDetails) {
     UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
     if (requestDetails.getListOfAddAccountModel() != null
-        && !requestDetails.getListOfAddAccountModel().isEmpty()) {
+        && !requestDetails.getListOfAddAccountModel().isEmpty()
+        && requestDetails.getListOfAddAccountModel().size() > 1) {
       for (AddAccountModel acc : requestDetails.getListOfAddAccountModel()) {
         if ("Yes".equalsIgnoreCase(acc.getCheckDelete())) {
           restTemplate.delete(mandatesResolutionsDaoURL + "/api/account/" + acc.getAccountId());
@@ -1432,9 +1433,10 @@ public class MandatesResolutionService {
     if ("Mandate".equalsIgnoreCase(requestDetails.getType())
         || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())) {
       for (AddAccountModel model : requestDetails.getListOfAddAccountModel()) {
-
+        System.out.println("====Print account Id 1===" + model.getCheckEditAccount());
         if (model.getAccountId() != null
             && "Yes".equalsIgnoreCase(model.getCheckEditAccount())) {
+          System.out.println("====Print account Id===" + model.getAccountId());
           String url = mandatesResolutionsDaoURL + "/api/account/" + model.getAccountId();
           HttpHeaders headers = new HttpHeaders();
           headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1472,14 +1474,17 @@ public class MandatesResolutionService {
       for (DirectorModel directorModel : requestDetails.getListOfDirector()) {
         if (directorModel.getDirectorId() != null
             && "Yes".equalsIgnoreCase(directorModel.getCheckUpdatedFlag())) {
-          String url = mandatesResolutionsDaoURL + "/api/authority" + directorModel.getDirectorId();
+          String url =
+              mandatesResolutionsDaoURL + "/api/authority/" + directorModel.getDirectorId();
           HttpHeaders headers = new HttpHeaders();
           headers.setContentType(MediaType.APPLICATION_JSON);
           AuthorityDTO updated = new AuthorityDTO();
+          System.out.println("=====Print company Id====" + requestDetails.getCompanyId());
           updated.setCompanyId(requestDetails.getCompanyId());
           updated.setFirstname(directorModel.getName());
           updated.setSurname(directorModel.getSurname());
           updated.setDesignation(directorModel.getDesignation());
+          updated.setInstructions(directorModel.getInstructions());
           updated.setIsActive(true);
           updated.setUpdator("admin.user");
           updated.setCreator(directorModel.getCreator());
@@ -1487,7 +1492,7 @@ public class MandatesResolutionService {
           HttpEntity<AuthorityDTO> entity = new HttpEntity<>(updated, headers);
           ResponseEntity<AuthorityDTO> response =
               restTemplate.exchange(url, HttpMethod.PUT, entity, AuthorityDTO.class);
-        } else {
+        } else if (directorModel.getDirectorId() == null) {
           String url = mandatesResolutionsDaoURL + "/api/authority";
           HttpHeaders headers = new HttpHeaders();
           headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1496,6 +1501,7 @@ public class MandatesResolutionService {
           authority.setFirstname(directorModel.getName());
           authority.setSurname(directorModel.getSurname());
           authority.setDesignation(directorModel.getDesignation());
+          authority.setInstructions(directorModel.getInstructions());
           authority.setIsActive(true);
           authority.setCreator(user.getUsername());
           authority.setUpdator(null);
