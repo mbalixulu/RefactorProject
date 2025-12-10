@@ -2976,9 +2976,9 @@ public class MandatesResolutionUIController {
 
     //Same routing as landing:
     if (role.contains("ADMIN")) {
-      return displayAdminApproval(); //renders app-domain/mandates-and-resolutions/adminApproval
+      return displayAdminAll();
     } else {
-      return goToDisplayRequestTable(); //renders app-domain/mandates-and-resolutions/requestTable
+      return goToDisplayRequestTable();
     }
   }
 
@@ -5525,38 +5525,36 @@ public class MandatesResolutionUIController {
       @RequestParam(value = "confirmationCheckMandate", required = false) String confirm,
       HttpServletRequest servletRequest
   ) {
-    // ---------- Happy path (no checkbox validation) ----------
     try {
       RestTemplate rt = new RestTemplate();
 
-      // 1) Save REJECT comment (internal)
+      UserDTO currentUser = (UserDTO) httpSession.getAttribute("currentUser");
+
       String creator = (servletRequest.getUserPrincipal() != null)
           ? servletRequest.getUserPrincipal().getName()
-          : "ui";
+          : currentUser.getUsername();     // NOT "ui" anymore
 
       var payload = new java.util.HashMap<String, Object>();
       payload.put("requestId", requestId);
       payload.put("commentText", (commentText == null ? "" : commentText.trim()));
       payload.put("isInternal", Boolean.TRUE);
-      payload.put("creator", creator);
+      payload.put("creator", creator);   // << FIXED
       rt.postForEntity(
           mandatesResolutionsDaoURL + "/api/comment",
           payload,
           Object.class
       );
 
-      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
-
-      // 2) PUT: Completed + Rejected + processOutcome=Reject (triggers DAO -> reject-path)
       var update = new java.util.HashMap<String, Object>();
-      update.put("status", "Completed");      // exact
+      update.put("status", "Completed");
       update.put("subStatus", SS_REJECTED);
-      update.put("updator", users.getUsername());
+      update.put("updator", currentUser.getUsername());
       update.put("processOutcome", "Rejected");
 
-      var h = new org.springframework.http.HttpHeaders();
+      var h = new HttpHeaders();
       h.setContentType(MediaType.APPLICATION_JSON);
-      var entity = new org.springframework.http.HttpEntity<>(update, h);
+      var entity = new HttpEntity<>(update, h);
+
       rt.exchange(
           mandatesResolutionsDaoURL + "/api/request/{id}",
           HttpMethod.PUT,
@@ -5565,34 +5563,15 @@ public class MandatesResolutionUIController {
           requestId
       );
 
-      //Sanity log
-      try {
-        var check =
-            rt.getForEntity(
-                mandatesResolutionsDaoURL + "/api/request/{id}",
-                RequestDTO.class,
-                requestId
-            );
-        if (check.getStatusCode().is2xxSuccessful() && check.getBody() != null) {
-          logger.info("After REJECT PUT -> status={}, subStatus={}, processId={}",
-              check.getBody().getStatus(),
-              check.getBody().getSubStatus(),
-              check.getBody().getProcessId());
-        }
-      } catch (Exception ignore) {
-        // intentionally empty
-      }
-
-      // Success page (XSL + wrapper with requestId)
       HttpSession session = servletRequest.getSession(false);
-      RequestWrapper w = new RequestWrapper();
-      RequestDTO d = new RequestDTO();
-      d.setRequestId(requestId);
-      w.setRequest(d);
+      RequestWrapper wrapper = new RequestWrapper();
+      RequestDTO dto = new RequestDTO();
+      dto.setRequestId(requestId);
+      wrapper.setRequest(dto);
 
-      String page = isAdmin(session)
-          ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPageAdmin"), w)
-          : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPage"), w);
+      String page =
+          xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPage"), wrapper);
+
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
@@ -5662,9 +5641,7 @@ public class MandatesResolutionUIController {
         d.setRequestId(requestId);
         w.setRequest(d);
 
-        String page = isAdmin(session)
-            ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPageAdmin"), w)
-            : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
+        String page = xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
         return ResponseEntity.ok(page);
       }
 
@@ -5695,9 +5672,7 @@ public class MandatesResolutionUIController {
       d.setRequestId(requestId);
       w.setRequest(d);
 
-      String page = isAdmin(session)
-          ? xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPageAdmin"), w)
-          : xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
+      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
