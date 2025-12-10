@@ -2327,17 +2327,6 @@ public class MandatesResolutionUIController {
     httpSession.setAttribute("lastViewedRequestId", requestId);
     RequestDetails requestDetails = mandatesResolutionService.getRequestById(requestId);
     httpSession.setAttribute("RequestDetails", requestDetails);
-    if ("Mandate".equalsIgnoreCase(requestDetails.getType())
-        && requestDetails.getListOfAddAccountModel().size() == 1
-        || "Mandate And Resolution".equalsIgnoreCase(requestDetails.getType())
-           && requestDetails.getListOfAddAccountModel().size() == 1) {
-      List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
-      for (int i = 0; i < listOfAddAccount.size(); i++) {
-        AddAccountModel addAccountModel = listOfAddAccount.get(i);
-        addAccountModel.setCheckDeleteButton("true");
-        listOfAddAccount.set(i, addAccountModel);
-      }
-    }
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
       requestDetails.setCheckReassignee("true");
@@ -2363,13 +2352,21 @@ public class MandatesResolutionUIController {
       throws JsonProcessingException {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     requestDetails = mandatesResolutionService.getRequestById(requestDetails.getRequestId());
-    httpSession.setAttribute("RequestDetails", requestDetails);
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDetails.setCheckReassignee("true");
+    } else {
+      requestDetails.setCheckReassignee("false");
+    }
     if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
         || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
       requestDetails.setCheckStatus("true");
     } else {
       requestDetails.setCheckStatus("false");
     }
+    System.out.println("===Print===Sub status===" + requestDetails.getSubStatus());
+    mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
+    httpSession.setAttribute("RequestDetails", requestDetails);
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
@@ -2378,7 +2375,6 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminViewBack", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminViewBack() {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
-    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
     return ResponseEntity.ok(page);
   }
@@ -2392,22 +2388,45 @@ public class MandatesResolutionUIController {
     long activeDirector = requestDetails.getListOfDirector().stream()
         .filter(dir -> "Yes".equalsIgnoreCase(dir.getCheckDelete()))
         .count();
-
-    if (String.valueOf(activeDirector).equalsIgnoreCase(
+    if (!"Mandate".equalsIgnoreCase(requestDetails.getType())
+        && String.valueOf(activeDirector).equalsIgnoreCase(
         String.valueOf(requestDetails.getListOfDirector().size()))) {
       requestDetails.setCheckDirectors("true");
+      check = true;
+    }
+
+    if (!"Resolution".equalsIgnoreCase(requestDetails.getType())
+        && requestDetails.getListOfAddAccountModel().size() == 1) {
+      for (AddAccountModel model : requestDetails.getListOfAddAccountModel()) {
+        if ("Yes".equalsIgnoreCase(model.getCheckDelete())) {
+          requestDetails.setCheckAccounts("true");
+          check = true;
+        }
+      }
+    }
+
+    if (check) {
       page = xsltProcessor.generatePages(xslPagePath("EditRequest"),
           requestDetails);
     } else {
       mandatesResolutionService.updateViewRequest(requestDetails);
       requestDetails = mandatesResolutionService.getRequestById(requestDetails.getRequestId());
       httpSession.setAttribute("RequestDetails", requestDetails);
+      mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
+      requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
+      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        requestDetails.setCheckReassignee("true");
+      } else {
+        requestDetails.setCheckReassignee("false");
+      }
       if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
           || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
         requestDetails.setCheckStatus("true");
       } else {
         requestDetails.setCheckStatus("false");
       }
+      httpSession.setAttribute("RequestDetails", requestDetails);
       page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
@@ -6160,7 +6179,6 @@ public class MandatesResolutionUIController {
         List<AddAccountModel> listOfAddAccount = requestDetails.getListOfAddAccountModel();
         for (int i = 0; i < listOfAddAccount.size(); i++) {
           AddAccountModel addAccountModel = listOfAddAccount.get(i);
-          addAccountModel.setCheckDeleteButton("true");
           listOfAddAccount.set(i, addAccountModel);
         }
       }
@@ -6205,7 +6223,7 @@ public class MandatesResolutionUIController {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     if ("false".equalsIgnoreCase(user.get("confirmationCheckMandate"))) {
       requestDetails.setViewPageError("Verification cannot proceed until the "
-                                               + "checkbox has been selected !");
+                                      + "checkbox has been selected !");
       check = true;
     }
 
@@ -7097,6 +7115,13 @@ public class MandatesResolutionUIController {
           mandatesResolutionService.updateAccount(requestDetails.getListOfAddAccountModel(),
               userInList,
               user);
+      for (int i = 0; i < addAccountModelList.size(); i++) {
+        AddAccountModel model = addAccountModelList.get(i);
+        if (userInList.equalsIgnoreCase(String.valueOf(model.getUserInList()))) {
+          model.setCheckEditAccount("Yes");
+          addAccountModelList.set(i, model);
+        }
+      }
       addAccountModel =
           mandatesResolutionService.updateAccountSingle(requestDetails.getListOfAddAccountModel(),
               userInList,
@@ -7132,7 +7157,7 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/updateDirectorsResoEdit/{userInList}", produces =
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> updateDirectorsResoEdit(@RequestParam Map<String, String> admin,
-                                                    @PathVariable String userInList) {
+                                                        @PathVariable String userInList) {
     String page = "";
     RequestDetails requestDetails =
         (RequestDetails) httpSession.getAttribute("RequestDetails");
@@ -9821,7 +9846,7 @@ public class MandatesResolutionUIController {
       if (arr != null) {
         for (var it : arr) {
           if (it != null && (it.getIsActive() == null || Boolean.TRUE.equals(it.getIsActive()))) {
-           // String v = it.getValue();
+            // String v = it.getValue();
            /* if (v != null && !v.isBlank()) {
               out.add(v.trim());
             }*/
