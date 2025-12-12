@@ -2050,6 +2050,10 @@ public class MandatesResolutionUIController {
                                  && !r.getAssignedUser().trim().isEmpty()
                                  && r.getAssignedUser().trim().equalsIgnoreCase(me)))
           .peek(r -> {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
+              r.setRequestIdForDisplay(
+                  r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
+            }
             try {
               String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
               ResponseEntity<CompanyDTO> companyResponse =
@@ -2341,6 +2345,10 @@ public class MandatesResolutionUIController {
       requestDetails.setCheckStatus("false");
     }
 
+    boolean check = screenValidation.checkAdminApprovalPending(requestDetails.getSubStatus(),
+        users.getUserRole());
+    requestDetails.setCheckStatusType(String.valueOf(check));
+
     mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
@@ -2364,7 +2372,6 @@ public class MandatesResolutionUIController {
     } else {
       requestDetails.setCheckStatus("false");
     }
-    System.out.println("===Print===Sub status===" + requestDetails.getSubStatus());
     mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
     httpSession.setAttribute("RequestDetails", requestDetails);
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
@@ -6299,12 +6306,30 @@ public class MandatesResolutionUIController {
       produces = MediaType.APPLICATION_XML_VALUE
   )
   public ResponseEntity<String> unholdRequest(
-      @PathVariable String requestId) {
+      @PathVariable String requestId) throws JsonProcessingException {
     UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
     mandatesResolutionService.statusUpdated(Long.valueOf(requestId), "UnHold",
         requestDetails.getCheckUnHoldRecord(),
         "In Progress", users.getUsername());
+    requestDetails = mandatesResolutionService.getRequestById(Long.valueOf(requestId));
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDetails.setCheckReassignee("true");
+    } else {
+      requestDetails.setCheckReassignee("false");
+    }
+
+    if ("Completed".equalsIgnoreCase(requestDetails.getStatus())
+        || "Auto Closed".equalsIgnoreCase(requestDetails.getStatus())) {
+      requestDetails.setCheckStatus("true");
+    } else {
+      requestDetails.setCheckStatus("false");
+    }
+    boolean check = screenValidation.checkAdminApprovalPending(requestDetails.getSubStatus(),
+        users.getUserRole());
+    requestDetails.setCheckStatusType(String.valueOf(check));
+    httpSession.setAttribute("RequestDetails", requestDetails);
+    mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
     String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);

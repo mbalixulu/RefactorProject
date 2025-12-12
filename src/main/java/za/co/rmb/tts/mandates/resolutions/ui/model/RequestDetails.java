@@ -10,8 +10,6 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
-import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel;
-
 @Data
 @Getter
 @Setter
@@ -64,6 +62,8 @@ public class RequestDetails {
 
   private String checkDirectors;
   private String checkAccounts;
+
+  private String checkStatusType;
 
 
 }
