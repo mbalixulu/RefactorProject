@@ -194,26 +194,7 @@
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Request Type">
                                                 <ns1:value>
-                                                    <xsl:choose>
-                                                        <!-- Prefer numeric mandateResolution if present -->
-                                                        <xsl:when test="normalize-space(mandateResolution)='1'">Mandate</xsl:when>
-                                                        <xsl:when test="normalize-space(mandateResolution)='2'">Resolution</xsl:when>
-                                                        <xsl:when test="normalize-space(mandateResolution)='3'">Mandate and resolution</xsl:when>
-
-                                                        <!-- Fallback: textual (requestType|type) -->
-                                                        <xsl:when test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'BOTH')">
-                                                            Mandate and resolution
-                                                        </xsl:when>
-                                                        <xsl:when test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'RESOLUTION')">
-                                                            Resolution
-                                                        </xsl:when>
-                                                        <xsl:when test="contains(translate(normalize-space((requestType|type)[1]),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'MANDATE')">
-                                                            Mandate
-                                                        </xsl:when>
-
-                                                        <!-- Otherwise show a dash -->
-                                                        <xsl:otherwise>—</xsl:otherwise>
-                                                    </xsl:choose>
+                                                    <xsl:value-of select="type"/>
                                                 </ns1:value>
                                             </ns1:item>
                                         </ns1:cellItem>
