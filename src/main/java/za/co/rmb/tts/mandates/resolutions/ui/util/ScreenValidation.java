@@ -83,4 +83,14 @@ public class ScreenValidation {
     return check;
   }
 
+  public boolean checkAdminApprovalPending(String status, String user) {
+    boolean check = false;
+    if ("USER".equalsIgnoreCase(user)) {
+      if ("Admin Approval Pending".equalsIgnoreCase(status)) {
+        check = true;
+      }
+    }
+    return check;
+  }
+
 }

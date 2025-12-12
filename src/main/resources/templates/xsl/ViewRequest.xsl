@@ -537,6 +537,7 @@
                         </comm:symbol>
                     </comm:sections>
                     <xsl:if test="requestDetails/status != 'On Hold' and requestDetails/status != 'Completed' and requestDetails/status != 'Auto Closed'">
+                        <xsl:if test="requestDetails/checkStatusType = 'false'">
                         <comm:sections comm:align="left" comm:width="full">
                             <comm:symbol xsi:type="comm:boxContainer" comm:id="instructionsBox">
                                 <comm:box xsi:type="comm:box">
@@ -571,6 +572,7 @@
                                 </comm:box>
                             </comm:symbol>
                         </comm:sections>
+                        </xsl:if>
                     </xsl:if>
                 </comm:form>
             </symbol>
