@@ -2249,55 +2249,47 @@ public class MandatesResolutionUIController {
 
   @PostMapping(value = "/draftRequests", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayDraftRequests() {
-    try {
-      RequestTableWrapper wrapper = new RequestTableWrapper();
-      List<RequestTableDTO> rows = new ArrayList<>();
-      List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
-      RequestDTO requestDTO = new RequestDTO();
-      UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
-      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
-        requestDTO.setSubStatus("Admin");
-      } else {
-        requestDTO.setSubStatus("User");
-      }
-      for (RequestStagingDTO src : list) {
-        RequestTableDTO r = new RequestTableDTO();
-        if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
-          r.setRequestId(src.getStagingId());
-          r.setCompanyName(src.getCompanyName());
-          r.setRegistrationNumber(src.getCompanyRegistrationNumber());
-          r.setStatus(src.getRequestStatus());
-          r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
-          r.setType(src.getRequestType());
-          r.setCreated(String.valueOf(src.getCreated()));
-          rows.add(r);
-        } else if ("USER".equalsIgnoreCase(users.getUserRole())
-                   && src.getCreator().equalsIgnoreCase(users.getUsername())) {
-          r.setRequestId(src.getStagingId());
-          r.setCompanyName(src.getCompanyName());
-          r.setRegistrationNumber(src.getCompanyRegistrationNumber());
-          r.setStatus(src.getRequestStatus());
-          r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
-          r.setType(src.getRequestType());
-          r.setCreated(String.valueOf(src.getCreated()));
-          rows.add(r);
-        }
-      }
-      wrapper.setRequest(rows);
-      wrapper.setRequestDTO(requestDTO);
-      String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
-
-    } catch (Exception e) {
-      logger.error("Error loading draft requests: {}", e.getMessage(), e);
-      String fallbackError = """
-          <?xml version="1.0" encoding="UTF-8"?>
-          <page>
-              <error>Unable to load drafts.</error>
-          </page>
-          """;
-      return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(fallbackError);
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    List<RequestTableDTO> rows = new ArrayList<>();
+    List<RequestStagingDTO> list = mandatesResolutionService.getAllDrafts();
+    RequestDTO requestDTO = new RequestDTO();
+    UserDTO users = (UserDTO) httpSession.getAttribute("currentUser");
+    if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+      requestDTO.setSubStatus("Admin");
+    } else {
+      requestDTO.setSubStatus("User");
     }
+    for (RequestStagingDTO src : list) {
+      RequestTableDTO r = new RequestTableDTO();
+      if ("ADMIN".equalsIgnoreCase(users.getUserRole())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      } else if ("USER".equalsIgnoreCase(users.getUserRole())
+                 && src.getCreator().equalsIgnoreCase(users.getUsername())) {
+        r.setRequestId(src.getStagingId());
+        r.setCompanyName(src.getCompanyName());
+        r.setRegistrationNumber(src.getCompanyRegistrationNumber());
+        r.setStatus(src.getRequestStatus());
+        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setType(src.getRequestType());
+        r.setCreated(String.valueOf(src.getCreated()));
+        rows.add(r);
+      }
+    }
+    wrapper.setRequest(rows);
+    wrapper.setRequestDTO(requestDTO);
+    System.out.println("=======Print Draft Record size====" + wrapper.getRequest().size());
+    for (RequestTableDTO requestTableDTO : wrapper.getRequest()) {
+      System.out.println("=====Print Company Name=====" + requestTableDTO.getCompanyName());
+    }
+    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
   //Admin Profile Page
