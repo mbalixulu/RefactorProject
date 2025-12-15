@@ -1906,11 +1906,11 @@ public class MandatesResolutionUIController {
   @RequestMapping(value = "/adminAll", method = { RequestMethod.GET, RequestMethod.POST }, produces
       = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminAll() {
-      List<RequestTableDTO> listOfRecord = mandatesResolutionService.getAllRecords();
-      RequestTableWrapper wrapper = new RequestTableWrapper();
-      wrapper.setRequest(listOfRecord);
-      String page = xsltProcessor.generatePage(xslPagePath("AdminAll"), wrapper);
-      return ResponseEntity.ok(page);
+    List<RequestTableDTO> listOfRecord = mandatesResolutionService.getAllRecords();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    wrapper.setRequest(listOfRecord);
+    String page = xsltProcessor.generatePage(xslPagePath("AdminAll"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
   @PostMapping(value = "/inProgressRequests", produces = MediaType.APPLICATION_XML_VALUE)
