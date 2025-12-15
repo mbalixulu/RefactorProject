@@ -21,6 +21,7 @@ public class RequestTableDTO implements Serializable {
   private Long companyId;
   private Integer sla;
   private String companyName;
+  private String companyNameForDisplay;
   private String status;
   private String subStatus;
   private String created;

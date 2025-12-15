@@ -42,6 +42,7 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
+import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 
 @Service
@@ -1544,5 +1545,13 @@ public class MandatesResolutionService {
       }
 
     }
+  }
+
+  public List<RequestTableDTO> getAllRecords() {
+    String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
+    ResponseEntity<RequestTableDTO[]> response =
+        restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
+    List<RequestTableDTO> listOfRecord = Arrays.asList(response.getBody());
+    return listOfRecord;
   }
 }

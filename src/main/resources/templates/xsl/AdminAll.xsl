@@ -174,7 +174,7 @@
                                     <ns1:cell ns1:col_id="companyName">
                                         <ns1:cellItem>
                                             <ns1:item xsi:type="ns1:simpleText" ns1:label="Company">
-                                                <ns1:value><xsl:value-of select="companyName"/></ns1:value>
+                                                <ns1:value><xsl:value-of select="companyNameForDisplay"/></ns1:value>
                                             </ns1:item>
                                         </ns1:cellItem>
                                     </ns1:cell>
