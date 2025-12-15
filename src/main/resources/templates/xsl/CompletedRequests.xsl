@@ -88,7 +88,7 @@
                                                  ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
                                                  ns1:disableSorting="false" ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
+                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company"
                                                  ns1:fieldName="companyName"
                                                  ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>
@@ -271,7 +271,7 @@
                                                  ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="sla" ns1:heading="SLA" ns1:fieldName="sla"
                                                  ns1:disableSorting="false" ns1:widthPercent="9"/>
-                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company Name"
+                                <ns1:tableColumn ns1:id="companyName" ns1:heading="Company"
                                                  ns1:fieldName="companyName"
                                                  ns1:disableSorting="false"
                                                  ns1:widthPercent="9"/>

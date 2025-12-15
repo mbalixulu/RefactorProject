@@ -1903,121 +1903,14 @@ public class MandatesResolutionUIController {
     }
   }
 
-
-  //Admin All Page
   @RequestMapping(value = "/adminAll", method = { RequestMethod.GET, RequestMethod.POST }, produces
       = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminAll() {
-    try {
-      RestTemplate restTemplate = new RestTemplate();
-      String backendUrl = mandatesResolutionsDaoURL + "/api/request/all";
-
-      RequestTableDTO[] all;
-      try {
-        ResponseEntity<RequestTableDTO[]> response =
-            restTemplate.getForEntity(backendUrl, RequestTableDTO[].class);
-        all = (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
-            ? response.getBody()
-            : new RequestTableDTO[0];
-      } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
-        all = new RequestTableDTO[0];
-      }
-
-      //Parse created  supports local_date_time
-      java.util.function.ToLongFunction<String> toEpochMillis = s -> {
-        if (s == null) {
-          return Long.MIN_VALUE;
-        }
-        String t = s.trim();
-        if (t.isEmpty()) {
-          return Long.MIN_VALUE;
-        }
-        try {
-          java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(
-              t, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-          return ldt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
-        } catch (Exception ignore) {
-          //Intentionally ignore parse errors; use sentinel
-        }
-        try {
-          return java.time.Instant.parse(t).toEpochMilli();
-        } catch (Exception ignore) {
-          //Intetionally empty
-        }
-        try {
-          return Long.parseLong(t);
-        } catch (Exception ignore) {
-          //Intetionally empty
-        }
-        return Long.MIN_VALUE;
-      };
-
-      java.util.List<RequestTableDTO> allRequests =
-          new java.util.ArrayList<>(java.util.Arrays.asList(all));
-
-      // Enrich company + compute display id using your helper
-      for (RequestTableDTO r : allRequests) {
-        try {
-          String companyUrl = mandatesResolutionsDaoURL + "/api/company/" + r.getCompanyId();
-          ResponseEntity<CompanyDTO> companyResponse =
-              restTemplate.getForEntity(companyUrl, CompanyDTO.class);
-          r.setCompanyName(
-              companyResponse.getStatusCode().is2xxSuccessful() && companyResponse.getBody() != null
-                  ? companyResponse.getBody().getName()
-                  : "Unknown"
-          );
-        } catch (Exception ex) {
-          logger.error("Error fetching company name for companyId {}: {}",
-              r.getCompanyId(), ex.getMessage());
-          r.setCompanyName("Unknown");
-        }
-
-        String typeLabel = r.getType() == null ? null : r.getType().trim();
-        String formatted = DisplayIds.format(r.getRequestId(), typeLabel);
-        r.setRequestIdForDisplay(formatted != null
-            ? formatted
-            : (r.getRequestId() == null ? "—" : "REQ - "
-                                                +
-                                                String.format("%04d", r.getRequestId())));
-      }
-
-      // Sort: created DESC, then numeric requestId DESC
-      allRequests.sort(
-          java.util.Comparator
-              .comparingLong((RequestTableDTO r) -> toEpochMillis.applyAsLong(r.getCreated()))
-              .reversed()
-              .thenComparing(
-                  java.util.Comparator.comparing(
-                      RequestTableDTO::getRequestId,
-                      java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
-                  ).reversed()
-              )
-      );
-
-      if (logger.isDebugEnabled()) {
-        for (int i = 0; i < Math.min(5, allRequests.size()); i++) {
-          RequestTableDTO r = allRequests.get(i);
-          logger.debug("adminAll[{}]: created={}, requestId={}, displayId={}",
-              i, r.getCreated(), r.getRequestId(), r.getRequestIdForDisplay());
-        }
-      }
-
-      RequestTableWrapper wrapper = new RequestTableWrapper();
-      wrapper.setRequest(allRequests);
-
-      String page = xsltProcessor.generatePage(xslPagePath("AdminAll"), wrapper);
-      return ResponseEntity.ok(page);
-
-    } catch (Exception e) {
-      logger.error("Error fetching all requests: {}", e.getMessage(), e);
-      String fallbackError = """
-          <?xml version="1.0" encoding="UTF-8"?>
-          <page>
-              <error>Unable to load requests.</error>
-          </page>
-          """;
-      return ResponseEntity.ok(fallbackError);
-    }
+    List<RequestTableDTO> listOfRecord = mandatesResolutionService.getAllRecords();
+    RequestTableWrapper wrapper = new RequestTableWrapper();
+    wrapper.setRequest(listOfRecord);
+    String page = xsltProcessor.generatePage(xslPagePath("AdminAll"), wrapper);
+    return ResponseEntity.ok(page);
   }
 
   @PostMapping(value = "/inProgressRequests", produces = MediaType.APPLICATION_XML_VALUE)
@@ -2284,10 +2177,6 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    System.out.println("=======Print Draft Record size====" + wrapper.getRequest().size());
-    for (RequestTableDTO requestTableDTO : wrapper.getRequest()) {
-      System.out.println("=====Print Company Name=====" + requestTableDTO.getCompanyName());
-    }
     String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }

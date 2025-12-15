@@ -100,7 +100,7 @@
                                                  ns1:fieldName="sla"
                                                  ns1:widthPercent="6"/>
                                 <ns1:tableColumn ns1:id="companyName"
-                                                 ns1:heading="Company Name"
+                                                 ns1:heading="Company"
                                                  ns1:fieldName="companyName"
                                                  ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="status"
@@ -267,7 +267,7 @@
                                                  ns1:fieldName="sla"
                                                  ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="companyName"
-                                                 ns1:heading="Company Name"
+                                                 ns1:heading="Company"
                                                  ns1:fieldName="companyName"
                                                  ns1:widthPercent="9"/>
                                 <ns1:tableColumn ns1:id="status"
