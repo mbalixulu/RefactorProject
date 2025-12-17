@@ -40,7 +40,7 @@ public class RequestStagingDTO {
 
   private String creator;
   private String updator;
-  private java.time.LocalDateTime created;
+  private String created;
 
   @Data
   @JsonIgnoreProperties(ignoreUnknown = true)
