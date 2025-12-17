@@ -3537,7 +3537,8 @@ public class MandatesResolutionUIController {
       r.setStatus(src.getRequestStatus());
       r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
       r.setType(src.getRequestType());  // for <type>
-      r.setCreated(src.getCreated() == null ? "" : src.getCreated().format(fmt)); // formatted
+      r.setCreated(src.getCreated() == null ? ""
+          : src.getCreated().format(String.valueOf(fmt))); // formatted
       r.setUpdated(null);
       rows.add(r);
     }
