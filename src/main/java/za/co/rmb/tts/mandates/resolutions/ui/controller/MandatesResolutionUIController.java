@@ -441,17 +441,17 @@ public class MandatesResolutionUIController {
     DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
         "false");
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
     directorModel.setCheckDraft("No");
@@ -485,23 +485,23 @@ public class MandatesResolutionUIController {
     DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
         "true");
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
 
     if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
-      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
 
@@ -614,17 +614,17 @@ public class MandatesResolutionUIController {
       listofDirectors = new DirectorModel();
     }
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
 
@@ -660,23 +660,23 @@ public class MandatesResolutionUIController {
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
 
     if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
-      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
 
@@ -1036,7 +1036,7 @@ public class MandatesResolutionUIController {
     SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("fullName").isBlank()) {
-      signatoryErrorModel.setFullName("Full Name can't be empty !");
+      signatoryErrorModel.setFullName("Full Name can't be empty!");
       check = true;
     }
 
@@ -1052,7 +1052,7 @@ public class MandatesResolutionUIController {
 
     if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
         user.get("accountRef1"))) {
-      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
     if (check) {
@@ -1154,7 +1154,7 @@ public class MandatesResolutionUIController {
     SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("fullName").isBlank()) {
-      signatoryErrorModel.setFullName("Full Name can't be empty !");
+      signatoryErrorModel.setFullName("Full Name can't be empty!");
       check = true;
     }
 
@@ -1170,7 +1170,7 @@ public class MandatesResolutionUIController {
 
     if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
         user.get("accountRef1"))) {
-      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
     if (check) {
@@ -1209,12 +1209,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("accountName").isBlank()) {
-      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      signatoryErrorModel.setAccountName("Account Name can't be empty!");
       check = true;
     }
 
     if (user.get("accountNo").isBlank()) {
-      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty!");
       check = true;
     }
     List<SignatoryModel> listOfSignatory = addAccountModel.getListOfSignatory();
@@ -1335,12 +1335,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("accountName").isBlank()) {
-      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      signatoryErrorModel.setAccountName("Account Name can't be empty!");
       check = true;
     }
 
     if (user.get("accountNo").isBlank()) {
-      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty!");
       check = true;
     }
     List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
@@ -1454,12 +1454,12 @@ public class MandatesResolutionUIController {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
         if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
             && user.get("capacity" + signatoryModel.getUserInList()
-                        + signatoryModel.getUserInAccount()).isBlank()) {
+                + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
                    && user.get("Group" + signatoryModel.getUserInList()
-                               + signatoryModel.getUserInAccount()).isBlank()) {
+                + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -1574,12 +1574,12 @@ public class MandatesResolutionUIController {
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     boolean check = false;
     if (user.get("capacity").isBlank()) {
-      signatoryErrorModel.setCapacity("Capacity can't be empty !");
+      signatoryErrorModel.setCapacity("Capacity can't be empty!");
       check = true;
     }
 
     if (user.get("Group").isBlank()) {
-      signatoryErrorModel.setGroup("Group can't be empty !");
+      signatoryErrorModel.setGroup("Group can't be empty!");
       check = true;
     }
 
@@ -1727,12 +1727,12 @@ public class MandatesResolutionUIController {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
         if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
             && user.get("capacity" + signatoryModel.getUserInList()
-                        + signatoryModel.getUserInAccount()).isBlank()) {
+                + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
                    && user.get("Group" + signatoryModel.getUserInList()
-                               + signatoryModel.getUserInAccount()).isBlank()) {
+                + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -6966,12 +6966,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     if (user.get("accountName").isBlank()) {
-      signatoryErrorModel.setAccountName("Account Name can't be empty !");
+      signatoryErrorModel.setAccountName("Account Name can't be empty!");
       check = true;
     }
 
     if (user.get("accountNo").isBlank()) {
-      signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
+      signatoryErrorModel.setAccountNumber("Account Number can't be empty!");
       check = true;
     }
     List<SignatoryModel> signatoryModelList = addAccountModel.getListOfSignatory();
@@ -7049,23 +7049,23 @@ public class MandatesResolutionUIController {
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = new DirectorModel();
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
 
     if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
-      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
 
@@ -7101,23 +7101,23 @@ public class MandatesResolutionUIController {
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
     if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
+      dirctorErrorModel.setName("Name can't be empty!");
       check = true;
     }
 
     if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
+      dirctorErrorModel.setDesignation("Designation can't be empty!");
       check = true;
     }
 
     if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
+      dirctorErrorModel.setSurname("Surname can't be empty!");
       check = true;
     }
 
     if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
-      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
+      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select!");
       check = true;
     }
 
@@ -8284,7 +8284,8 @@ public class MandatesResolutionUIController {
   // Build a valid ns1 page the renderer understands
   private static String renderSimpleErrorPage(String heading, String message, String backUrl) {
     return """
-        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        <page xmlns:ns1="http://ws.online.fnb.co.za/v1/common/"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               id="errorPage" title="Error" template="main" version="1">
           <symbol xsi:type="ns1:formLayout">
             <ns1:form ns1:action="%3$s" ns1:name="errorForm">
