@@ -556,8 +556,8 @@ public class MandatesResolutionService {
   }
 
   /**
-   * @deprecated Use {@link AuditTrailService#statusUpdated(Long, String, String, String, String)} instead.
-   * This method will be removed in a future version.
+   * @deprecated Use {@link AuditTrailService#statusUpdated(Long, String, String, 
+   *     String, String)} instead. This method will be removed in a future version.
    */
   @Deprecated
   public void statusUpdated(Long requestId, String processOutcome, String subStatus,
