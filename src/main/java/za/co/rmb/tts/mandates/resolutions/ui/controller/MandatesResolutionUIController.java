@@ -567,32 +567,19 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/updateDirectors/{userInList}", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> updateDirectors(@RequestParam Map<String, String> admin,
                                                 @PathVariable String userInList) {
+    // Extracted validation logic to MandateCaptureService for separation of concerns
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    boolean check = false;
     List<DirectorModel> directorModelList = requestWrapper.getDirectorModels();
-    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("Dirctors");
     if (listofDirectors == null) {
       listofDirectors = new DirectorModel();
     }
-    if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
-      check = true;
-    }
+    
+    DirectorErrorModel dirctorErrorModel = mandateCaptureService.validateDirectorInput(admin, false);
 
-    if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
-      check = true;
-    }
-
-    if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
-      check = true;
-    }
-
-    if (check) {
+    if (dirctorErrorModel != null) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
       listofDirectors.setButtonCheck("false");
       listofDirectors.setName(admin.get("name"));
@@ -616,35 +603,16 @@ public class MandatesResolutionUIController {
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> updateDirectorsReso(@RequestParam Map<String, String> admin,
                                                     @PathVariable String userInList) {
+    // Extracted validation logic to MandateCaptureService for separation of concerns
     String page = "";
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    boolean check = false;
     List<DirectorModel> directorModelList = requestWrapper.getListOfDirectors();
-    DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
-    if (admin.get("name").isBlank()) {
-      dirctorErrorModel.setName("Name can't be empty !");
-      check = true;
-    }
+    
+    DirectorErrorModel dirctorErrorModel = mandateCaptureService.validateDirectorInput(admin, true);
 
-    if (admin.get("designation").isBlank()) {
-      dirctorErrorModel.setDesignation("Designation can't be empty !");
-      check = true;
-    }
-
-    if (admin.get("surname").isBlank()) {
-      dirctorErrorModel.setSurname("Surname can't be empty !");
-      check = true;
-    }
-
-    if (admin.get("instructions").isBlank()
-        || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
-      dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
-      check = true;
-    }
-
-    if (check) {
+    if (dirctorErrorModel != null) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
       listofDirectors.setButtonCheck("false");
       page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
@@ -1054,31 +1022,12 @@ public class MandatesResolutionUIController {
       MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> editSignatory(@RequestParam Map<String, String> user,
                                               @PathVariable String userInList) {
+    // Extracted validation logic to MandateCaptureService for separation of concerns
     String page = "";
-    boolean check = false;
     SignatoryModel signatoryModel = new SignatoryModel();
-    SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("fullName").isBlank()) {
-      signatoryErrorModel.setFullName("Full Name can't be empty !");
-      check = true;
-    }
-
-    if (user.get("idNumber").isBlank()) {
-      signatoryErrorModel.setIdNumber("Id number can't be empty !");
-      check = true;
-    }
-
-    if (!screenValidation.validateSaIdNumber(user.get("idNumber"))) {
-      signatoryErrorModel.setIdNumber("Provide Valid SA Id Number !");
-      check = true;
-    }
-
-    if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
-        user.get("accountRef1"))) {
-      signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
-      check = true;
-    }
-    if (check) {
+    SignatoryErrorModel signatoryErrorModel = mandateCaptureService.validateSignatoryInput(user);
+    
+    if (signatoryErrorModel != null) {
       signatoryModel.setFullName(user.get("fullName"));
       signatoryModel.setIdNumber(user.get("idNumber"));
       signatoryModel.setInstruction(user.get("accountRef1"));
