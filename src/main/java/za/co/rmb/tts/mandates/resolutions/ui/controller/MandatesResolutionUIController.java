@@ -1815,7 +1815,8 @@ public class MandatesResolutionUIController {
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
-      logger.error("Error fetching Admin Approval Pending requests: {}", e.getMessage(), e);
+      logger.error("Error fetching Admin Approval Pending requests: {}", 
+          e.getMessage(), e);
       String fallbackError = """
           <?xml version="1.0" encoding="UTF-8"?>
           <page>
