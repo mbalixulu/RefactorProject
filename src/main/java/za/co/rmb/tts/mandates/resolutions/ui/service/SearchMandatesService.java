@@ -335,7 +335,7 @@ public class SearchMandatesService {
     List<DirectorModel> listOfDirectorModel = new ArrayList<>();
     for (MandateResolutionSubmissionResultDTO.Authority authority : listOfAuthority) {
       if (authority.getInstructions() != null
-          && authority.getInstructions() != "") {
+          && !authority.getInstructions().isBlank()) {
         DirectorModel directorModel = new DirectorModel();
         directorModel.setName(authority.getFirstname());
         directorModel.setSurname(authority.getSurname());

@@ -52,7 +52,7 @@ public class MandateCaptureService {
     payload.put("companyRegistrationNumber", requestWrapper.getRequest().getRegistrationNumber());
     payload.put("companyName", requestWrapper.getRequest().getCompanyName());
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
-    if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
+    if (requestWrapper.getRequestType() != null && !requestWrapper.getRequestType().isBlank()) {
       payload.put("requestType", requestWrapper.getRequestType());
       payload.put("draftWaiverConfirmCheck", requestWrapper.isCheckStyleTwo());
       payload.put("draftSigmaConfirmCheck", requestWrapper.isCheckStyleOne());
@@ -144,7 +144,7 @@ public class MandateCaptureService {
     payload.put("companyRegistrationNumber", requestWrapper.getRequest().getRegistrationNumber());
     payload.put("companyName", requestWrapper.getRequest().getCompanyName());
     payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
-    if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
+    if (requestWrapper.getRequestType() != null && !requestWrapper.getRequestType().isBlank()) {
       payload.put("requestType", requestWrapper.getRequestType());
       payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleTwo()));
       payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleOne()));
