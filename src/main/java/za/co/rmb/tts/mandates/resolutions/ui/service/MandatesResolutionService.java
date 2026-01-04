@@ -1,21 +1,12 @@
 package za.co.rmb.tts.mandates.resolutions.ui.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -26,45 +17,66 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import za.co.rmb.tts.mandates.resolutions.ui.model.AddAccountModel;
-import za.co.rmb.tts.mandates.resolutions.ui.model.CommentModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.DirectorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.ExportModel;
-import za.co.rmb.tts.mandates.resolutions.ui.model.InstructionModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestDetails;
 import za.co.rmb.tts.mandates.resolutions.ui.model.RequestWrapper;
 import za.co.rmb.tts.mandates.resolutions.ui.model.SignatoryModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountRequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AccountResponseDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.AuthorityDTO;
-import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CommentDto;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.CompanyDTO;
-import za.co.rmb.tts.mandates.resolutions.ui.model.dto.ListOfValuesDTO;
-import za.co.rmb.tts.mandates.resolutions.ui.model.dto.MandateResolutionSubmissionResultDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestStagingDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.RequestTableDTO;
 import za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO;
 
+/**
+ * Lightweight service for managing mandate and resolution UI operations.
+ * This service has been refactored to delegate core responsibilities to specialized services:
+ * - {@link MandateCaptureService} for capturing and submitting mandates
+ * - {@link SearchMandatesService} for searching and retrieving mandate data
+ * - {@link AuditTrailService} for audit trail and status management
+ *
+ * This service now focuses on UI-related helper methods and session management.
+ */
 @Service
 public class MandatesResolutionService {
 
   @Autowired
   private HttpSession httpSession;
 
+  @Autowired
+  private MandateCaptureService mandateCaptureService;
+
+  @Autowired
+  private SearchMandatesService searchMandatesService;
+
+  @Autowired
+  private AuditTrailService auditTrailService;
+
   RestTemplate restTemplate = new RestTemplate();
 
   @Value("${mandates-resolutions-dao}")
   private String mandatesResolutionsDaoURL;
 
+  // ========== Deprecated Delegation Methods - Use new services instead ==========
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#getCompanyByRegistration(String)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
   public CompanyDTO getCompanyByRegistration(String registrationNumber) {
-    String url =
-        mandatesResolutionsDaoURL
-        + "/api/company/registration?registrationNumber="
-        + registrationNumber;
-    ResponseEntity<CompanyDTO> response =
-        restTemplate.getForEntity(url, CompanyDTO.class, registrationNumber);
-    return response.getBody();
+    return searchMandatesService.getCompanyByRegistration(registrationNumber);
   }
+
+  // ========== UI Helper Methods - Session and Model Management ==========
+
+  /**
+   * Sets director information from a map into a director model.
+   * Used for UI form handling.
+   */
 
   public DirectorModel setAllDirctors(Map<String, String> director, String instructionCheck) {
     DirectorModel directorModel;
@@ -453,159 +465,131 @@ public class MandatesResolutionService {
     return listOfAddAccount;
   }
 
+  /**
+   * @deprecated Use {@link MandateCaptureService#sendRequestStaging()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
   public String sendRequestStaging() {
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    UserDTO dto = (UserDTO) httpSession.getAttribute("currentUser");
-    String url = mandatesResolutionsDaoURL + "/api/request-staging";
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("companyRegistrationNumber", requestWrapper.getRequest().getRegistrationNumber());
-    payload.put("companyName", requestWrapper.getRequest().getCompanyName());
-    payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
-    if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
-      payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("draftWaiverConfirmCheck", requestWrapper.isCheckStyleTwo());
-      payload.put("draftSigmaConfirmCheck", requestWrapper.isCheckStyleOne());
-    }
-    payload.put("requestStatus", "Draft");
-    payload.put("requestSubStatus", requestWrapper.getStepForSave());
-    payload.put("waiverUcn", "UCN-7788");
-    String tools = String.join(",",
-        requestWrapper.getToolOne(),
-        requestWrapper.getToolTwo(),
-        requestWrapper.getToolThree(),
-        requestWrapper.getToolFour(),
-        requestWrapper.getToolFive()
-    );
-    payload.put("waiverPermittedTools", tools);
-    String currentDateTime = LocalDateTime.now()
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-    payload.put("waiverLastFetched", currentDateTime);
-    payload.put("creator", dto.getUsername());
-    List<Map<String, Object>> accounts = new ArrayList<>();
-    if (requestWrapper.getListOfAddAccount() != null
-        && !requestWrapper.getListOfAddAccount().isEmpty()) {
-      for (AddAccountModel model : requestWrapper.getListOfAddAccount()) {
-        Map<String, Object> account1 = new HashMap<>();
-        account1.put("accountName", model.getAccountName());
-        account1.put("accountNumber", model.getAccountNumber());
-        account1.put("isActive", true);
-        List<Map<String, Object>> signatories1 = new ArrayList<>();
-        if (model.getListOfSignatory() != null) {
-          for (SignatoryModel s : model.getListOfSignatory()) {
-            Map<String, Object> signatory = new HashMap<>();
-            signatory.put("fullName", s.getFullName());
-            signatory.put("idNumber", s.getIdNumber());
-            signatory.put("instructions", s.getInstruction());
-            signatory.put("instructionsDate", "2025-08-25T09:30:00");
-            signatory.put("capacity", s.getCapacity());
-            signatory.put("groupCategory", s.getGroup());
-            signatory.put("isActive", true);
-            signatories1.add(signatory);
-          }
-        }
-        account1.put("signatories", signatories1);
-        accounts.add(account1);
-      }
-    }
-    payload.put("accounts", accounts);
-    List<Map<String, Object>> authorities = new ArrayList<>();
-    if (requestWrapper.getDirectorModels() != null) {
-      for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
-        authorities.add(Map.of(
-            "firstname", directorModel.getName(),
-            "surname", directorModel.getSurname(),
-            "designation", directorModel.getDesignation(),
-            "isActive", true
-        ));
-      }
-    }
-    if (requestWrapper.getListOfDirectors() != null) {
-      for (DirectorModel directorModel : requestWrapper.getListOfDirectors()) {
-        authorities.add(Map.of(
-            "firstname", directorModel.getName(),
-            "surname", directorModel.getSurname(),
-            "designation", directorModel.getDesignation(),
-            "instructions", directorModel.getInstructions(),
-            "isActive", true
-        ));
-      }
-    }
-    payload.put("authorities", authorities);
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-    ResponseEntity<String> response =
-        restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-    return response.getBody();
+    return mandateCaptureService.sendRequestStaging();
   }
 
+  /**
+   * @deprecated Use {@link MandateCaptureService#sendRequestSignatureCard()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
   public String sendRequestSignatureCard() {
-    RequestWrapper requestWrapper =
-        (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    UserDTO user = (UserDTO) httpSession.getAttribute("currentUser");
-    String url = mandatesResolutionsDaoURL + "/api/request-staging";
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("companyRegistrationNumber", requestWrapper.getRequest().getRegistrationNumber());
-    payload.put("companyName", requestWrapper.getRequest().getCompanyName());
-    payload.put("companyAddress", requestWrapper.getRequest().getCompanyAddress());
-    if (requestWrapper.getRequestType() != null && requestWrapper.getRequestType() != "") {
-      payload.put("requestType", requestWrapper.getRequestType());
-      payload.put("draftWaiverConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleTwo()));
-      payload.put("draftSigmaConfirmCheck", Boolean.valueOf(requestWrapper.isCheckStyleOne()));
-    }
-    payload.put("requestStatus", "Draft");
-    payload.put("requestSubStatus", "Step 3");
-    payload.put("waiverUcn", "UCN-7788");
-    String tools = String.join(",",
-        requestWrapper.getToolOne(),
-        requestWrapper.getToolTwo(),
-        requestWrapper.getToolThree(),
-        requestWrapper.getToolFour(),
-        requestWrapper.getToolFive()
-    );
-    payload.put("waiverPermittedTools", tools);
-    String currentDateTime = LocalDateTime.now()
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-    payload.put("waiverLastFetched", currentDateTime);
-    payload.put("creator", user.getUsername());
-    List<Map<String, Object>> accounts = new ArrayList<>();
-    for (AddAccountModel addAccountModel : requestWrapper.getListOfAddAccount()) {
-      Map<String, Object> accountE = new HashMap<>();
-      List<Map<String, Object>> signatoriesE = new ArrayList<>();
-      accountE.put("accountName", addAccountModel.getAccountName());
-      accountE.put("accountNumber", addAccountModel.getAccountNumber());
-      accountE.put("isActive", true);
-      accountE.put("creator", user.getUsername());
-      for (SignatoryModel appointedModel : addAccountModel.getListOfSignatory()) {
-        Map<String, Object> signatory = new HashMap<>();
-        signatory.put("fullName", appointedModel.getFullName());
-        signatory.put("idNumber", appointedModel.getIdNumber());
-        signatory.put("instructions", appointedModel.getInstruction());
-        signatory.put("capacity", appointedModel.getCapacity());
-        signatory.put("groupCategory", appointedModel.getGroup());
-        signatory.put("signatoryConfirmCheck",
-            Boolean.valueOf(appointedModel.getCheckDocConfirm()));
-        signatory.put("isActive", appointedModel.getCheckDocConfirm());
-        signatory.put("creator", user.getUsername());
-        signatoriesE.add(signatory);
-      }
-      accountE.put("signatories", signatoriesE);
-      accounts.add(accountE);
-    }
-    payload.put("accounts", accounts);
-    List<Map<String, Object>> authorities = new ArrayList<>();
-    if (requestWrapper.getDirectorModels() != null) {
-      for (DirectorModel directorModel : requestWrapper.getDirectorModels()) {
-        authorities.add(Map.of(
-            "firstname", directorModel.getName(),
-            "surname", directorModel.getSurname(),
-            "designation", directorModel.getDesignation(),
-            "isActive", true
-        ));
-      }
-    }
-    payload.put("authorities", authorities);
+    return mandateCaptureService.sendRequestSignatureCard();
+  }
+
+  /**
+   * @deprecated Use {@link MandateCaptureService#createRequest()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public String createRequest() {
+    return mandateCaptureService.createRequest();
+  }
+
+  /**
+   * @deprecated Use {@link MandateCaptureService#createRequestReso()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public String createRequestReso() {
+    return mandateCaptureService.createRequestReso();
+  }
+
+  /**
+   * @deprecated Use {@link MandateCaptureService#createRequestMandates()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public String createRequestMandates() {
+    return mandateCaptureService.createRequestMandates();
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#getAllDrafts()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public List<RequestStagingDTO> getAllDrafts() {
+    return searchMandatesService.getAllDrafts();
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#getDraftsById(Long)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public RequestStagingDTO getDraftsById(Long id) {
+    return searchMandatesService.getDraftsById(id);
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#processViewDraft(RequestStagingDTO)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public RequestWrapper processViewDraft(RequestStagingDTO stagingDTO) {
+    return searchMandatesService.processViewDraft(stagingDTO);
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#exportCsv(ExportModel)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public byte[] exportCsv(ExportModel exportModel) throws IOException {
+    return searchMandatesService.exportCsv(exportModel);
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#getRequestById(Long)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public RequestDetails getRequestById(Long requestId) throws JsonProcessingException {
+    return searchMandatesService.getRequestById(requestId);
+  }
+
+  /**
+   * @deprecated Use {@link AuditTrailService#statusUpdated(Long, String, String, String, String)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public void statusUpdated(Long requestId, String processOutcome, String subStatus,
+                            String status, String currentUser) {
+    auditTrailService.statusUpdated(requestId, processOutcome, subStatus, status, currentUser);
+  }
+
+  /**
+   * @deprecated Use {@link AuditTrailService#statusCheck(String)} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public void statusCheck(String status) {
+    auditTrailService.statusCheck(status);
+  }
+
+  /**
+   * @deprecated Use {@link SearchMandatesService#getAllRecords()} instead.
+   * This method will be removed in a future version.
+   */
+  @Deprecated
+  public List<RequestTableDTO> getAllRecords() {
+    return searchMandatesService.getAllRecords();
+  }
+
+  /**
+   * Updates a draft request by staging ID - Step One.
+   * Retained for complex session management logic.
+   */
+  public void updateDraftByStagingIdStepOne(Long stagingId, Map<String, String> user,
+                                            RequestStagingDTO requestStagingDTO,
+                                            RequestWrapper requestWrapper) {
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
     HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
