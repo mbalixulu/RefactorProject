@@ -97,7 +97,29 @@
                                                  ns1:heading="Date Created"
                                                  ns1:fieldName="dateCreated"
                                                  ns1:widthPercent="9"/>
-                            <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel=""/>
+                            <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel="">
+                                <!--Create Request Button-->
+                                <ns1:groupTableButton xsi:type="ns1:imageButton"
+                                                      ns1:target="main"
+                                                      ns1:id="createRequestbtn"
+                                                      ns1:label="Create Request"
+                                                      ns1:tooltip="true"
+                                                      ns1:tip="tip"
+                                                      ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                                      ns1:formName="ticketForm">
+                                    <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                            ns1:id="createRequestbtn">
+                                        <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                               ns1:target="main"
+                                                               ns1:label="Create Request"
+                                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                        <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                            <ns1:hyperlinkListItem ns1:label="Export CSV"
+                                                                   ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
+                                        </xsl:if>
+                                    </ns1:imageButtonOptions>
+                                </ns1:groupTableButton>
+                            </ns1:rowGroup>
 
                             <!--Rows-->
                             <xsl:for-each select="requests/request">
@@ -195,29 +217,6 @@
                                     </ns1:cell>
                                 </ns1:row>
                             </xsl:for-each>
-                            
-                            <!--Create Request Button at Footer-->
-                            <ns1:groupTableButton xsi:type="ns1:imageButton"
-                                                  ns1:target="main"
-                                                  ns1:id="createRequestbtn"
-                                                  ns1:label="Create Request"
-                                                  ns1:tooltip="true"
-                                                  ns1:tip="tip"
-                                                  ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                                  ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
-                                                        ns1:id="createRequestbtn">
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:target="main"
-                                                           ns1:label="Create Request"
-                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                    <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
-                                        <ns1:hyperlinkListItem ns1:label="Export CSV"
-                                                               ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                    </xsl:if>
-                                </ns1:imageButtonOptions>
-                            </ns1:groupTableButton>
-                            
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
                         </xsl:if>
