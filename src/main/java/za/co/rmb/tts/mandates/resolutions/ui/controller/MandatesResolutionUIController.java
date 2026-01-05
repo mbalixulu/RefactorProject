@@ -143,7 +143,7 @@ public class MandatesResolutionUIController {
       HttpSession newSession = request.getSession(true);
       final String employeeNumber =
           request.getParameter("bifrost.online.header.assisted.employeeNumber");
-      if (employeeNumber == null || employeeNumber.utilityService.isBlank()) {
+      if (employeeNumber == null || employeeNumber.isBlank()) {
         return ResponseEntity.ok(pageGenerationService.generateErrorPage("Missing Employee Number."));
       }
       final String backendUrl = mandatesResolutionsDaoURL + "/api/user/username/" + employeeNumber;
@@ -153,7 +153,7 @@ public class MandatesResolutionUIController {
         return ResponseEntity.ok(pageGenerationService.generateErrorPage("Invalid Employee Number."));
       }
       UserDTO user = resp.getBody();
-      if (user.getEmployeeNumber() == null || user.getEmployeeNumber().utilityService.isBlank()) {
+      if (user.getEmployeeNumber() == null || user.getEmployeeNumber().isBlank()) {
         user.setEmployeeNumber(employeeNumber);
       }
       newSession.setAttribute("currentUser", user);
@@ -204,7 +204,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     SearchResultsErrorModel searchResultsErrorModel = new SearchResultsErrorModel();
     String registrationNumber = null;
-    if (user.get("companyRegNumber").utilityService.isBlank() || user.get("companyRegNumber") == "") {
+    if (user.get("companyRegNumber").isBlank() || user.get("companyRegNumber") == "") {
       searchResultsErrorModel.setRegiNumber("Company Registration Number can't be empty !");
       check = true;
     } else {
@@ -222,7 +222,7 @@ public class MandatesResolutionUIController {
       }
       LinkedHashSet<String> set = new LinkedHashSet<>();
       for (String p : parts) {
-        if (!p.utilityService.isBlank()) {
+        if (!p.isBlank()) {
           set.add(p);
         }
       }
@@ -233,7 +233,7 @@ public class MandatesResolutionUIController {
       return t.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
     };
     String incomingReg = nz.apply(requestDto != null ? requestDto.getRegistrationNumber() : null);
-    if (incomingReg.utilityService.isBlank()) {
+    if (incomingReg.isBlank()) {
       incomingReg = nz.apply(registrationNumber);
     }
     boolean fromCreateSearch =
@@ -243,7 +243,7 @@ public class MandatesResolutionUIController {
     String daoName = null;
     String daoAddr = null;
     Map<String, Object> company = new HashMap<>();
-    if (fromCreateSearch && !incomingReg.utilityService.isBlank()) {
+    if (fromCreateSearch && !incomingReg.isBlank()) {
       String url = UriComponentsBuilder
           .fromHttpUrl(mandatesResolutionsDaoURL)
           .pathSegment("api", "company", "registration")
@@ -269,7 +269,7 @@ public class MandatesResolutionUIController {
     }
     RequestDTO dto = new RequestDTO();
     String currentReg = (dto != null) ? nz.apply(dto.getRegistrationNumber()) : "";
-    boolean regChanged = (!incomingReg.utilityService.isBlank()
+    boolean regChanged = (!incomingReg.isBlank()
                           && !normReg.apply(incomingReg).equals(normReg.apply(currentReg)));
     if (regChanged) {
       dto = new RequestDTO();
@@ -278,31 +278,31 @@ public class MandatesResolutionUIController {
       if (dto == null) {
         dto = new RequestDTO();
       }
-      if ((dto.getRegistrationNumber() == null || dto.getRegistrationNumber().utilityService.isBlank())
-          && !incomingReg.utilityService.isBlank()) {
+      if ((dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank())
+          && !incomingReg.isBlank()) {
         dto.setRegistrationNumber(incomingReg);
       }
     }
     if (requestDto != null) {
       String nm = dedupeComma.apply(requestDto.getCompanyName());
-      if (!nm.utilityService.isBlank()) {
+      if (!nm.isBlank()) {
         dto.setCompanyName(nm);
       }
       String addr = dedupeComma.apply(requestDto.getCompanyAddress());
-      if (!addr.utilityService.isBlank()) {
+      if (!addr.isBlank()) {
         dto.setCompanyAddress(addr);
       }
       String regModel = nz.apply(requestDto.getRegistrationNumber());
-      if (!regModel.utilityService.isBlank()
+      if (!regModel.isBlank()
           && normReg.apply(regModel).equals(normReg.apply(dto.getRegistrationNumber()))) {
         dto.setRegistrationNumber(regModel);
       }
     }
     if (fromCreateSearch) {
-      if (daoName != null && !daoName.utilityService.isBlank()) {
+      if (daoName != null && !daoName.isBlank()) {
         dto.setCompanyName(daoName);
       }
-      if (daoAddr != null && !daoAddr.utilityService.isBlank()) {
+      if (daoAddr != null && !daoAddr.isBlank()) {
         dto.setCompanyAddress(daoAddr);
       }
     }
@@ -370,27 +370,27 @@ public class MandatesResolutionUIController {
     dto.setCompanyName(wave.get("companyName"));
     dto.setCompanyAddress(wave.get("companyAddress"));
     requestWrapper.setRequest(dto);
-    if (!wave.get("toolOne").utilityService.isBlank()) {
+    if (!wave.get("toolOne").isBlank()) {
       requestWrapper.setToolOne(wave.get("toolOne"));
     }
 
-    if (!wave.get("toolTwo").utilityService.isBlank()) {
+    if (!wave.get("toolTwo").isBlank()) {
       requestWrapper.setToolTwo(wave.get("toolTwo"));
     }
 
-    if (!wave.get("toolThree").utilityService.isBlank()) {
+    if (!wave.get("toolThree").isBlank()) {
       requestWrapper.setToolThree(wave.get("toolThree"));
     }
 
-    if (!wave.get("toolFour").utilityService.isBlank()) {
+    if (!wave.get("toolFour").isBlank()) {
       requestWrapper.setToolFour(wave.get("toolFour"));
     }
 
-    if (!wave.get("toolFive").utilityService.isBlank()) {
+    if (!wave.get("toolFive").isBlank()) {
       requestWrapper.setToolFive(wave.get("toolFive"));
     }
     requestWrapper.setRequestType(wave.get("mandateResolution"));
-    if (!wave.get("mandateResolution").utilityService.isBlank()) {
+    if (!wave.get("mandateResolution").isBlank()) {
       requestWrapper.setCheckStyleOne(Boolean.parseBoolean(wave.get("check1")));
       requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(wave.get("check2")));
     }
@@ -452,17 +452,17 @@ public class MandatesResolutionUIController {
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
         "false");
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
@@ -496,22 +496,22 @@ public class MandatesResolutionUIController {
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel directorModel = mandatesResolutionService.setAllDirctors(admin,
         "true");
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
 
-    if (admin.get("instructions").utilityService.isBlank()
+    if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
       dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -625,17 +625,17 @@ public class MandatesResolutionUIController {
     if (listofDirectors == null) {
       listofDirectors = new DirectorModel();
     }
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
@@ -671,22 +671,22 @@ public class MandatesResolutionUIController {
     List<DirectorModel> directorModelList = requestWrapper.getListOfDirectors();
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
 
-    if (admin.get("instructions").utilityService.isBlank()
+    if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
       dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -748,23 +748,23 @@ public class MandatesResolutionUIController {
     dto.setCompanyName(user.get("companyName"));
     dto.setCompanyAddress(user.get("companyAddress"));
     requestWrapper.setRequest(dto);
-    if (!user.get("toolOne").utilityService.isBlank()) {
+    if (!user.get("toolOne").isBlank()) {
       requestWrapper.setToolOne(user.get("toolOne"));
     }
 
-    if (!user.get("toolTwo").utilityService.isBlank()) {
+    if (!user.get("toolTwo").isBlank()) {
       requestWrapper.setToolTwo(user.get("toolTwo"));
     }
 
-    if (!user.get("toolThree").utilityService.isBlank()) {
+    if (!user.get("toolThree").isBlank()) {
       requestWrapper.setToolThree(user.get("toolThree"));
     }
 
-    if (!user.get("toolFour").utilityService.isBlank()) {
+    if (!user.get("toolFour").isBlank()) {
       requestWrapper.setToolFour(user.get("toolFour"));
     }
 
-    if (!user.get("toolFive").utilityService.isBlank()) {
+    if (!user.get("toolFive").isBlank()) {
       requestWrapper.setToolFive(user.get("toolFive"));
     }
     requestWrapper.setRequestType(user.get("mandateResolution"));
@@ -785,19 +785,19 @@ public class MandatesResolutionUIController {
     boolean check = false;
     String page = "";
     requestWrapper = mandatesResolutionService.setSearchResult(user);
-    if (user.get("companyName").utilityService.isBlank()) {
+    if (user.get("companyName").isBlank()) {
       searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
       check = true;
     }
 
-    if (user.get("companyAddress").utilityService.isBlank()) {
+    if (user.get("companyAddress").isBlank()) {
       searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
       check = true;
     }
 
-    if (user.get("toolOne").utilityService.isBlank() && user.get("toolTwo").utilityService.isBlank()
-        && user.get("toolThree").utilityService.isBlank() && user.get("toolFour").utilityService.isBlank()
-        && user.get("toolFive").utilityService.isBlank()) {
+    if (user.get("toolOne").isBlank() && user.get("toolTwo").isBlank()
+        && user.get("toolThree").isBlank() && user.get("toolFour").isBlank()
+        && user.get("toolFive").isBlank()) {
       searchResultsErrorModel.setToolOne("At least One Waiver tool need for the Request !");
       check = true;
     }
@@ -810,7 +810,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckDirectorEmpty("false");
     }
 
-    if (user.get("mandateResolution").utilityService.isBlank() || "Please select".equalsIgnoreCase(
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
         user.get("mandateResolution"))) {
       searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
       check = true;
@@ -862,12 +862,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     String page = "";
     requestWrapper = mandatesResolutionService.setSearchResult(user);
-    if (user.get("companyName").utilityService.isBlank()) {
+    if (user.get("companyName").isBlank()) {
       searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
       check = true;
     }
 
-    if (user.get("companyAddress").utilityService.isBlank()) {
+    if (user.get("companyAddress").isBlank()) {
       searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
       check = true;
     }
@@ -879,7 +879,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckDirectorEmpty("false");
     }
 
-    if (user.get("mandateResolution").utilityService.isBlank() || "Please select".equalsIgnoreCase(
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
         user.get("mandateResolution"))) {
       searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
       check = true;
@@ -1047,12 +1047,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("fullName").utilityService.isBlank()) {
+    if (user.get("fullName").isBlank()) {
       signatoryErrorModel.setFullName("Full Name can't be empty !");
       check = true;
     }
 
-    if (user.get("idNumber").utilityService.isBlank()) {
+    if (user.get("idNumber").isBlank()) {
       signatoryErrorModel.setIdNumber("Id number can't be empty !");
       check = true;
     }
@@ -1062,7 +1062,7 @@ public class MandatesResolutionUIController {
       check = true;
     }
 
-    if (user.get("accountRef1").utilityService.isBlank() || "Please select".equalsIgnoreCase(
+    if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
         user.get("accountRef1"))) {
       signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -1165,12 +1165,12 @@ public class MandatesResolutionUIController {
     boolean check = false;
     SignatoryModel signatoryModel = new SignatoryModel();
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("fullName").utilityService.isBlank()) {
+    if (user.get("fullName").isBlank()) {
       signatoryErrorModel.setFullName("Full Name can't be empty !");
       check = true;
     }
 
-    if (user.get("idNumber").utilityService.isBlank()) {
+    if (user.get("idNumber").isBlank()) {
       signatoryErrorModel.setIdNumber("Id number can't be empty !");
       check = true;
     }
@@ -1180,7 +1180,7 @@ public class MandatesResolutionUIController {
       check = true;
     }
 
-    if (user.get("accountRef1").utilityService.isBlank() || "Please select".equalsIgnoreCase(
+    if (user.get("accountRef1").isBlank() || "Please select".equalsIgnoreCase(
         user.get("accountRef1"))) {
       signatoryErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -1220,12 +1220,12 @@ public class MandatesResolutionUIController {
         (AddAccountModel) httpSession.getAttribute("Signatory");
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("accountName").utilityService.isBlank()) {
+    if (user.get("accountName").isBlank()) {
       signatoryErrorModel.setAccountName("Account Name can't be empty !");
       check = true;
     }
 
-    if (user.get("accountNo").utilityService.isBlank()) {
+    if (user.get("accountNo").isBlank()) {
       signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
       check = true;
     }
@@ -1346,12 +1346,12 @@ public class MandatesResolutionUIController {
     AddAccountModel addAccountModel = (AddAccountModel) httpSession.getAttribute("Signatory");
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("accountName").utilityService.isBlank()) {
+    if (user.get("accountName").isBlank()) {
       signatoryErrorModel.setAccountName("Account Name can't be empty !");
       check = true;
     }
 
-    if (user.get("accountNo").utilityService.isBlank()) {
+    if (user.get("accountNo").isBlank()) {
       signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
       check = true;
     }
@@ -1466,12 +1466,12 @@ public class MandatesResolutionUIController {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
         if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
             && user.get("capacity" + signatoryModel.getUserInList()
-                        + signatoryModel.getUserInAccount()).utilityService.isBlank()) {
+                        + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
                    && user.get("Group" + signatoryModel.getUserInList()
-                               + signatoryModel.getUserInAccount()).utilityService.isBlank()) {
+                               + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -1585,12 +1585,12 @@ public class MandatesResolutionUIController {
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
     boolean check = false;
-    if (user.get("capacity").utilityService.isBlank()) {
+    if (user.get("capacity").isBlank()) {
       signatoryErrorModel.setCapacity("Capacity can't be empty !");
       check = true;
     }
 
-    if (user.get("Group").utilityService.isBlank()) {
+    if (user.get("Group").isBlank()) {
       signatoryErrorModel.setGroup("Group can't be empty !");
       check = true;
     }
@@ -1739,12 +1739,12 @@ public class MandatesResolutionUIController {
       for (SignatoryModel signatoryModel : model.getListOfSignatory()) {
         if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
             && user.get("capacity" + signatoryModel.getUserInList()
-                        + signatoryModel.getUserInAccount()).utilityService.isBlank()) {
+                        + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else if (!"Remove".equalsIgnoreCase(signatoryModel.getInstruction())
                    && user.get("Group" + signatoryModel.getUserInList()
-                               + signatoryModel.getUserInAccount()).utilityService.isBlank()) {
+                               + signatoryModel.getUserInAccount()).isBlank()) {
           requestWrapper.setCheckSignatureCard("true");
           check = true;
         } else {
@@ -1955,7 +1955,7 @@ public class MandatesResolutionUIController {
                                  && !r.getAssignedUser().trim().isEmpty()
                                  && r.getAssignedUser().trim().equalsIgnoreCase(me)))
           .peek(r -> {
-            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().utilityService.isBlank()) {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
               r.setRequestIdForDisplay(
                   r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
@@ -2032,7 +2032,7 @@ public class MandatesResolutionUIController {
               .equalsIgnoreCase(me)))
           .peek(r -> {
             // Ensure display ID
-            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().utilityService.isBlank()) {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
               r.setRequestIdForDisplay(
                   r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
@@ -2107,7 +2107,7 @@ public class MandatesResolutionUIController {
               r -> admin || (r.getAssignedUser() != null && !r.getAssignedUser().trim().isEmpty()
                              && r.getAssignedUser().trim().equalsIgnoreCase(me)))
           .peek(r -> {
-            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().utilityService.isBlank()) {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
               r.setRequestIdForDisplay(
                   r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
@@ -2428,7 +2428,7 @@ public class MandatesResolutionUIController {
                 </page>
                 """);
       }
-      if (newAssignee == null || newAssignee.utilityService.isBlank()) {
+      if (newAssignee == null || newAssignee.isBlank()) {
         logger.warn("adminReassignSubmit: selectUser (newAssignee) is NULL/blank");
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_XML)
@@ -2586,7 +2586,7 @@ public class MandatesResolutionUIController {
           ))
           .peek(r -> {
             //Ensure display id present
-            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().utilityService.isBlank()) {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
               r.setRequestIdForDisplay(
                   r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
@@ -2662,7 +2662,7 @@ public class MandatesResolutionUIController {
           ))
           .peek(r -> {
             //Ensure display id present
-            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().utilityService.isBlank()) {
+            if (r.getRequestIdForDisplay() == null || r.getRequestIdForDisplay().isBlank()) {
               r.setRequestIdForDisplay(
                   r.getRequestId() == null ? "" : String.valueOf(r.getRequestId()));
             }
@@ -2716,7 +2716,7 @@ public class MandatesResolutionUIController {
     RequestDTO dto = new RequestDTO();
 
     String displayName = currentDisplayId(session, request);
-    if (displayName == null || displayName.utilityService.isBlank()) {
+    if (displayName == null || displayName.isBlank()) {
       displayName = "UI_USER";
     }
     dto.setLoggedInUsername(displayName);
@@ -2746,7 +2746,7 @@ public class MandatesResolutionUIController {
     boolean check = false;
     String page = "";
     ExportErrorModel exportErrorModel = new ExportErrorModel();
-    if (user.get("status").utilityService.isBlank()) {
+    if (user.get("status").isBlank()) {
       exportErrorModel.setStatus("Status can't be empty !");
       check = true;
     }
@@ -2934,7 +2934,7 @@ public class MandatesResolutionUIController {
 
     //Dedup + limit
     regs = regs.stream()
-        .filter(s -> s != null && !s.utilityService.isBlank())
+        .filter(s -> s != null && !s.isBlank())
         .distinct()
         .limit(15)
         .toList();
@@ -2965,7 +2965,7 @@ public class MandatesResolutionUIController {
     String queryReg = nz.apply(reg);
 
     // 3) Finally, consider what's already in the session DTO (user might be returning)
-    String existingSid = (pdfSessionId != null && !pdfSessionId.utilityService.isBlank())
+    String existingSid = (pdfSessionId != null && !pdfSessionId.isBlank())
         ? pdfSessionId
         : (String) session.getAttribute("pdfSessionId");
     RequestDTO existingDto = (existingSid != null) ? pdfExtractionDataCache.get(existingSid) : null;
@@ -2990,7 +2990,7 @@ public class MandatesResolutionUIController {
     String sid = nz.apply(pdfSessionId).isEmpty()
         ? (String) session.getAttribute("pdfSessionId")
         : pdfSessionId;
-    if (sid == null || sid.utilityService.isBlank()) {
+    if (sid == null || sid.isBlank()) {
       sid = java.util.UUID.randomUUID().toString();
       session.setAttribute("pdfSessionId", sid);
     }
@@ -3053,7 +3053,7 @@ public class MandatesResolutionUIController {
     // --- helpers
     java.util.function.Function<String, Integer> intOrNull = s -> {
       try {
-        return (s == null || s.utilityService.isBlank()) ? null : Integer.valueOf(s.trim());
+        return (s == null || s.isBlank()) ? null : Integer.valueOf(s.trim());
       } catch (Exception ignore) {
         return null;
       }
@@ -3065,10 +3065,10 @@ public class MandatesResolutionUIController {
     Integer resolutionDocCount = intOrNull.apply(request.getParameter("resolutionDocCount"));
 
     // 1) Resolve pdfSessionId (prefer query, then session)
-    String pdfSessionId = (pdfSessionIdParam != null && !pdfSessionIdParam.utilityService.isBlank())
+    String pdfSessionId = (pdfSessionIdParam != null && !pdfSessionIdParam.isBlank())
         ? pdfSessionIdParam.trim()
         : (String) session.getAttribute("pdfSessionId");
-    if (pdfSessionId == null || pdfSessionId.utilityService.isBlank()) {
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
       pdfSessionId = java.util.UUID.randomUUID().toString();
     }
     session.setAttribute("pdfSessionId", pdfSessionId);
@@ -3094,8 +3094,8 @@ public class MandatesResolutionUIController {
       dto.setResolutionDocs(new java.util.ArrayList<>());
     }
 
-    if (registrationNumber != null && !registrationNumber.utilityService.isBlank()) {
-      if (dto.getRegistrationNumber() == null || dto.getRegistrationNumber().utilityService.isBlank()) {
+    if (registrationNumber != null && !registrationNumber.isBlank()) {
+      if (dto.getRegistrationNumber() == null || dto.getRegistrationNumber().isBlank()) {
         dto.setRegistrationNumber(registrationNumber.trim());
       }
     }
@@ -3190,7 +3190,7 @@ public class MandatesResolutionUIController {
       if (form.getDocumentumTools() != null) {
         LinkedHashSet<String> tools = new LinkedHashSet<>();
         for (String t : form.getDocumentumTools()) {
-          if (t != null && !t.utilityService.isBlank()) {
+          if (t != null && !t.isBlank()) {
             tools.add(t.trim());
           }
         }
@@ -3321,7 +3321,7 @@ public class MandatesResolutionUIController {
     Long stagingIdFromForm = form.getStagingId();
     if (stagingIdFromForm == null) {
       String rawId = first(req.getParameterMap().get("stagingId"));
-      if (rawId != null && !rawId.utilityService.isBlank()) {
+      if (rawId != null && !rawId.isBlank()) {
         try {
           stagingIdFromForm = Long.valueOf(rawId.trim());
         } catch (NumberFormatException ignore) {
@@ -3340,10 +3340,10 @@ public class MandatesResolutionUIController {
         logger.warn("Could not fetch existing draft {}: {}", stagingIdFromForm, ex.getMessage());
       }
     }
-    if ((currentPage == null || currentPage.utilityService.isBlank()) && existing != null) {
+    if ((currentPage == null || currentPage.isBlank()) && existing != null) {
       currentPage = normalizePageCode(extractLastPageCode(existing.getRequestSubStatus()));
     }
-    if (currentPage == null || currentPage.utilityService.isBlank()) {
+    if (currentPage == null || currentPage.isBlank()) {
       currentPage = "SEARCH_RESULTS";
     }
     logger.info("[/draft/save] RESOLVED pageCode = {}", currentPage);
@@ -3361,28 +3361,28 @@ public class MandatesResolutionUIController {
     String reg = utilityService.nullToEmpty(lastNonBlank(req, "registrationNumber"));
     String name = dedupeComma(utilityService.nullToEmpty(lastNonBlank(req, "companyName")));
     String addr = dedupeComma(utilityService.nullToEmpty(lastNonBlank(req, "companyAddress")));
-    if (!reg.utilityService.isBlank()) {
+    if (!reg.isBlank()) {
       dto.setCompanyRegistrationNumber(reg);
     }
-    if (!name.utilityService.isBlank()) {
+    if (!name.isBlank()) {
       dto.setCompanyName(name);
     }
-    if (!addr.utilityService.isBlank()) {
+    if (!addr.isBlank()) {
       dto.setCompanyAddress(addr);
     }
 
     //5.2 Request type — prefer the LAST non-blank value (dropdown beats hidden)
     String mr = utilityService.nullToEmpty(lastNonBlank(req, "mandateResolution"));        // dropdown
-    if (mr.utilityService.isBlank()) {
+    if (mr.isBlank()) {
       mr = utilityService.nullToEmpty(lastNonBlank(req, "mandateResolutionCode")); // hidden
     }
-    if (mr.utilityService.isBlank()) {
+    if (mr.isBlank()) {
       mr = utilityService.nullToEmpty(lastNonBlank(req, "requestType"));
     }
-    if (mr.utilityService.isBlank()) {
+    if (mr.isBlank()) {
       mr = utilityService.nullToEmpty(lastNonBlank(req, "type"));
     }
-    if (!mr.utilityService.isBlank()) {
+    if (!mr.isBlank()) {
       dto.setRequestType(utilityService.mapRequestType(mr));
     }
 
@@ -3390,10 +3390,10 @@ public class MandatesResolutionUIController {
     java.util.List<String> tools = parseDocumentumToolsFromParams(params);
     if (tools.isEmpty()) {
       String raw = utilityService.nullToEmpty(first(params.get("waiverPermittedTools")));
-      if (!raw.utilityService.isBlank()) {
+      if (!raw.isBlank()) {
         for (String t : raw.split(",")) {
           String tt = t == null ? "" : t.trim();
-          if (!tt.utilityService.isBlank()) {
+          if (!tt.isBlank()) {
             tools.add(tt);
           }
         }
@@ -3591,7 +3591,7 @@ public class MandatesResolutionUIController {
       }
       java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
       for (String p : parts) {
-        if (!p.utilityService.isBlank()) {
+        if (!p.isBlank()) {
           set.add(p);
         }
       }
@@ -3616,9 +3616,9 @@ public class MandatesResolutionUIController {
                   </page>
                   """);
             }
-            String name = (mf.getOriginalFilename() == null || mf.getOriginalFilename().utilityService.isBlank())
+            String name = (mf.getOriginalFilename() == null || mf.getOriginalFilename().isBlank())
                 ? e.getKey() : mf.getOriginalFilename();
-            String ct = (mf.getContentType() == null || mf.getContentType().utilityService.isBlank())
+            String ct = (mf.getContentType() == null || mf.getContentType().isBlank())
                 ? "application/octet-stream" : mf.getContentType();
 
             getOrInitSessionFiles(session).add(
@@ -3655,9 +3655,9 @@ public class MandatesResolutionUIController {
                 </page>
                 """);
           }
-          String name = (file.getOriginalFilename() == null || file.getOriginalFilename().utilityService.isBlank())
+          String name = (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank())
               ? "uploaded-file" : file.getOriginalFilename();
-          String ct = (file.getContentType() == null || file.getContentType().utilityService.isBlank())
+          String ct = (file.getContentType() == null || file.getContentType().isBlank())
               ? "application/octet-stream" : file.getContentType();
 
           getOrInitSessionFiles(session).add(
@@ -3679,7 +3679,7 @@ public class MandatesResolutionUIController {
         } else {
           // Non-multipart fallback: you'll only see a fake path string
           String postedPath = nz.apply(request.getParameter("file"));
-          if (!postedPath.utilityService.isBlank()) {
+          if (!postedPath.isBlank()) {
             logger.info(
                 "nextStep: non-multipart detected; only path seen ({}). File should be uploaded "
                 +
@@ -3758,15 +3758,15 @@ public class MandatesResolutionUIController {
 
       if (requestDto != null) {
         String incomingName = dedupeComma.apply(requestDto.getCompanyName());
-        if (!incomingName.utilityService.isBlank() && !incomingName.equals(nz.apply(dto.getCompanyName()))) {
+        if (!incomingName.isBlank() && !incomingName.equals(nz.apply(dto.getCompanyName()))) {
           dto.setCompanyName(incomingName);
         }
         String incomingAddr = dedupeComma.apply(requestDto.getCompanyAddress());
-        if (!incomingAddr.utilityService.isBlank() && !incomingAddr.equals(nz.apply(dto.getCompanyAddress()))) {
+        if (!incomingAddr.isBlank() && !incomingAddr.equals(nz.apply(dto.getCompanyAddress()))) {
           dto.setCompanyAddress(incomingAddr);
         }
         String incomingReg = nz.apply(requestDto.getRegistrationNumber());
-        if (!incomingReg.utilityService.isBlank() && !incomingReg.equals(nz.apply(dto.getRegistrationNumber()))) {
+        if (!incomingReg.isBlank() && !incomingReg.equals(nz.apply(dto.getRegistrationNumber()))) {
           dto.setRegistrationNumber(incomingReg);
         }
 
@@ -3780,13 +3780,13 @@ public class MandatesResolutionUIController {
           for (int i2 = 0; i2 < incoming.size(); i2++) {
             RequestDTO.Director in = incoming.get(i2);
             RequestDTO.Director ex = existing.get(i2);
-            if (in.getName() != null && !in.getName().utilityService.isBlank()) {
+            if (in.getName() != null && !in.getName().isBlank()) {
               ex.setName(in.getName().trim());
             }
-            if (in.getSurname() != null && !in.getSurname().utilityService.isBlank()) {
+            if (in.getSurname() != null && !in.getSurname().isBlank()) {
               ex.setSurname(in.getSurname().trim());
             }
-            if (in.getDesignation() != null && !in.getDesignation().utilityService.isBlank()) {
+            if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
               ex.setDesignation(in.getDesignation().trim());
             }
           }
@@ -3794,18 +3794,18 @@ public class MandatesResolutionUIController {
         }
 
         if (requestDto.getDocumentumTools() != null
-            && requestDto.getDocumentumTools().stream().anyMatch(t -> t != null && !t.utilityService.isBlank())) {
+            && requestDto.getDocumentumTools().stream().anyMatch(t -> t != null && !t.isBlank())) {
           dto.setDocumentumTools(requestDto.getDocumentumTools());
         }
         if (requestDto.getResolutionDocs() != null
-            && requestDto.getResolutionDocs().stream().anyMatch(r -> r != null && !r.utilityService.isBlank())) {
+            && requestDto.getResolutionDocs().stream().anyMatch(r -> r != null && !r.isBlank())) {
           dto.setResolutionDocs(requestDto.getResolutionDocs());
         }
       }
 
       if (reqSel != null) {
         dto.setMandateResolution(reqSel);
-      } else if (dto.getMandateResolution() == null || dto.getMandateResolution().utilityService.isBlank()) {
+      } else if (dto.getMandateResolution() == null || dto.getMandateResolution().isBlank()) {
         String raw = request.getParameter("mandateResolution");
         String norm = normalizeSelCode(raw);
         if (norm != null) {
@@ -3845,17 +3845,17 @@ public class MandatesResolutionUIController {
 
     if (requestDto != null) {
       String nm = dedupeComma.apply(requestDto.getCompanyName());
-      if (!nm.utilityService.isBlank()) {
+      if (!nm.isBlank()) {
         dto.setCompanyName(nm);
       }
 
       String addr = dedupeComma.apply(requestDto.getCompanyAddress());
-      if (!addr.utilityService.isBlank()) {
+      if (!addr.isBlank()) {
         dto.setCompanyAddress(addr);
       }
 
       String reg = nz.apply(requestDto.getRegistrationNumber());
-      if (!reg.utilityService.isBlank()) {
+      if (!reg.isBlank()) {
         dto.setRegistrationNumber(reg);
       }
 
@@ -3867,13 +3867,13 @@ public class MandatesResolutionUIController {
         for (int i = 0; i < incoming.size(); i++) {
           RequestDTO.Director in = incoming.get(i);
           RequestDTO.Director ex = dto.getDirectors().get(i);
-          if (in.getName() != null && !in.getName().utilityService.isBlank()) {
+          if (in.getName() != null && !in.getName().isBlank()) {
             ex.setName(in.getName().trim());
           }
-          if (in.getSurname() != null && !in.getSurname().utilityService.isBlank()) {
+          if (in.getSurname() != null && !in.getSurname().isBlank()) {
             ex.setSurname(in.getSurname().trim());
           }
-          if (in.getDesignation() != null && !in.getDesignation().utilityService.isBlank()) {
+          if (in.getDesignation() != null && !in.getDesignation().isBlank()) {
             ex.setDesignation(in.getDesignation().trim());
           }
         }
@@ -3886,7 +3886,7 @@ public class MandatesResolutionUIController {
         }
         for (int i = 0; i < incTools.size(); i++) {
           String v = nz.apply(incTools.get(i));
-          if (!v.utilityService.isBlank()) {
+          if (!v.isBlank()) {
             dto.getDocumentumTools().set(i, v);
           }
         }
@@ -3897,7 +3897,7 @@ public class MandatesResolutionUIController {
       dto.setMandateResolution(reqSel);
     }
 
-    if (pdfSessionId == null || pdfSessionId.utilityService.isBlank()) {
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
       pdfSessionId = java.util.UUID.randomUUID().toString();
       session.setAttribute("pdfSessionId", pdfSessionId);
     }
@@ -3910,11 +3910,11 @@ public class MandatesResolutionUIController {
     SearchResultsErrorModel errors = new SearchResultsErrorModel();
     boolean hasErrors = false;
 
-    if (nz.apply(dto.getCompanyName()).utilityService.isBlank()) {
+    if (nz.apply(dto.getCompanyName()).isBlank()) {
       errors.setCompanyName("Company name is required");
       hasErrors = true;
     }
-    if (nz.apply(dto.getCompanyAddress()).utilityService.isBlank()) {
+    if (nz.apply(dto.getCompanyAddress()).isBlank()) {
       errors.setCompanyAddress("Company address is required");
       hasErrors = true;
     }
@@ -3922,7 +3922,7 @@ public class MandatesResolutionUIController {
     java.util.List<String> tools = dto.getDocumentumTools();
     if (tools != null && !tools.isEmpty()) {
       for (String t : tools) {
-        if (nz.apply(t).utilityService.isBlank()) {
+        if (nz.apply(t).isBlank()) {
           errors.setCompanyWaiver("Please enter the waiver tool");
           hasErrors = true;
           break;
@@ -3939,22 +3939,22 @@ public class MandatesResolutionUIController {
     } else {
       boolean anyMissing = false;
       for (RequestDTO.Director d : directors) {
-        boolean rowMissing = nz.apply(d.getName()).utilityService.isBlank()
-                             || nz.apply(d.getSurname()).utilityService.isBlank()
-                             || nz.apply(d.getDesignation()).utilityService.isBlank();
+        boolean rowMissing = nz.apply(d.getName()).isBlank()
+                             || nz.apply(d.getSurname()).isBlank()
+                             || nz.apply(d.getDesignation()).isBlank();
         if (rowMissing) {
           anyMissing = true;
           break;
         }
       }
       if (anyMissing) {
-        if (nz.apply(errors.getFullName()).utilityService.isBlank()) {
+        if (nz.apply(errors.getFullName()).isBlank()) {
           errors.setFullName("Director name is required");
         }
-        if (nz.apply(errors.getSurname()).utilityService.isBlank()) {
+        if (nz.apply(errors.getSurname()).isBlank()) {
           errors.setSurname("Director surname is required");
         }
-        if (nz.apply(errors.getDesignation()).utilityService.isBlank()) {
+        if (nz.apply(errors.getDesignation()).isBlank()) {
           errors.setDesignation("Director designation is required");
         }
         hasErrors = true;
@@ -3998,7 +3998,7 @@ public class MandatesResolutionUIController {
     );
 
     //RequestType validation
-    if (requestType == null || requestType.utilityService.isBlank() || "-1".equals(requestType)) {
+    if (requestType == null || requestType.isBlank() || "-1".equals(requestType)) {
       return ResponseEntity.ok("""
           <page xmlns:comm="http://ws.online.fnb.co.za/common/"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -4382,11 +4382,11 @@ public class MandatesResolutionUIController {
     boolean hasErrors = false;
 
     for (RequestDTO.Account acc : dto.getAccounts()) {
-      if (nz.apply(acc.getAccountName()).utilityService.isBlank()) {
+      if (nz.apply(acc.getAccountName()).isBlank()) {
         errors.setAccountName("Account name is required");
         hasErrors = true;
       }
-      if (nz.apply(acc.getAccountNo()).utilityService.isBlank()) {
+      if (nz.apply(acc.getAccountNo()).isBlank()) {
         errors.setAccountNo("Account number is required");
         hasErrors = true;
       }
@@ -4402,15 +4402,15 @@ public class MandatesResolutionUIController {
       }
 
       for (RequestDTO.Signatory s : signs) {
-        if (nz.apply(s.getFullName()).utilityService.isBlank()) {
+        if (nz.apply(s.getFullName()).isBlank()) {
           errors.setSignatoryFullName("Full name is required");
           hasErrors = true;
         }
-        if (nz.apply(s.getIdNumber()).utilityService.isBlank()) {
+        if (nz.apply(s.getIdNumber()).isBlank()) {
           errors.setSignatoryIdNumber("ID number is required");
           hasErrors = true;
         }
-        if (nz.apply(s.getInstruction()).utilityService.isBlank()) {
+        if (nz.apply(s.getInstruction()).isBlank()) {
           errors.setSignatoryInstruction("Instruction is required");
           hasErrors = true;
         }
@@ -4505,11 +4505,11 @@ public class MandatesResolutionUIController {
         uiData.getAccounts().add(createBlankAccount());
       }
       for (RequestDTO.Account acc : uiData.getAccounts()) {
-        if (nz.apply(acc.getAccountName()).utilityService.isBlank()) {
+        if (nz.apply(acc.getAccountName()).isBlank()) {
           errors.setAccountName("Account name is required");
           hasErrors = true;
         }
-        if (nz.apply(acc.getAccountNo()).utilityService.isBlank()) {
+        if (nz.apply(acc.getAccountNo()).isBlank()) {
           errors.setAccountNo("Account number is required");
           hasErrors = true;
         }
@@ -4527,19 +4527,19 @@ public class MandatesResolutionUIController {
           if ("REMOVE".equals(inst)) {
             continue;
           }
-          if (nz.apply(s.getFullName()).utilityService.isBlank()) {
+          if (nz.apply(s.getFullName()).isBlank()) {
             errors.setSignatoryFullName("Full name is required");
             hasErrors = true;
           }
-          if (nz.apply(s.getIdNumber()).utilityService.isBlank()) {
+          if (nz.apply(s.getIdNumber()).isBlank()) {
             errors.setSignatoryIdNumber("ID number is required");
             hasErrors = true;
           }
-          if (nz.apply(s.getCapacity()).utilityService.isBlank()) {
+          if (nz.apply(s.getCapacity()).isBlank()) {
             errors.setCapacity("Capacity is required");
             hasErrors = true;
           }
-          if (nz.apply(s.getGroup()).utilityService.isBlank()) {
+          if (nz.apply(s.getGroup()).isBlank()) {
             errors.setGroup("Group is required");
             hasErrors = true;
           }
@@ -4568,7 +4568,7 @@ public class MandatesResolutionUIController {
               "currentUser");
 
       String uname = currentDisplayId(session, request);
-      if (uname.utilityService.isBlank()) {
+      if (uname.isBlank()) {
         uname = "UI_USER";
       }
       uiData.setLoggedInUsername(uname);
@@ -4596,7 +4596,7 @@ public class MandatesResolutionUIController {
 
       // ---- Push any session-held files to TTS-Document-Management ----
       if (requestId != null && fileCount > 0) {
-        String dmsUrl = (this.ttsDmsBaseUrl != null && !this.ttsDmsBaseUrl.utilityService.isBlank())
+        String dmsUrl = (this.ttsDmsBaseUrl != null && !this.ttsDmsBaseUrl.isBlank())
             ? this.ttsDmsBaseUrl
             : "http://localhost:8084/api/v1/documents";
 
@@ -4696,9 +4696,9 @@ public class MandatesResolutionUIController {
                     </page>
                   """);
             }
-            String name = (mf.getOriginalFilename() == null || mf.getOriginalFilename().utilityService.isBlank())
+            String name = (mf.getOriginalFilename() == null || mf.getOriginalFilename().isBlank())
                 ? e.getKey() : mf.getOriginalFilename();
-            String ct = (mf.getContentType() == null || mf.getContentType().utilityService.isBlank())
+            String ct = (mf.getContentType() == null || mf.getContentType().isBlank())
                 ? "application/octet-stream" : mf.getContentType();
 
             getOrInitSessionFiles(session).add(
@@ -4765,13 +4765,13 @@ public class MandatesResolutionUIController {
     String nm = request.getParameter("companyName");
     String ad = request.getParameter("companyAddress");
     String rn = request.getParameter("registrationNumber");
-    if (nm != null && !nm.utilityService.isBlank()) {
+    if (nm != null && !nm.isBlank()) {
       dto.setCompanyName(nm.trim());
     }
-    if (ad != null && !ad.utilityService.isBlank()) {
+    if (ad != null && !ad.isBlank()) {
       dto.setCompanyAddress(ad.trim());
     }
-    if (rn != null && !rn.utilityService.isBlank()) {
+    if (rn != null && !rn.isBlank()) {
       dto.setRegistrationNumber(rn.trim());
     }
 
@@ -4862,19 +4862,19 @@ public class MandatesResolutionUIController {
         hasErrors = true;
       } else {
         for (RequestDTO.Director d : uiData.getDirectors()) {
-          if (nz.apply(d.getName()).utilityService.isBlank()) {
+          if (nz.apply(d.getName()).isBlank()) {
             errors.setDirectorName("Director name is required");
             hasErrors = true;
           }
-          if (nz.apply(d.getSurname()).utilityService.isBlank()) {
+          if (nz.apply(d.getSurname()).isBlank()) {
             errors.setDirectorSurname("Director surname is required");
             hasErrors = true;
           }
-          if (nz.apply(d.getDesignation()).utilityService.isBlank()) {
+          if (nz.apply(d.getDesignation()).isBlank()) {
             errors.setDirectorDesignation("Director designation is required");
             hasErrors = true;
           }
-          if (nz.apply(d.getInstruction()).utilityService.isBlank()) {
+          if (nz.apply(d.getInstruction()).isBlank()) {
             errors.setDirectorInstruction("Instruction is required");
             hasErrors = true;
           }
@@ -4902,7 +4902,7 @@ public class MandatesResolutionUIController {
               "currentUser");
 
       String uname = currentDisplayId(session, request);
-      if (uname.utilityService.isBlank()) {
+      if (uname.isBlank()) {
         uname = "UI_USER";
       }
 
@@ -4962,7 +4962,7 @@ public class MandatesResolutionUIController {
     if (addSignatoryAt != null && addSignatoryAt >= 1 && addSignatoryAt <= accounts.size()) {
       accounts.get(addSignatoryAt - 1).getSignatories().add(createBlankSignatory());
     }
-    if (removeSignatoryAt != null && !removeSignatoryAt.utilityService.isBlank()) {
+    if (removeSignatoryAt != null && !removeSignatoryAt.isBlank()) {
       try {
         String[] p = removeSignatoryAt.split("_");
         int ai = Integer.parseInt(p[0]) - 1;
@@ -5057,11 +5057,11 @@ public class MandatesResolutionUIController {
       hasErrors = true;
     } else {
       for (RequestDTO.Account a : dto.getAccounts()) {
-        if (nz.apply(a.getAccountName()).utilityService.isBlank()) {
+        if (nz.apply(a.getAccountName()).isBlank()) {
           accErrors.setAccountName("Account name is required");
           hasErrors = true;
         }
-        if (nz.apply(a.getAccountNo()).utilityService.isBlank()) {
+        if (nz.apply(a.getAccountNo()).isBlank()) {
           accErrors.setAccountNo("Account number is required");
           hasErrors = true;
         }
@@ -5074,15 +5074,15 @@ public class MandatesResolutionUIController {
           hasErrors = true;
         } else {
           for (RequestDTO.Signatory s : sigs) {
-            if (nz.apply(s.getFullName()).utilityService.isBlank()) {
+            if (nz.apply(s.getFullName()).isBlank()) {
               accErrors.setSignatoryFullName("Full name is required");
               hasErrors = true;
             }
-            if (nz.apply(s.getIdNumber()).utilityService.isBlank()) {
+            if (nz.apply(s.getIdNumber()).isBlank()) {
               accErrors.setSignatoryIdNumber("ID number is required");
               hasErrors = true;
             }
-            if (nz.apply(s.getInstruction()).utilityService.isBlank()) {
+            if (nz.apply(s.getInstruction()).isBlank()) {
               accErrors.setSignatoryInstruction("Instruction is required");
               hasErrors = true;
             }
@@ -5277,15 +5277,15 @@ public class MandatesResolutionUIController {
         dirErrors = true;
       } else {
         for (RequestDTO.Director d : uiData.getDirectors()) {
-          if (nz.apply(d.getName()).utilityService.isBlank()) {
+          if (nz.apply(d.getName()).isBlank()) {
             dirErr.setDirectorName("Director name is required");
             dirErrors = true;
           }
-          if (nz.apply(d.getSurname()).utilityService.isBlank()) {
+          if (nz.apply(d.getSurname()).isBlank()) {
             dirErr.setDirectorSurname("Director surname is required");
             dirErrors = true;
           }
-          if (nz.apply(d.getDesignation()).utilityService.isBlank()) {
+          if (nz.apply(d.getDesignation()).isBlank()) {
             dirErr.setDirectorDesignation("Director designation is required");
             dirErrors = true;
           }
@@ -5314,7 +5314,7 @@ public class MandatesResolutionUIController {
               "currentUser");
 
       String uname = currentDisplayId(session, request);
-      if (uname.utilityService.isBlank()) {
+      if (uname.isBlank()) {
         uname = "UI_USER";
       } //Extra fallback
 
@@ -5663,7 +5663,7 @@ public class MandatesResolutionUIController {
 
           String creator =
               (c.get("creator") == null) ? "" : String.valueOf(c.get("creator")).trim();
-          if (creator.utilityService.isBlank() || "ui".equalsIgnoreCase(creator)) {
+          if (creator.isBlank() || "ui".equalsIgnoreCase(creator)) {
             creator = displayName;
           }
 
@@ -5928,7 +5928,7 @@ public class MandatesResolutionUIController {
                     // intentionally empty
                   }
 
-                  String instEff = (instr != null && !instr.utilityService.isBlank())
+                  String instEff = (instr != null && !instr.isBlank())
                       ? instr.trim()
                       : (Boolean.FALSE.equals(active) ? "Remove" : "Add");
 
@@ -6268,27 +6268,27 @@ public class MandatesResolutionUIController {
     dto.setCompanyAddress(wave.get("companyAddress"));
     httpSession.setAttribute("requestData", dto);
     requestWrapper.setRequest(dto);
-    if (!wave.get("toolOne").utilityService.isBlank()) {
+    if (!wave.get("toolOne").isBlank()) {
       requestWrapper.setToolOne(wave.get("toolOne"));
     }
 
-    if (!wave.get("toolTwo").utilityService.isBlank()) {
+    if (!wave.get("toolTwo").isBlank()) {
       requestWrapper.setToolTwo(wave.get("toolTwo"));
     }
 
-    if (!wave.get("toolThree").utilityService.isBlank()) {
+    if (!wave.get("toolThree").isBlank()) {
       requestWrapper.setToolThree(wave.get("toolThree"));
     }
 
-    if (!wave.get("toolFour").utilityService.isBlank()) {
+    if (!wave.get("toolFour").isBlank()) {
       requestWrapper.setToolFour(wave.get("toolFour"));
     }
 
-    if (!wave.get("toolFive").utilityService.isBlank()) {
+    if (!wave.get("toolFive").isBlank()) {
       requestWrapper.setToolFive(wave.get("toolFive"));
     }
     requestWrapper.setRequestType(wave.get("mandateResolution"));
-    if (!wave.get("mandateResolution").utilityService.isBlank()) {
+    if (!wave.get("mandateResolution").isBlank()) {
       requestWrapper.setCheckStyleOne(Boolean.parseBoolean(wave.get("check1")));
       requestWrapper.setCheckStyleTwo(Boolean.parseBoolean(wave.get("check2")));
     }
@@ -6313,19 +6313,19 @@ public class MandatesResolutionUIController {
     boolean check = false;
     String page = "";
     requestWrapper = mandatesResolutionService.setSearchResultDraft(user, requestWrapper);
-    if (user.get("companyName").utilityService.isBlank()) {
+    if (user.get("companyName").isBlank()) {
       searchResultsErrorModel.setCompanyName("Campany Name can't be empty !");
       check = true;
     }
 
-    if (user.get("companyAddress").utilityService.isBlank()) {
+    if (user.get("companyAddress").isBlank()) {
       searchResultsErrorModel.setCompanyAddress("Company Address can't be empty !");
       check = true;
     }
 
-    if (user.get("toolOne").utilityService.isBlank() && user.get("toolTwo").utilityService.isBlank()
-        && user.get("toolThree").utilityService.isBlank() && user.get("toolFour").utilityService.isBlank()
-        && user.get("toolFive").utilityService.isBlank()) {
+    if (user.get("toolOne").isBlank() && user.get("toolTwo").isBlank()
+        && user.get("toolThree").isBlank() && user.get("toolFour").isBlank()
+        && user.get("toolFive").isBlank()) {
       searchResultsErrorModel.setToolOne("At least One Waiver tool need for the Request !");
       check = true;
     }
@@ -6338,7 +6338,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckDirectorEmpty("false");
     }
 
-    if (user.get("mandateResolution").utilityService.isBlank() || "Please select".equalsIgnoreCase(
+    if (user.get("mandateResolution").isBlank() || "Please select".equalsIgnoreCase(
         user.get("mandateResolution"))) {
       searchResultsErrorModel.setRequestType("Request Type can't be empty and Please select !");
       check = true;
@@ -6703,7 +6703,7 @@ public class MandatesResolutionUIController {
           String capacity = getParam(params, "capacity_" + ai + "_" + sj);
           String group = getParam(params, "group_" + ai + "_" + sj);
           String instruction = getParam(params, "instruction_" + ai + "_" + sj);
-          if (instruction == null || instruction.utilityService.isBlank()) {
+          if (instruction == null || instruction.isBlank()) {
             instruction =
                 getParam(params, "origInstruction_" + ai + "_" + sj); // fallback to saved value
           }
@@ -6768,7 +6768,7 @@ public class MandatesResolutionUIController {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(dto, headers);
 
-        if (fa.accountId != null && !fa.accountId.utilityService.isBlank()) {
+        if (fa.accountId != null && !fa.accountId.isBlank()) {
           Long accountId = Long.valueOf(fa.accountId);
           rt.exchange(base + "/api/account/{accountId}", HttpMethod.PUT, entity, Object.class,
               accountId);
@@ -6847,7 +6847,7 @@ public class MandatesResolutionUIController {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
-        if (d.id != null && !d.id.utilityService.isBlank()) {
+        if (d.id != null && !d.id.isBlank()) {
           Long id = Long.valueOf(d.id);
           rt.exchange(base + "/api/authority/{id}", HttpMethod.PUT, entity, Object.class, id);
           keptAuthorityIds.add(id);
@@ -6873,7 +6873,7 @@ public class MandatesResolutionUIController {
       String body = (view != null ? view.getBody() : null);
 
 // If the body is null/blank or doesn't start with '<', wrap a valid <page> so XSLT can parse it.
-      if (body == null || body.utilityService.isBlank() || body.charAt(0) != '<') {
+      if (body == null || body.isBlank() || body.charAt(0) != '<') {
         body =
             "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
             +
@@ -6976,12 +6976,12 @@ public class MandatesResolutionUIController {
     AddAccountModel addAccountModel = (AddAccountModel) httpSession.getAttribute("Signatory");
     boolean check = false;
     SignatoryErrorModel signatoryErrorModel = new SignatoryErrorModel();
-    if (user.get("accountName").utilityService.isBlank()) {
+    if (user.get("accountName").isBlank()) {
       signatoryErrorModel.setAccountName("Account Name can't be empty !");
       check = true;
     }
 
-    if (user.get("accountNo").utilityService.isBlank()) {
+    if (user.get("accountNo").isBlank()) {
       signatoryErrorModel.setAccountNumber("Account Number can't be empty !");
       check = true;
     }
@@ -7059,22 +7059,22 @@ public class MandatesResolutionUIController {
     List<DirectorModel> directorModelList = requestDetails.getListOfDirector();
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = new DirectorModel();
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
 
-    if (admin.get("instructions").utilityService.isBlank()
+    if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
       dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -7111,22 +7111,22 @@ public class MandatesResolutionUIController {
     List<DirectorModel> directorModelList = requestDetails.getListOfDirector();
     DirectorErrorModel dirctorErrorModel = new DirectorErrorModel();
     DirectorModel listofDirectors = (DirectorModel) httpSession.getAttribute("DirctorsNew");
-    if (admin.get("name").utilityService.isBlank()) {
+    if (admin.get("name").isBlank()) {
       dirctorErrorModel.setName("Name can't be empty !");
       check = true;
     }
 
-    if (admin.get("designation").utilityService.isBlank()) {
+    if (admin.get("designation").isBlank()) {
       dirctorErrorModel.setDesignation("Designation can't be empty !");
       check = true;
     }
 
-    if (admin.get("surname").utilityService.isBlank()) {
+    if (admin.get("surname").isBlank()) {
       dirctorErrorModel.setSurname("Surname can't be empty !");
       check = true;
     }
 
-    if (admin.get("instructions").utilityService.isBlank()
+    if (admin.get("instructions").isBlank()
         || "Please select".equalsIgnoreCase(admin.get("instructions"))) {
       dirctorErrorModel.setInstruction("Instruction can't be empty or Please select !");
       check = true;
@@ -7463,7 +7463,7 @@ public class MandatesResolutionUIController {
           String capacity = getParam(params, "capacity_" + ai + "_" + sj);
           String group = getParam(params, "group_" + ai + "_" + sj);
           String instruction = getParam(params, "instruction_" + ai + "_" + sj);
-          if (instruction == null || instruction.utilityService.isBlank()) {
+          if (instruction == null || instruction.isBlank()) {
             instruction =
                 getParam(params, "origInstruction_" + ai + "_" + sj); // fallback to saved value
           }
@@ -7528,7 +7528,7 @@ public class MandatesResolutionUIController {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(dto, headers);
 
-        if (fa.accountId != null && !fa.accountId.utilityService.isBlank()) {
+        if (fa.accountId != null && !fa.accountId.isBlank()) {
           Long accountId = Long.valueOf(fa.accountId);
           rt.exchange(base + "/api/account/{accountId}", HttpMethod.PUT, entity, Object.class,
               accountId);
@@ -7607,7 +7607,7 @@ public class MandatesResolutionUIController {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
-        if (d.id != null && !d.id.utilityService.isBlank()) {
+        if (d.id != null && !d.id.isBlank()) {
           Long id = Long.valueOf(d.id);
           rt.exchange(base + "/api/authority/{id}", HttpMethod.PUT, entity, Object.class, id);
           keptAuthorityIds.add(id);
@@ -7633,7 +7633,7 @@ public class MandatesResolutionUIController {
       String body = (view != null ? view.getBody() : null);
 
 // If the body is null/blank or doesn't start with '<', wrap a valid <page> so XSLT can parse it.
-      if (body == null || body.utilityService.isBlank() || body.charAt(0) != '<') {
+      if (body == null || body.isBlank() || body.charAt(0) != '<') {
         body =
             "<page xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
             +
@@ -7668,13 +7668,13 @@ public class MandatesResolutionUIController {
   ) {
     try {
       String pdfSessionId = (String) session.getAttribute("pdfSessionId");
-      if (pdfSessionId == null || pdfSessionId.utilityService.isBlank()) {
+      if (pdfSessionId == null || pdfSessionId.isBlank()) {
         return ResponseEntity.ok().build();
       }
 
       RequestDTO dto = pdfExtractionDataCache.get(pdfSessionId);
       if (dto == null) {
-        if (registrationNumber == null || registrationNumber.utilityService.isBlank()) {
+        if (registrationNumber == null || registrationNumber.isBlank()) {
           return ResponseEntity.ok().build();
         }
         dto = new RequestDTO();
@@ -7779,11 +7779,11 @@ public class MandatesResolutionUIController {
             accountsByKey.put(k, bucket);
           }
           if ((s.getAccountName() == null
-               || s.getAccountName().utilityService.isBlank()) && bucket.getAccountName() != null) {
+               || s.getAccountName().isBlank()) && bucket.getAccountName() != null) {
             s.setAccountName(bucket.getAccountName());
           }
           if ((s.getAccountNumber() == null
-               || s.getAccountNumber().utilityService.isBlank()) && bucket.getAccountNumber() != null) {
+               || s.getAccountNumber().isBlank()) && bucket.getAccountNumber() != null) {
             s.setAccountNumber(bucket.getAccountNumber());
           }
           bucket.getSignatories().add(s);
@@ -7813,10 +7813,10 @@ public class MandatesResolutionUIController {
       // --- Creator/Updator same fallback logic as View ---
       String creator = nz.apply(r.getCreator());
       String updator = nz.apply(r.getUpdator());
-      if (creator == null || creator.utilityService.isBlank() || "ui".equalsIgnoreCase(creator)) {
+      if (creator == null || creator.isBlank() || "ui".equalsIgnoreCase(creator)) {
         creator = "UI";
       }
-      if (updator == null || updator.utilityService.isBlank() || "ui".equalsIgnoreCase(updator)) {
+      if (updator == null || updator.isBlank() || "ui".equalsIgnoreCase(updator)) {
         updator = "UI";
       }
       view.setCreator(creator);
@@ -7873,7 +7873,7 @@ public class MandatesResolutionUIController {
     // If still blank, try to infer from isActive
     try {
       Object act = a.getClass().getMethod("getIsActive").invoke(a);
-      if (v == null || v.utilityService.isBlank()) {
+      if (v == null || v.isBlank()) {
         if (Boolean.FALSE.equals(act)) {
           return "Remove";
         }
@@ -7884,7 +7884,7 @@ public class MandatesResolutionUIController {
     } catch (Exception ignore) {
       // intentionally empty
     }
-    return (v == null || v.utilityService.isBlank()) ? "Add" : v;
+    return (v == null || v.isBlank()) ? "Add" : v;
   }
 
 
@@ -7942,7 +7942,7 @@ public class MandatesResolutionUIController {
   }
 
   private static String tryFormatIso(String text, java.time.format.DateTimeFormatter outFmt) {
-    if (text == null || text.utilityService.isBlank()) {
+    if (text == null || text.isBlank()) {
       return "";
     }
     try {
@@ -7975,7 +7975,7 @@ public class MandatesResolutionUIController {
   }
 
   private static boolean isAllDigits(String s) {
-    if (s == null || s.utilityService.isBlank()) {
+    if (s == null || s.isBlank()) {
       return false;
     }
     for (int i = 0; i < s.length(); i++) {
@@ -8036,7 +8036,7 @@ public class MandatesResolutionUIController {
       com.fasterxml.jackson.databind.JsonNode n = root.get(k);
       if (n != null && !n.isNull() && n.isTextual()) {
         String v = n.asText();
-        if (v != null && !v.utilityService.isBlank()) {
+        if (v != null && !v.isBlank()) {
           return v;
         }
       }
@@ -8514,9 +8514,9 @@ public class MandatesResolutionUIController {
     java.util.List<RequestDTO.Director> out = new java.util.ArrayList<>();
     for (RequestDTO.Director d : byIdx.values()) {
       boolean allBlank =
-          (d.getName() == null || d.getName().utilityService.isBlank())
-          && (d.getSurname() == null || d.getSurname().utilityService.isBlank())
-          && (d.getDesignation() == null || d.getDesignation().utilityService.isBlank());
+          (d.getName() == null || d.getName().isBlank())
+          && (d.getSurname() == null || d.getSurname().isBlank())
+          && (d.getDesignation() == null || d.getDesignation().isBlank());
       if (!allBlank) {
         out.add(d);
       }
@@ -8609,9 +8609,9 @@ public class MandatesResolutionUIController {
       if (d == null) {
         continue;
       }
-      boolean blank = (d.getName() == null || d.getName().utilityService.isBlank())
-                      && (d.getSurname() == null || d.getSurname().utilityService.isBlank())
-                      && (d.getDesignation() == null || d.getDesignation().utilityService.isBlank());
+      boolean blank = (d.getName() == null || d.getName().isBlank())
+                      && (d.getSurname() == null || d.getSurname().isBlank())
+                      && (d.getDesignation() == null || d.getDesignation().isBlank());
       if (!blank) {
         out.add(d);
       }
@@ -8634,7 +8634,7 @@ public class MandatesResolutionUIController {
       // Standard MVC array binding: documentumTools and documentumTools[0], [1], ...
       if (key.equals("documentumTools") || key.startsWith("documentumTools[")) {
         for (String v : e.getValue()) {
-          if (v != null && !v.utilityService.isBlank()) {
+          if (v != null && !v.isBlank()) {
             out.add(v.trim());
           }
         }
@@ -8643,7 +8643,7 @@ public class MandatesResolutionUIController {
       //Support a repeated single key "documentumTool"
       if (key.equals("documentumTool")) {
         for (String v : e.getValue()) {
-          if (v != null && !v.utilityService.isBlank()) {
+          if (v != null && !v.isBlank()) {
             out.add(v.trim());
           }
         }
@@ -8659,7 +8659,7 @@ public class MandatesResolutionUIController {
     java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
     if (csv != null) {
       for (String part : csv.split("\\s*,\\s*")) {
-        if (part != null && !part.utilityService.isBlank()) {
+        if (part != null && !part.isBlank()) {
           set.add(part.trim());
         }
       }
@@ -8703,7 +8703,7 @@ public class MandatesResolutionUIController {
                                                                        String reg) {
     // ensure session id
     String pdfSessionId = (String) session.getAttribute("pdfSessionId");
-    if (pdfSessionId == null || pdfSessionId.utilityService.isBlank()) {
+    if (pdfSessionId == null || pdfSessionId.isBlank()) {
       pdfSessionId = java.util.UUID.randomUUID().toString();
       session.setAttribute("pdfSessionId", pdfSessionId);
     }
@@ -8974,9 +8974,9 @@ public class MandatesResolutionUIController {
 
     String id = "";
     if (u != null) {
-      if (u.getUsername() != null && !u.getUsername().utilityService.isBlank()) {
+      if (u.getUsername() != null && !u.getUsername().isBlank()) {
         id = u.getUsername().trim();
-      } else if (u.getEmployeeNumber() != null && !u.getEmployeeNumber().utilityService.isBlank()) {
+      } else if (u.getEmployeeNumber() != null && !u.getEmployeeNumber().isBlank()) {
         id = u.getEmployeeNumber().trim();
       } else if (u.getUserId() != null) {
         id = String.valueOf(u.getUserId()); // convert Long -> String before using
@@ -9147,10 +9147,10 @@ public class MandatesResolutionUIController {
 
     //  Waiver tools -> documentumTools (plural setter; elements render as <documentumTool>)
     java.util.List<String> tools = new java.util.ArrayList<>();
-    if (s.getWaiverPermittedTools() != null && !s.getWaiverPermittedTools().utilityService.isBlank()) {
+    if (s.getWaiverPermittedTools() != null && !s.getWaiverPermittedTools().isBlank()) {
       for (String t : s.getWaiverPermittedTools().split(",")) {
         String tt = (t == null) ? "" : t.trim();
-        if (!tt.utilityService.isBlank()) {
+        if (!tt.isBlank()) {
           tools.add(tt);
         }
       }
@@ -9169,7 +9169,7 @@ public class MandatesResolutionUIController {
         d.setSurname(a.getSurname() == null ? "" : a.getSurname().trim());
         d.setDesignation(a.getDesignation() == null ? "" : a.getDesignation().trim());
         boolean blank =
-            (d.getName().utilityService.isBlank() && d.getSurname().utilityService.isBlank() && d.getDesignation().utilityService.isBlank());
+            (d.getName().isBlank() && d.getSurname().isBlank() && d.getDesignation().isBlank());
         if (!blank) {
           dirs.add(d);
         }
@@ -9430,18 +9430,18 @@ public class MandatesResolutionUIController {
     String[] arr = req.getParameterValues("pageCode");
     if (arr != null && arr.length > 0) {
       for (String v : arr) {
-        if (v != null && !v.utilityService.isBlank()) {
+        if (v != null && !v.isBlank()) {
           page = v.trim();
         }
       }
     }
 
     // Fallback to method argument
-    if ((page == null || page.utilityService.isBlank()) && pageCodeArg != null && !pageCodeArg.utilityService.isBlank()) {
+    if ((page == null || page.isBlank()) && pageCodeArg != null && !pageCodeArg.isBlank()) {
       page = pageCodeArg.trim();
     }
 
-    return (page == null || page.utilityService.isBlank()) ? "SEARCH_RESULTS" : page;
+    return (page == null || page.isBlank()) ? "SEARCH_RESULTS" : page;
   }
 
 
@@ -9599,7 +9599,7 @@ public class MandatesResolutionUIController {
         for (var it : arr) {
           if (it != null && (it.getIsActive() == null || Boolean.TRUE.equals(it.getIsActive()))) {
             // String v = it.getValue();
-           /* if (v != null && !v.utilityService.isBlank()) {
+           /* if (v != null && !v.isBlank()) {
               out.add(v.trim());
             }*/
           }
@@ -9666,10 +9666,10 @@ public class MandatesResolutionUIController {
 
     // Ensure a non-blank creator (also used for assignedUser)
     String creator = utilityService.nullToEmpty(ui.getLoggedInUsername());
-    if (creator.utilityService.isBlank()) {
+    if (creator.isBlank()) {
       creator = utilityService.nullToEmpty(ui.getLoggedInEmail());
     }
-    if (creator.utilityService.isBlank()) {
+    if (creator.isBlank()) {
       creator = "UI_USER";
     }
 
@@ -9861,7 +9861,7 @@ public class MandatesResolutionUIController {
     minimal.put("requestId", requestId);
     minimal.put("status", newStatus);
     //Only include subStatus if the backend already has a value we received
-    if (existingSubStatus != null && !existingSubStatus.utilityService.isBlank()) {
+    if (existingSubStatus != null && !existingSubStatus.isBlank()) {
       minimal.put("subStatus", existingSubStatus);
     }
 
@@ -10041,7 +10041,7 @@ public class MandatesResolutionUIController {
    */
   private static String toHoldLabel(String currentSubStatus) {
     String c = canonical(currentSubStatus);
-    if (c == null || c.utilityService.isBlank()) {
+    if (c == null || c.isBlank()) {
       return HOLD_HOGAN_VER; //safe default hold bucket
     }
     switch (c) {
@@ -10138,14 +10138,14 @@ public class MandatesResolutionUIController {
     if (dao != null) {
       try {
         String s = (String) RequestDTO.class.getMethod("getStatus").invoke(dao);
-        if (s != null && !s.utilityService.isBlank()) {
+        if (s != null && !s.isBlank()) {
           currentStatus = s;
         }
       } catch (Throwable ignore) {
         // intentionally empty
       }
 
-      if (currentSub == null || currentSub.utilityService.isBlank()) {
+      if (currentSub == null || currentSub.isBlank()) {
         try {
           String ss = (String) RequestDTO.class.getMethod("getSubStatus").invoke(dao);
           if (ss != null) {
@@ -10503,9 +10503,9 @@ public class MandatesResolutionUIController {
    * Add a file to session + expose name to RequestDTO so XSL can show it
    */
   private void addUploadedFileToSession(MultipartFile file, HttpSession session) throws Exception {
-    String name = (file.getOriginalFilename() == null || file.getOriginalFilename().utilityService.isBlank())
+    String name = (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank())
         ? "uploaded-file" : file.getOriginalFilename();
-    String ct = (file.getContentType() == null || file.getContentType().utilityService.isBlank())
+    String ct = (file.getContentType() == null || file.getContentType().isBlank())
         ? "application/octet-stream" : file.getContentType();
 
     getOrInitSessionFiles(session).add(new SessionFile(name, ct, file.getSize(), file.getBytes()));
@@ -10545,7 +10545,7 @@ public class MandatesResolutionUIController {
         meta.put("tags", "MR");
         meta.put("refType", "MR_REQUEST");
         meta.put("refId", requestId);
-        meta.put("creator", (creator == null || creator.utilityService.isBlank()) ? "UI_USER" : creator);
+        meta.put("creator", (creator == null || creator.isBlank()) ? "UI_USER" : creator);
 
         MultipartBodyBuilder mbb = new MultipartBodyBuilder();
         mbb.part("file", new ByteArrayResource(sf.bytes) {
@@ -10574,16 +10574,6 @@ public class MandatesResolutionUIController {
     // Clear after attempting uploads
     files.clear();
     session.setAttribute("uploadedFiles", files);
-  }
-
-  private static String utilityService.firstNonBlank(HttpServletRequest req, String... names) {
-    for (String n : names) {
-      String v = req.getParameter(n);
-      if (v != null && !v.utilityService.isBlank()) {
-        return v;
-      }
-    }
-    return null;
   }
 
   /**
