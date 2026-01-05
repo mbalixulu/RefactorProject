@@ -98,6 +98,7 @@
                                                  ns1:fieldName="dateCreated"
                                                  ns1:widthPercent="9"/>
                             <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel="">
+                                <ns1:totalsRow/>
                                 <!--Create Request Button-->
                                 <ns1:groupTableButton xsi:type="ns1:imageButton"
                                                       ns1:target="main"
