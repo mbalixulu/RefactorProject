@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +33,7 @@ public class FileManagementService {
   private String ttsDmsBaseUrl;
 
   @Autowired
+  @Qualifier("defaultRestTemplate")
   private RestTemplate restTemplate;
 
   /**
