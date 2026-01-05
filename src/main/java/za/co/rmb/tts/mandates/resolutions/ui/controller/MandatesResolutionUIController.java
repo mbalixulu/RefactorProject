@@ -82,6 +82,9 @@ import za.co.rmb.tts.mandates.resolutions.ui.model.error.ResolutionsAutoFillErro
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.SearchResultsErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.model.error.SignatoryErrorModel;
 import za.co.rmb.tts.mandates.resolutions.ui.service.MandatesResolutionService;
+import za.co.rmb.tts.mandates.resolutions.ui.service.PageGenerationService;
+import za.co.rmb.tts.mandates.resolutions.ui.service.UtilityService;
+import za.co.rmb.tts.mandates.resolutions.ui.service.ValidationServiceHelper;
 import za.co.rmb.tts.mandates.resolutions.ui.service.XSLTProcessorService;
 import za.co.rmb.tts.mandates.resolutions.ui.util.ScreenValidation;
 
@@ -93,6 +96,9 @@ public class MandatesResolutionUIController {
   private HttpSession httpSession;
   private final MandatesResolutionService mandatesResolutionService;
   private final ScreenValidation screenValidation;
+  private final UtilityService utilityService;
+  private final ValidationServiceHelper validationServiceHelper;
+  private final PageGenerationService pageGenerationService;
   private final Map<String, RequestDTO> pdfExtractionDataCache = new HashMap<>();
 
   private static final String XML_PAGE_PATH = "/templates/xml/";
@@ -116,11 +122,17 @@ public class MandatesResolutionUIController {
   public MandatesResolutionUIController(XSLTProcessorService xsltProcessor,
                                         HttpSession httpSession,
                                         MandatesResolutionService mandatesResolutionService,
-                                        ScreenValidation screenValidation) {
+                                        ScreenValidation screenValidation,
+                                        UtilityService utilityService,
+                                        ValidationServiceHelper validationServiceHelper,
+                                        PageGenerationService pageGenerationService) {
     this.xsltProcessor = xsltProcessor;
     this.httpSession = httpSession;
     this.mandatesResolutionService = mandatesResolutionService;
     this.screenValidation = screenValidation;
+    this.utilityService = utilityService;
+    this.validationServiceHelper = validationServiceHelper;
+    this.pageGenerationService = pageGenerationService;
   }
 
   @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
@@ -132,13 +144,13 @@ public class MandatesResolutionUIController {
       final String employeeNumber =
           request.getParameter("bifrost.online.header.assisted.employeeNumber");
       if (employeeNumber == null || employeeNumber.isBlank()) {
-        return ResponseEntity.ok(generateErrorPage("Missing Employee Number."));
+        return ResponseEntity.ok(pageGenerationService.generateErrorPage("Missing Employee Number."));
       }
       final String backendUrl = mandatesResolutionsDaoURL + "/api/user/username/" + employeeNumber;
       ResponseEntity<UserDTO> resp =
           restTemplate.exchange(backendUrl, HttpMethod.GET, null, UserDTO.class);
       if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-        return ResponseEntity.ok(generateErrorPage("Invalid Employee Number."));
+        return ResponseEntity.ok(pageGenerationService.generateErrorPage("Invalid Employee Number."));
       }
       UserDTO user = resp.getBody();
       if (user.getEmployeeNumber() == null || user.getEmployeeNumber().isBlank()) {
@@ -153,9 +165,9 @@ public class MandatesResolutionUIController {
         return goToDisplayRequestTable();
       }
     } catch (org.springframework.web.client.HttpClientErrorException.NotFound nf) {
-      return ResponseEntity.ok(generateErrorPage("Invalid Employee Number."));
+      return ResponseEntity.ok(pageGenerationService.generateErrorPage("Invalid Employee Number."));
     } catch (Exception e) {
-      return ResponseEntity.ok(generateErrorPage("Landing page is unavailable at this moment."));
+      return ResponseEntity.ok(pageGenerationService.generateErrorPage("Landing page is unavailable at this moment."));
     }
   }
 
@@ -165,7 +177,7 @@ public class MandatesResolutionUIController {
     if (s != null) {
       s.invalidate();
     }
-    String page = xsltProcessor.generatePage(xslPagePath("LogoutPage"), new RequestWrapper());
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("LogoutPage"), new RequestWrapper());
     return ResponseEntity.ok(page);
   }
 
@@ -178,7 +190,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setCheckCreate("false");
     requestWrapper.setCheckDirectorButton("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), requestWrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -301,12 +313,12 @@ public class MandatesResolutionUIController {
     httpSession.setAttribute("RequestWrapper", wrapper);
     if (check) {
       wrapper.setSearchResultsErrorModel(searchResultsErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), wrapper);
     } else {
       if (company != null) {
-        page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
       } else {
-        page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), wrapper);
       }
     }
     return ResponseEntity.ok(page);
@@ -320,7 +332,7 @@ public class MandatesResolutionUIController {
     dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -344,7 +356,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("CreateRequest"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"),
         (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     return ResponseEntity.ok(page);
   }
@@ -390,7 +402,7 @@ public class MandatesResolutionUIController {
     directorModel.setPageCheck("false");
     directorModel.setCheckEdit("true");
     httpSession.setAttribute("Dirctors", directorModel);
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
   }
 
@@ -402,7 +414,7 @@ public class MandatesResolutionUIController {
     directorModel.setPageCheck("true");
     directorModel.setCheckEdit("true");
     httpSession.setAttribute("DirctorsNew", directorModel);
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
   }
 
@@ -413,7 +425,7 @@ public class MandatesResolutionUIController {
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     requestWrapper.setCheckDirectorEmpty("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -423,7 +435,7 @@ public class MandatesResolutionUIController {
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("Resolutions"), requestWrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -458,14 +470,14 @@ public class MandatesResolutionUIController {
 
     if (check) {
       directorModel.setDirectorErrorModel(dirctorErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     } else {
       int size = directorModelList.size();
       directorModel.setUserInList(++size);
       directorModelList.add(directorModel);
       requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
     return ResponseEntity.ok(page);
@@ -507,14 +519,14 @@ public class MandatesResolutionUIController {
 
     if (check) {
       directorModel.setDirectorErrorModel(dirctorErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     } else {
       int size = directorModelList.size();
       directorModel.setUserInList(++size);
       directorModelList.add(directorModel);
       requestWrapper.setListOfDirectors(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
     return ResponseEntity.ok(page);
@@ -525,7 +537,7 @@ public class MandatesResolutionUIController {
     String page = "";
     mandatesResolutionService.removeSpecificAdmin(Integer.valueOf(userInList));
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -535,7 +547,7 @@ public class MandatesResolutionUIController {
     String page = "";
     mandatesResolutionService.removeSpecificAdminReso(Integer.valueOf(userInList));
     RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-    page = xsltProcessor.generatePage(xslPagePath("Resolutions"), wrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -552,7 +564,7 @@ public class MandatesResolutionUIController {
     directorModels.setButtonCheck("false");
     directorModels.setPageCheck("false");
     directorModels.setCheckEdit("true");
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
 
@@ -569,7 +581,7 @@ public class MandatesResolutionUIController {
     directorModels.setButtonCheck("false");
     directorModels.setPageCheck("true");
     directorModels.setCheckEdit("true");
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
 
@@ -596,7 +608,7 @@ public class MandatesResolutionUIController {
     directorModels.setPageCheck("true");
     directorModels.setCheckEdit("false");
     directorModels.setCheckEditAdd("false");
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModels);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModels);
     return ResponseEntity.ok(page);
   }
 
@@ -636,13 +648,13 @@ public class MandatesResolutionUIController {
       listofDirectors.setDesignation(admin.get("designation"));
       listofDirectors.setCheckEdit("true");
       listofDirectors.setPageCheck("false");
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), listofDirectors);
     } else {
       directorModelList =
           mandatesResolutionService.getUpdatedDirector(directorModelList, userInList, admin);
       requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
     return ResponseEntity.ok(page);
@@ -683,13 +695,13 @@ public class MandatesResolutionUIController {
     if (check) {
       listofDirectors.setDirectorErrorModel(dirctorErrorModel);
       listofDirectors.setButtonCheck("false");
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), listofDirectors);
     } else {
       directorModelList =
           mandatesResolutionService.getUpdatedDirectorReso(directorModelList, userInList, admin);
       requestWrapper.setDirectorModels(directorModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
     return ResponseEntity.ok(page);
@@ -759,7 +771,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setCheckDirectorEmpty("false");
     requestWrapper.setSearchResultsErrorModel(null);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
         (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     return ResponseEntity.ok(page);
   }
@@ -822,7 +834,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
       if (requestWrapper.getListOfAddAccount() == null
@@ -832,9 +844,9 @@ public class MandatesResolutionUIController {
         addAccountModel.setEditButton("true");
         httpSession.setAttribute("Signatory", addAccountModel);
         httpSession.setAttribute("RequestWrapper", requestWrapper);
-        page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
       } else {
-        page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"),
             (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
       }
     }
@@ -891,10 +903,10 @@ public class MandatesResolutionUIController {
     requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
-      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
     return new ResponseEntity<>(page, HttpStatus.OK);
@@ -932,7 +944,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -942,7 +954,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -950,7 +962,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -962,7 +974,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setCheckSecondDirectorList("false");
     requestWrapper.setCheckDirectorEmpty("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
-    page = xsltProcessor.generatePage(xslPagePath("SearchResults"), requestWrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -973,7 +985,7 @@ public class MandatesResolutionUIController {
     addAccountModel.setButtonCheck("false");
     addAccountModel.setEditButton("true");
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
     return ResponseEntity.ok(page);
   }
@@ -991,7 +1003,7 @@ public class MandatesResolutionUIController {
 
     if (requestWrapper.getListOfAddAccount() == null
         || requestWrapper.getListOfAddAccount().isEmpty()) {
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
       AddAccountModel addAccountModel =
@@ -999,7 +1011,7 @@ public class MandatesResolutionUIController {
       addAccountModel.setCheckSignatoryList("false");
       httpSession.setAttribute("Signatory", addAccountModel);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), requestWrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1015,7 +1027,7 @@ public class MandatesResolutionUIController {
     signatoryModel.setButtonCheck("true");
     addAccountModel.setCheckSignatoryList("false");
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddSignatory"), signatoryModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1024,7 +1036,7 @@ public class MandatesResolutionUIController {
     String page = "";
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1061,7 +1073,7 @@ public class MandatesResolutionUIController {
       signatoryModel.setFullName(user.get("fullName"));
       signatoryModel.setIdNumber(user.get("idNumber"));
       signatoryModel.setInstruction(user.get("accountRef1"));
-      page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddSignatory"), signatoryModel);
     } else {
       AddAccountModel addAccountModel =
           (AddAccountModel) httpSession.getAttribute("Signatory");
@@ -1076,7 +1088,7 @@ public class MandatesResolutionUIController {
       signatoryModels.add(signatoryModelData);
       addAccountModel.setListOfSignatory(signatoryModels);
       httpSession.setAttribute("Signatory", addAccountModel);
-      page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"),
           (AddAccountModel) httpSession.getAttribute("Signatory"));
     }
     return ResponseEntity.ok(page);
@@ -1088,7 +1100,7 @@ public class MandatesResolutionUIController {
     mandatesResolutionService.removeSpecificSignatory(Integer.valueOf(userInList));
     AddAccountModel addAccountModel =
         (AddAccountModel) httpSession.getAttribute("Signatory");
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1108,7 +1120,7 @@ public class MandatesResolutionUIController {
     }
     addAccountModel.setListOfSignatory(signatoryModelList);
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1128,7 +1140,7 @@ public class MandatesResolutionUIController {
     }
     addAccountModel.setListOfSignatory(signatoryModelList);
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1141,7 +1153,7 @@ public class MandatesResolutionUIController {
     signatoryModel = mandatesResolutionService.getSignatory(signatoryModel,
         addAccountModel.getListOfSignatory(), userInList);
     signatoryModel.setButtonCheck("false");
-    page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddSignatory"), signatoryModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1179,7 +1191,7 @@ public class MandatesResolutionUIController {
       signatoryModel.setInstruction(user.get("accountRef1"));
       signatoryModel.setButtonCheck("false");
       signatoryModel.setSignatoryErrorModel(signatoryErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("AddSignatory"), signatoryModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddSignatory"), signatoryModel);
     } else {
       AddAccountModel addAccountModel =
           (AddAccountModel) httpSession.getAttribute("Signatory");
@@ -1188,7 +1200,7 @@ public class MandatesResolutionUIController {
               userInList, user);
       addAccountModel.setListOfSignatory(signatoryModels);
       httpSession.setAttribute("Signatory", addAccountModel);
-      page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"),
           (AddAccountModel) httpSession.getAttribute("Signatory"));
     }
     return ResponseEntity.ok(page);
@@ -1229,7 +1241,7 @@ public class MandatesResolutionUIController {
     if (check) {
       addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
       addAccountModel.setButtonCheck("false");
-      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     } else {
       int size = addAccountModelList.size();
       addAccountModel.setUserInList(++size);
@@ -1248,7 +1260,7 @@ public class MandatesResolutionUIController {
       httpSession.setAttribute("Signatory", addAccountModel);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       RequestWrapper wrapper = (RequestWrapper) httpSession.getAttribute("RequestWrapper");
-      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1285,7 +1297,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1295,7 +1307,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1303,7 +1315,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -1319,7 +1331,7 @@ public class MandatesResolutionUIController {
     addAccountModel.setButtonCheck("true");
     addAccountModel.setEditButton("true");
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
     return ResponseEntity.ok(page);
   }
@@ -1361,7 +1373,7 @@ public class MandatesResolutionUIController {
       addAccountModel.setAccountNumber(user.get("accountNo"));
       addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
       addAccountModel.setButtonCheck("true");
-      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     } else {
       List<AddAccountModel> addAccountModelList =
           mandatesResolutionService.updateAccount(requestWrapper.getListOfAddAccount(), userInList,
@@ -1377,7 +1389,7 @@ public class MandatesResolutionUIController {
       addAccountModel.setListOfSignatory(listOfSig);
       requestWrapper.setListOfAddAccount(addAccountModelList);
       httpSession.setAttribute("RequestWrapper", requestWrapper);
-      page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     }
 
@@ -1399,7 +1411,7 @@ public class MandatesResolutionUIController {
       httpSession.setAttribute("RequestWrapper", requestWrapper);
     }
     String page = xsltProcessor.generatePage(
-        xslPagePath("MandatesAutoFill"), requestWrapper);
+        pageGenerationService.xslPagePath("MandatesAutoFill"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -1413,10 +1425,10 @@ public class MandatesResolutionUIController {
         .isEmpty()) {
       requestWrapper.setAccountCheck("false");
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesAutoFill"), requestWrapper);
+          pageGenerationService.xslPagePath("MandatesAutoFill"), requestWrapper);
     } else {
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesSignatureCard"), requestWrapper);
+          pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1438,7 +1450,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setAccountCheck("true");
     }
     page = xsltProcessor.generatePage(
-        xslPagePath("MandatesAutoFill"), requestWrapper);
+        pageGenerationService.xslPagePath("MandatesAutoFill"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -1471,10 +1483,10 @@ public class MandatesResolutionUIController {
 
     if (check) {
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesSignatureCard"), requestWrapper);
+          pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     } else {
       page = xsltProcessor.generatePage(
-          xslPagePath("Resolutions"), requestWrapper);
+          pageGenerationService.xslPagePath("Resolutions"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1511,7 +1523,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1521,7 +1533,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1529,7 +1541,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -1542,7 +1554,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setCheckSecondDirectorList("false");
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     page = xsltProcessor.generatePage(
-        xslPagePath("MandatesSignatureCard"), requestWrapper);
+        pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -1558,7 +1570,7 @@ public class MandatesResolutionUIController {
             userInList, userInAccount);
     httpSession.setAttribute("signatory", signatoryModel);
     page = xsltProcessor.generatePage(
-        xslPagePath("SignatoryGroup"), signatoryModel);
+        pageGenerationService.xslPagePath("SignatoryGroup"), signatoryModel);
     return ResponseEntity.ok(page);
   }
 
@@ -1593,7 +1605,7 @@ public class MandatesResolutionUIController {
       model.setGroup(user.get("Group"));
       model.setCapacity(user.get("capacity"));
       model.setSignatoryErrorModel(signatoryErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("SignatoryGroup"), model);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SignatoryGroup"), model);
     } else {
       List<AddAccountModel> listOfAddAccount =
           mandatesResolutionService.getAddAccountList(requestWrapper.getListOfAddAccount(),
@@ -1602,7 +1614,7 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckSignatureCard("false");
       httpSession.setAttribute("RequestWrapper", requestWrapper);
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesSignatureCard"), requestWrapper);
+          pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1614,7 +1626,7 @@ public class MandatesResolutionUIController {
     RequestWrapper requestWrapper =
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     page = xsltProcessor.generatePage(
-        xslPagePath("MandatesSignatureCard"), requestWrapper);
+        pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -1651,7 +1663,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1661,7 +1673,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -1669,7 +1681,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -1685,11 +1697,11 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckSecondDirectorList("false");
     }
     if ("true".equalsIgnoreCase(requestWrapper.getCheckSecondDirectorList())) {
-      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"),
           requestWrapper);
     } else {
       mandatesResolutionService.createRequest();
-      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("RequestSuccess"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1706,11 +1718,11 @@ public class MandatesResolutionUIController {
       requestWrapper.setCheckSecondDirectorList("false");
     }
     if ("true".equalsIgnoreCase(requestWrapper.getCheckSecondDirectorList())) {
-      page = xsltProcessor.generatePage(xslPagePath("Resolutions"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"),
           requestWrapper);
     } else {
       mandatesResolutionService.createRequestReso();
-      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("RequestSuccess"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1743,10 +1755,10 @@ public class MandatesResolutionUIController {
 
     if (check) {
       page = xsltProcessor.generatePage(
-          xslPagePath("MandatesSignatureCard"), requestWrapper);
+          pageGenerationService.xslPagePath("MandatesSignatureCard"), requestWrapper);
     } else {
       mandatesResolutionService.createRequestMandates();
-      page = xsltProcessor.generatePage(xslPagePath("RequestSuccess"), requestWrapper);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("RequestSuccess"), requestWrapper);
     }
     return ResponseEntity.ok(page);
   }
@@ -1811,7 +1823,7 @@ public class MandatesResolutionUIController {
       RequestTableWrapper wrapper = new RequestTableWrapper();
       wrapper.setRequest(pendingAdminApprovals);
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminApproval"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminApproval"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -1888,7 +1900,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequestDTO(requestDTO);
 
       // Load AdminBreach page
-      String page = xsltProcessor.generatePage(xslPagePath("AdminBreach"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminBreach"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -1909,7 +1921,7 @@ public class MandatesResolutionUIController {
     List<RequestTableDTO> listOfRecord = mandatesResolutionService.getAllRecords();
     RequestTableWrapper wrapper = new RequestTableWrapper();
     wrapper.setRequest(listOfRecord);
-    String page = xsltProcessor.generatePage(xslPagePath("AdminAll"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminAll"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -1975,7 +1987,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequestDTO(requestDTO);
 
       // Always use LandingPage XSLT
-      String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("LandingPage"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2053,7 +2065,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequestDTO(requestDTO);
 
       // Use unified XSLT
-      String page = xsltProcessor.generatePage(xslPagePath("CompletedRequests"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CompletedRequests"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2125,7 +2137,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequestDTO(requestDTO);
 
       // use same XSL page for both roles
-      String page = xsltProcessor.generatePage(xslPagePath("OnHoldRequests"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("OnHoldRequests"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2159,7 +2171,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -2169,7 +2181,7 @@ public class MandatesResolutionUIController {
         r.setCompanyName(src.getCompanyName());
         r.setRegistrationNumber(src.getCompanyRegistrationNumber());
         r.setStatus(src.getRequestStatus());
-        r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+        r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
         r.setType(src.getRequestType());
         r.setCreated(String.valueOf(src.getCreated()));
         rows.add(r);
@@ -2177,7 +2189,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
     wrapper.setRequestDTO(requestDTO);
-    String page = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -2200,7 +2212,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
 
-    String page = xsltProcessor.generatePage(xslPagePath("AdminProfile"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminProfile"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -2231,7 +2243,7 @@ public class MandatesResolutionUIController {
     requestDetails.setCheckStatusType(String.valueOf(check));
 
     mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
-    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+    String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -2255,7 +2267,7 @@ public class MandatesResolutionUIController {
     }
     mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
     httpSession.setAttribute("RequestDetails", requestDetails);
-    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+    String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -2263,7 +2275,7 @@ public class MandatesResolutionUIController {
   @PostMapping(value = "/adminViewBack", produces = MediaType.APPLICATION_XML_VALUE)
   public ResponseEntity<String> displayAdminViewBack() {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
-    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"), requestDetails);
+    String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"), requestDetails);
     return ResponseEntity.ok(page);
   }
 
@@ -2294,7 +2306,7 @@ public class MandatesResolutionUIController {
     }
 
     if (check) {
-      page = xsltProcessor.generatePages(xslPagePath("EditRequest"),
+      page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("EditRequest"),
           requestDetails);
     } else {
       mandatesResolutionService.updateViewRequest(requestDetails);
@@ -2315,7 +2327,7 @@ public class MandatesResolutionUIController {
         requestDetails.setCheckStatus("false");
       }
       httpSession.setAttribute("RequestDetails", requestDetails);
-      page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+      page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
     return ResponseEntity.ok(page);
@@ -2352,7 +2364,7 @@ public class MandatesResolutionUIController {
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(model);
 
-      String page = xsltProcessor.generatePage(xslPagePath("ReassignScreen"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ReassignScreen"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
 
     } catch (Exception e) {
@@ -2526,7 +2538,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequest(inProgress);
       wrapper.setRequestDTO(requestDTO);
 
-      String page = xsltProcessor.generatePage(xslPagePath("LandingPage"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("LandingPage"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2602,7 +2614,7 @@ public class MandatesResolutionUIController {
 
       logger.info("Fetched {} on-hold requests (post-filter)", onHoldRequests.size());
 
-      String page = xsltProcessor.generatePage(xslPagePath("OnHold"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("OnHold"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2678,7 +2690,7 @@ public class MandatesResolutionUIController {
 
       logger.info("Fetched {} completed requests (post-filter)", completedRequests.size());
 
-      String page = xsltProcessor.generatePage(xslPagePath("Completed"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Completed"), wrapper);
       return ResponseEntity.ok(page);
 
     } catch (Exception e) {
@@ -2708,12 +2720,12 @@ public class MandatesResolutionUIController {
       displayName = "UI_USER";
     }
     dto.setLoggedInUsername(displayName);
-    dto.setLoggedInEmail(user != null ? nz(user.getEmail()) : "");
+    dto.setLoggedInEmail(user != null ? utilityService.nullToEmpty(user.getEmail()) : "");
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
 
-    String page = xsltProcessor.generatePage(xslPagePath("Profile"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Profile"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -2722,7 +2734,7 @@ public class MandatesResolutionUIController {
     ExportModel exportModel = new ExportModel();
     exportModel.setButtonCheck("false");
     httpSession.setAttribute("ExportCSV", exportModel);
-    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ExportCSV"), exportModel);
     return ResponseEntity.ok(page);
   }
 
@@ -2748,14 +2760,14 @@ public class MandatesResolutionUIController {
       exportModel.setFromDate(user.get("fromDate"));
       exportModel.setToDate(user.get("toDate"));
       exportModel.setExportErrorModel(exportErrorModel);
-      page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ExportCSV"), exportModel);
     } else {
       exportModel.setStatus(user.get("status"));
       exportModel.setFromDate(user.get("fromDate"));
       exportModel.setToDate(user.get("toDate"));
       exportModel.setButtonCheck("true");
       httpSession.setAttribute("ExportCSV", exportModel);
-      page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ExportCSV"), exportModel);
     }
     return ResponseEntity.ok(page);
   }
@@ -2766,7 +2778,7 @@ public class MandatesResolutionUIController {
     ExportModel exportModel = (ExportModel) httpSession.getAttribute("ExportCSV");
     exportModel.setButtonCheck("false");
     httpSession.setAttribute("ExportCSV", exportModel);
-    String page = xsltProcessor.generatePage(xslPagePath("ExportCSV"), exportModel);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ExportCSV"), exportModel);
     return ResponseEntity.ok(page);
   }
 
@@ -3002,7 +3014,7 @@ public class MandatesResolutionUIController {
         (RequestWrapper) httpSession.getAttribute("RequestWrapper");
     wrapper.setCheckBackOption("true");
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -3015,7 +3027,7 @@ public class MandatesResolutionUIController {
     dto.setErrorCode(code); //"REQUIRED" or "NOT_FOUND"
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -3128,7 +3140,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -3164,13 +3176,13 @@ public class MandatesResolutionUIController {
       dto.setStagingId(form.getStagingId()); // null=create; non-null=update
 
       //Company
-      dto.setCompanyRegistrationNumber(nz(form.getRegistrationNumber()));
+      dto.setCompanyRegistrationNumber(utilityService.nullToEmpty(form.getRegistrationNumber()));
       dto.setCompanyName(dedupeComma(form.getCompanyName()));
       dto.setCompanyAddress(dedupeComma(form.getCompanyAddress()));
 
       //Request (ok if null)
       dto.setRequestType(
-          mapRequestType(form.getMandateResolution())); // "1|2|3" -> Mandates|Resolutions|Both
+          utilityService.mapRequestType(form.getMandateResolution())); // "1|2|3" -> Mandates|Resolutions|Both
       dto.setRequestStatus("Draft");
       dto.setRequestSubStatus("Saved");
 
@@ -3200,9 +3212,9 @@ public class MandatesResolutionUIController {
             continue;
           }
           RequestStagingDTO.AuthorityDraft a = new RequestStagingDTO.AuthorityDraft();
-          a.setFirstname(nz(d.getName()));
-          a.setSurname(nz(d.getSurname()));
-          a.setDesignation(nz(d.getDesignation()));
+          a.setFirstname(utilityService.nullToEmpty(d.getName()));
+          a.setSurname(utilityService.nullToEmpty(d.getSurname()));
+          a.setDesignation(utilityService.nullToEmpty(d.getDesignation()));
           a.setIsActive(Boolean.TRUE);
           auths.add(a);
         }
@@ -3272,7 +3284,7 @@ public class MandatesResolutionUIController {
       }
       wrapper.setRequest(rows);
 
-      String page = xsltProcessor.generatePage(xslPagePath("Draft"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Draft"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
 
     } catch (Exception e) {
@@ -3346,9 +3358,9 @@ public class MandatesResolutionUIController {
     Map<String, String[]> params = req.getParameterMap();
 
     //5.1 Company (prefer last non-blank so visible inputs beat any hidden)
-    String reg = nz(lastNonBlank(req, "registrationNumber"));
-    String name = dedupeComma(nz(lastNonBlank(req, "companyName")));
-    String addr = dedupeComma(nz(lastNonBlank(req, "companyAddress")));
+    String reg = utilityService.nullToEmpty(lastNonBlank(req, "registrationNumber"));
+    String name = dedupeComma(utilityService.nullToEmpty(lastNonBlank(req, "companyName")));
+    String addr = dedupeComma(utilityService.nullToEmpty(lastNonBlank(req, "companyAddress")));
     if (!reg.isBlank()) {
       dto.setCompanyRegistrationNumber(reg);
     }
@@ -3360,24 +3372,24 @@ public class MandatesResolutionUIController {
     }
 
     //5.2 Request type — prefer the LAST non-blank value (dropdown beats hidden)
-    String mr = nz(lastNonBlank(req, "mandateResolution"));        // dropdown
+    String mr = utilityService.nullToEmpty(lastNonBlank(req, "mandateResolution"));        // dropdown
     if (mr.isBlank()) {
-      mr = nz(lastNonBlank(req, "mandateResolutionCode")); // hidden
+      mr = utilityService.nullToEmpty(lastNonBlank(req, "mandateResolutionCode")); // hidden
     }
     if (mr.isBlank()) {
-      mr = nz(lastNonBlank(req, "requestType"));
+      mr = utilityService.nullToEmpty(lastNonBlank(req, "requestType"));
     }
     if (mr.isBlank()) {
-      mr = nz(lastNonBlank(req, "type"));
+      mr = utilityService.nullToEmpty(lastNonBlank(req, "type"));
     }
     if (!mr.isBlank()) {
-      dto.setRequestType(mapRequestType(mr));
+      dto.setRequestType(utilityService.mapRequestType(mr));
     }
 
     //5.3 Waiver tools
     java.util.List<String> tools = parseDocumentumToolsFromParams(params);
     if (tools.isEmpty()) {
-      String raw = nz(first(params.get("waiverPermittedTools")));
+      String raw = utilityService.nullToEmpty(first(params.get("waiverPermittedTools")));
       if (!raw.isBlank()) {
         for (String t : raw.split(",")) {
           String tt = t == null ? "" : t.trim();
@@ -3438,7 +3450,7 @@ public class MandatesResolutionUIController {
     // ---- FINAL TYPE DECISION (do not override explicit/page-derived) ----
     String decidedType = dto.getRequestType();
 
-    // 1)If user posted a value, it’s already in dto via mapRequestType(mr)
+    // 1)If user posted a value, it’s already in dto via utilityService.mapRequestType(mr)
     // 2)If still blank, reuse existing
     if (isBlank(decidedType) && existing != null && !isBlank(existing.getRequestType())) {
       decidedType = existing.getRequestType();
@@ -3535,7 +3547,7 @@ public class MandatesResolutionUIController {
       r.setCompanyName(src.getCompanyName());
       r.setRegistrationNumber(src.getCompanyRegistrationNumber());
       r.setStatus(src.getRequestStatus());
-      r.setSubStatus(cleanSubStatus(src.getRequestSubStatus()));
+      r.setSubStatus(utilityService.cleanSubStatus(src.getRequestSubStatus()));
       r.setType(src.getRequestType());  // for <type>
       r.setCreated(src.getCreated() == null ? ""
           : src.getCreated().format(String.valueOf(fmt))); // formatted
@@ -3544,7 +3556,7 @@ public class MandatesResolutionUIController {
     }
     wrapper.setRequest(rows);
 
-    String pageXml = xsltProcessor.generatePage(xslPagePath("DraftRequests"), wrapper);
+    String pageXml = xsltProcessor.generatePage(pageGenerationService.xslPagePath("DraftRequests"), wrapper);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(pageXml);
   }
 
@@ -3810,7 +3822,7 @@ public class MandatesResolutionUIController {
 
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(dto);
-      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
       return ResponseEntity.ok(page);
     }
 
@@ -3953,7 +3965,7 @@ public class MandatesResolutionUIController {
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(dto);
       wrapper.setSearchResultsErrorModel(errors);
-      String page = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
       return ResponseEntity.ok(page);
     }
 
@@ -4131,7 +4143,7 @@ public class MandatesResolutionUIController {
     //6)Render
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4178,7 +4190,7 @@ public class MandatesResolutionUIController {
       session.setAttribute("pdfSessionId", dto.getPdfSessionId());
       session.setAttribute("requestData", dto);
 
-      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
     }
 
@@ -4190,7 +4202,7 @@ public class MandatesResolutionUIController {
 
       RequestWrapper wrapper = new RequestWrapper();
       wrapper.setRequest(dto);
-      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
     }
 
@@ -4265,7 +4277,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4329,7 +4341,7 @@ public class MandatesResolutionUIController {
     //Wrap & render
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ResolutionAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4419,13 +4431,13 @@ public class MandatesResolutionUIController {
       wrapper.setRequest(dto);
       wrapper.setMandatesAutoFillErrorModel(errors);
 
-      String page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
       return ResponseEntity.ok(page);
     }
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesSignatureCard"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4455,7 +4467,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesSignatureCard"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4546,7 +4558,7 @@ public class MandatesResolutionUIController {
         RequestWrapper wrapper = new RequestWrapper();
         wrapper.setRequest(uiData);
         wrapper.setMandatesSignatureCardErrorModel(errors);
-        String page = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+        String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesSignatureCard"), wrapper);
         return ResponseEntity.ok(page);
       }
 
@@ -4802,7 +4814,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ResolutionAutoFill"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -4880,7 +4892,7 @@ public class MandatesResolutionUIController {
         RequestWrapper wrapper = new RequestWrapper();
         wrapper.setRequest(uiData);
         wrapper.setResolutionsAutoFillErrorModel(errors);
-        String page = xsltProcessor.generatePage(xslPagePath("ResolutionAutoFill"), wrapper);
+        String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ResolutionAutoFill"), wrapper);
         return ResponseEntity.ok(page);
       }
 
@@ -4988,7 +5000,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsAccDetails"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5009,7 +5021,7 @@ public class MandatesResolutionUIController {
 
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
-    String page = xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsAccDetails"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5094,7 +5106,7 @@ public class MandatesResolutionUIController {
       wrapper.setMandatesAutoFillErrorModel(accErrors);
 
       String page =
-          xsltProcessor.generatePage(xslPagePath("MandatesResolutionsAccDetails"), wrapper);
+          xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsAccDetails"), wrapper);
       return ResponseEntity.ok(page);
     }
 
@@ -5102,7 +5114,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page =
-        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
+        xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5124,7 +5136,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page =
-        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
+        xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsSignatureCard"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5200,7 +5212,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page =
-        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
+        xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5223,7 +5235,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
     String page =
-        xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
+        xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsDirectorsDetails"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5292,7 +5304,7 @@ public class MandatesResolutionUIController {
         wrapErr.setRequest(uiData);
         wrapErr.setResolutionsAutoFillErrorModel(dirErr);
         String page =
-            xsltProcessor.generatePage(xslPagePath("MandatesResolutionsDirectorsDetails"), wrapErr);
+            xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesResolutionsDirectorsDetails"), wrapErr);
         return ResponseEntity.ok(page);
       }
 
@@ -5307,7 +5319,7 @@ public class MandatesResolutionUIController {
       } //Extra fallback
 
       uiData.setLoggedInUsername(uname);
-      uiData.setLoggedInEmail(current != null ? nz(current.getEmail()) : "");
+      uiData.setLoggedInEmail(current != null ? utilityService.nullToEmpty(current.getEmail()) : "");
 
       //Submit (backend handles workflow and returns processId/assignedUser)
       SubmissionPayload payload = buildSubmissionPayload(uiData, "Both");
@@ -5368,7 +5380,7 @@ public class MandatesResolutionUIController {
     //Load instructions for this subStatus
     populateInstructions(wrapper, sub, mandatesResolutionsDaoURL);
 
-    String page = xsltProcessor.generatePage(xslPagePath("ViewRequestRejectPage"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ViewRequestRejectPage"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5398,7 +5410,7 @@ public class MandatesResolutionUIController {
     //Load instructions for this subStatus
     populateInstructions(wrapper, sub, mandatesResolutionsDaoURL);
 
-    String page = xsltProcessor.generatePage(xslPagePath("ViewRequestApprovePage"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ViewRequestApprovePage"), wrapper);
     return ResponseEntity.ok(page);
   }
 
@@ -5459,7 +5471,7 @@ public class MandatesResolutionUIController {
       wrapper.setRequest(dto);
 
       String page =
-          xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessRejectPage"), wrapper);
+          xsltProcessor.generatePage(pageGenerationService.xslPagePath("ViewRequestSuccessRejectPage"), wrapper);
 
       return ResponseEntity.ok(page);
 
@@ -5530,7 +5542,7 @@ public class MandatesResolutionUIController {
         d.setRequestId(requestId);
         w.setRequest(d);
 
-        String page = xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
+        String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ViewRequestSuccessPage"), w);
         return ResponseEntity.ok(page);
       }
 
@@ -5561,7 +5573,7 @@ public class MandatesResolutionUIController {
       d.setRequestId(requestId);
       w.setRequest(d);
 
-      String page = xsltProcessor.generatePage(xslPagePath("ViewRequestSuccessPage"), w);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("ViewRequestSuccessPage"), w);
       return ResponseEntity.ok(page);
 
     } catch (Exception ex) {
@@ -6063,7 +6075,7 @@ public class MandatesResolutionUIController {
 
 
       // Render
-      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+      String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
       return ResponseEntity.ok(page);
 
@@ -6092,7 +6104,7 @@ public class MandatesResolutionUIController {
     }
 
     if (check) {
-      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+      String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
           requestDetails);
       return ResponseEntity.ok(page);
     } else {
@@ -6112,7 +6124,7 @@ public class MandatesResolutionUIController {
     }
 
     if (check) {
-      String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+      String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
           requestDetails);
       return ResponseEntity.ok(page);
     } else {
@@ -6174,7 +6186,7 @@ public class MandatesResolutionUIController {
     mandatesResolutionService.statusUpdated(Long.valueOf(requestId), "Hold",
         requestDetails.getCheckHoldRecord(),
         "On Hold", users.getUsername());
-    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+    String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -6212,7 +6224,7 @@ public class MandatesResolutionUIController {
     requestDetails.setCheckStatusType(String.valueOf(check));
     httpSession.setAttribute("RequestDetails", requestDetails);
     mandatesResolutionService.statusCheck(requestDetails.getSubStatus());
-    String page = xsltProcessor.generatePages(xslPagePath("ViewRequest"),
+    String page = xsltProcessor.generatePages(pageGenerationService.xslPagePath("ViewRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -6223,7 +6235,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = mandatesResolutionService.processViewDraft(stagingDTO);
     String pageXml = "";
     if ("Step 1".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
-      pageXml = xsltProcessor.generatePage(xslPagePath("SearchResults"), wrapper);
+      pageXml = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"), wrapper);
     }
 
     if ("Step 2".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
@@ -6232,15 +6244,15 @@ public class MandatesResolutionUIController {
       } else {
         wrapper.setAccountCheck("true");
       }
-      pageXml = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"), wrapper);
+      pageXml = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"), wrapper);
     }
 
     if ("Step 3".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
-      pageXml = xsltProcessor.generatePage(xslPagePath("MandatesSignatureCard"), wrapper);
+      pageXml = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesSignatureCard"), wrapper);
     }
 
     if ("Step 4".equalsIgnoreCase(stagingDTO.getRequestSubStatus())) {
-      pageXml = xsltProcessor.generatePage(xslPagePath("Resolutions"), wrapper);
+      pageXml = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Resolutions"), wrapper);
     }
 
     return ResponseEntity.ok(pageXml);
@@ -6288,7 +6300,7 @@ public class MandatesResolutionUIController {
     directorModel.setPageCheck("false");
     directorModel.setCheckEdit("true");
     httpSession.setAttribute("Dirctors", directorModel);
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
   }
 
@@ -6350,7 +6362,7 @@ public class MandatesResolutionUIController {
     requestWrapper.setSearchResultsErrorModel(searchResultsErrorModel);
     httpSession.setAttribute("RequestWrapper", requestWrapper);
     if (check) {
-      page = xsltProcessor.generatePage(xslPagePath("SearchResults"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("SearchResults"),
           (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
     } else {
       if (requestWrapper.getListOfAddAccount() == null
@@ -6360,9 +6372,9 @@ public class MandatesResolutionUIController {
         addAccountModel.setEditButton("true");
         httpSession.setAttribute("Signatory", addAccountModel);
         httpSession.setAttribute("RequestWrapper", requestWrapper);
-        page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
       } else {
-        page = xsltProcessor.generatePage(xslPagePath("MandatesAutoFill"),
+        page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("MandatesAutoFill"),
             (RequestWrapper) httpSession.getAttribute("RequestWrapper"));
       }
     }
@@ -6411,7 +6423,7 @@ public class MandatesResolutionUIController {
         }
       }
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
       logWrapperAndPage("EditRequest", requestId, wrapper, page);
       return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
     } catch (Exception e) {
@@ -6454,7 +6466,7 @@ public class MandatesResolutionUIController {
         acc.getSignatories().add(blank);
       }
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
 
       //Logging
       logger.info("AddSignatory: requestId={}, accountIndex1={}", requestId, accountIndex1);
@@ -6496,7 +6508,7 @@ public class MandatesResolutionUIController {
 
       //Dumps
       dumpWrapperJson("EditRequest-RemoveSignatory", wrapper, requestId);
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
       dumpPageXml("EditRequest-RemoveSignatory", page, requestId);
 
       return ResponseEntity.ok(page);
@@ -6523,7 +6535,7 @@ public class MandatesResolutionUIController {
       blank.setDesignation("");
       view.getDirectors().add(blank);
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
       logWrapperAndPage("EditRequest-AddDirector", requestId, wrapper, page);
       return ResponseEntity.ok(page);
     } catch (Exception e) {
@@ -6546,7 +6558,7 @@ public class MandatesResolutionUIController {
           view.getDirectors().remove(i);
         }
       }
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
       logWrapperAndPage("EditRequest-RemoveDirector", requestId, wrapper, page);
       return ResponseEntity.ok(page);
     } catch (Exception e) {
@@ -6574,7 +6586,7 @@ public class MandatesResolutionUIController {
 
       view.getAccounts().add(newAcc);
 
-      String page = xsltProcessor.generatePage(xslPagePath("AdminEditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AdminEditRequest"), wrapper);
 
       //LOGGING
       logger.info("AddAccount: requestId={}", requestId);
@@ -6617,7 +6629,7 @@ public class MandatesResolutionUIController {
       }
 
       dumpWrapperJson("EditRequest-RemoveAccount", wrapper, requestId);
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
       dumpPageXml("EditRequest-RemoveAccount", page, requestId);
 
       logger.info("RemoveAccount DONE: requestId={}, accountsNow={}",
@@ -6701,11 +6713,11 @@ public class MandatesResolutionUIController {
           }
 
           Map<String, Object> s = new java.util.LinkedHashMap<>();
-          s.put("fullName", nz(fullName));
-          s.put("idNumber", nz(idNumber));
-          s.put("capacity", nz(capacity));
-          s.put("groupCategory", nz(group));
-          s.put("instructions", nz(instruction)); // Add|Remove
+          s.put("fullName", utilityService.nullToEmpty(fullName));
+          s.put("idNumber", utilityService.nullToEmpty(idNumber));
+          s.put("capacity", utilityService.nullToEmpty(capacity));
+          s.put("groupCategory", utilityService.nullToEmpty(group));
+          s.put("instructions", utilityService.nullToEmpty(instruction)); // Add|Remove
           fa.signatories.add(s);
         }
 
@@ -6749,8 +6761,8 @@ public class MandatesResolutionUIController {
       for (FormAcc fa : formAccounts) {
         Map<String, Object> dto = new java.util.LinkedHashMap<>();
         dto.put("companyId", companyId);
-        dto.put("accountName", nz(fa.accountName));
-        dto.put("accountNumber", nz(fa.accountNo));
+        dto.put("accountName", utilityService.nullToEmpty(fa.accountName));
+        dto.put("accountNumber", utilityService.nullToEmpty(fa.accountNo));
         dto.put("isActive", Boolean.TRUE);
         dto.put("signatories", fa.signatories);
 
@@ -6828,9 +6840,9 @@ public class MandatesResolutionUIController {
       for (FormDir d : formDirs) {
         Map<String, Object> payload = new java.util.LinkedHashMap<>();
         payload.put("companyId", companyId);
-        payload.put("firstname", nz(d.firstName));
-        payload.put("surname", nz(d.surname));
-        payload.put("designation", nz(d.designation));
+        payload.put("firstname", utilityService.nullToEmpty(d.firstName));
+        payload.put("surname", utilityService.nullToEmpty(d.surname));
+        payload.put("designation", utilityService.nullToEmpty(d.designation));
         payload.put("isActive", Boolean.TRUE);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
@@ -6893,7 +6905,7 @@ public class MandatesResolutionUIController {
   )
   public ResponseEntity<String> displayEditRequest() {
     RequestDetails requestDetails = (RequestDetails) httpSession.getAttribute("RequestDetails");
-    String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), requestDetails);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), requestDetails);
     return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(page);
   }
 
@@ -6907,7 +6919,7 @@ public class MandatesResolutionUIController {
         mandatesResolutionService.getAccount(requestDetails.getListOfAddAccountModel(), userInList);
     addAccountModel.setEditButton("false");
     httpSession.setAttribute("Signatory", addAccountModel);
-    page = xsltProcessor.generatePage(xslPagePath("AddAccount"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"),
         (AddAccountModel) httpSession.getAttribute("Signatory"));
     return ResponseEntity.ok(page);
   }
@@ -6929,7 +6941,7 @@ public class MandatesResolutionUIController {
     requestDetails.setListOfAddAccountModel(listOfAddAccount);
     httpSession.setAttribute("RequestDetails", requestDetails);
     String page = xsltProcessor.generatePage(
-        xslPagePath("EditRequest"), requestDetails);
+        pageGenerationService.xslPagePath("EditRequest"), requestDetails);
     return ResponseEntity.ok(page);
   }
 
@@ -6949,7 +6961,7 @@ public class MandatesResolutionUIController {
     requestDetails.setListOfAddAccountModel(listOfAddAccount);
     httpSession.setAttribute("RequestDetails", requestDetails);
     String page = xsltProcessor.generatePage(
-        xslPagePath("EditRequest"), requestDetails);
+        pageGenerationService.xslPagePath("EditRequest"), requestDetails);
     return ResponseEntity.ok(page);
   }
 
@@ -6991,7 +7003,7 @@ public class MandatesResolutionUIController {
       addAccountModel.setAccountNumber(user.get("accountNo"));
       addAccountModel.setSignatoryErrorModel(signatoryErrorModel);
       addAccountModel.setEditButton("false");
-      page = xsltProcessor.generatePage(xslPagePath("AddAccount"), addAccountModel);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("AddAccount"), addAccountModel);
     } else {
       List<AddAccountModel> addAccountModelList =
           mandatesResolutionService.updateAccount(requestDetails.getListOfAddAccountModel(),
@@ -7016,7 +7028,7 @@ public class MandatesResolutionUIController {
       addAccountModel.setCheckEditAccount("Yes");
       requestDetails.setListOfAddAccountModel(addAccountModelList);
       httpSession.setAttribute("RequestDetails", requestDetails);
-      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
 
@@ -7032,7 +7044,7 @@ public class MandatesResolutionUIController {
     directorModel.setCheckEdit("false");
     directorModel.setCheckEditAdd("true");
     httpSession.setAttribute("DirctorsNew", directorModel);
-    page = xsltProcessor.generatePage(xslPagePath("Directors"), directorModel);
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), directorModel);
     return ResponseEntity.ok(page);
   }
 
@@ -7076,14 +7088,14 @@ public class MandatesResolutionUIController {
       listofDirectors.setSurname(admin.get("surname"));
       listofDirectors.setDesignation(admin.get("designation"));
       listofDirectors.setInstructions(admin.get("instructions"));
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), listofDirectors);
     } else {
       List<DirectorModel> listOfDirectors =
           mandatesResolutionService.setUpdatedDirector(requestDetails.getListOfDirector(),
               admin, Integer.parseInt(userInList));
       requestDetails.setListOfDirector(listOfDirectors);
       httpSession.setAttribute("RequestDetails", requestDetails);
-      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
     return ResponseEntity.ok(page);
@@ -7129,7 +7141,7 @@ public class MandatesResolutionUIController {
       listofDirectors.setSurname(admin.get("surname"));
       listofDirectors.setDesignation(admin.get("designation"));
       listofDirectors.setInstructions(admin.get("instructions"));
-      page = xsltProcessor.generatePage(xslPagePath("Directors"), listofDirectors);
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("Directors"), listofDirectors);
     } else {
       DirectorModel directorModel = new DirectorModel();
       directorModel.setName(admin.get("name"));
@@ -7142,7 +7154,7 @@ public class MandatesResolutionUIController {
       directorModelList.add(directorModel);
       requestDetails.setListOfDirector(directorModelList);
       httpSession.setAttribute("RequestDetails", requestDetails);
-      page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+      page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"),
           (RequestDetails) httpSession.getAttribute("RequestDetails"));
     }
     return ResponseEntity.ok(page);
@@ -7164,7 +7176,7 @@ public class MandatesResolutionUIController {
         mandatesResolutionService.removeSpecificAdminResoEditWithId(director.getDirectorId());
       }
     }
-    page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -7177,7 +7189,7 @@ public class MandatesResolutionUIController {
     for (DirectorModel director : requestDetails.getListOfDirector()) {
       mandatesResolutionService.removeSpecificAdminResoEditWithIdUndo(director.getDirectorId());
     }
-    page = xsltProcessor.generatePage(xslPagePath("EditRequest"),
+    page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"),
         (RequestDetails) httpSession.getAttribute("RequestDetails"));
     return ResponseEntity.ok(page);
   }
@@ -7214,7 +7226,7 @@ public class MandatesResolutionUIController {
         acc.getSignatories().add(blank);
       }
 
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
 
       //Logging
       logger.info("AddSignatory: requestId={}, accountIndex1={}", requestId, accountIndex1);
@@ -7256,7 +7268,7 @@ public class MandatesResolutionUIController {
 
       //Dumps
       dumpWrapperJson("EditRequest-RemoveSignatory", wrapper, requestId);
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
       dumpPageXml("EditRequest-RemoveSignatory", page, requestId);
 
       return ResponseEntity.ok(page);
@@ -7283,7 +7295,7 @@ public class MandatesResolutionUIController {
       blank.setDesignation("");
       view.getDirectors().add(blank);
 
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
       logWrapperAndPage("EditRequest-AddDirector", requestId, wrapper, page);
       return ResponseEntity.ok(page);
     } catch (Exception e) {
@@ -7306,7 +7318,7 @@ public class MandatesResolutionUIController {
           view.getDirectors().remove(i);
         }
       }
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
       logWrapperAndPage("EditRequest-RemoveDirector", requestId, wrapper, page);
       return ResponseEntity.ok(page);
     } catch (Exception e) {
@@ -7334,7 +7346,7 @@ public class MandatesResolutionUIController {
 
       view.getAccounts().add(newAcc);
 
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
 
       //LOGGING
       logger.info("AddAccount: requestId={}", requestId);
@@ -7377,7 +7389,7 @@ public class MandatesResolutionUIController {
       }
 
       dumpWrapperJson("EditRequest-RemoveAccount", wrapper, requestId);
-      String page = xsltProcessor.generatePage(xslPagePath("EditRequest"), wrapper);
+      String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("EditRequest"), wrapper);
       dumpPageXml("EditRequest-RemoveAccount", page, requestId);
 
       logger.info("RemoveAccount DONE: requestId={}, accountsNow={}",
@@ -7461,11 +7473,11 @@ public class MandatesResolutionUIController {
           }
 
           Map<String, Object> s = new java.util.LinkedHashMap<>();
-          s.put("fullName", nz(fullName));
-          s.put("idNumber", nz(idNumber));
-          s.put("capacity", nz(capacity));
-          s.put("groupCategory", nz(group));
-          s.put("instructions", nz(instruction)); // Add|Remove
+          s.put("fullName", utilityService.nullToEmpty(fullName));
+          s.put("idNumber", utilityService.nullToEmpty(idNumber));
+          s.put("capacity", utilityService.nullToEmpty(capacity));
+          s.put("groupCategory", utilityService.nullToEmpty(group));
+          s.put("instructions", utilityService.nullToEmpty(instruction)); // Add|Remove
           fa.signatories.add(s);
         }
 
@@ -7509,8 +7521,8 @@ public class MandatesResolutionUIController {
       for (FormAcc fa : formAccounts) {
         Map<String, Object> dto = new java.util.LinkedHashMap<>();
         dto.put("companyId", companyId);
-        dto.put("accountName", nz(fa.accountName));
-        dto.put("accountNumber", nz(fa.accountNo));
+        dto.put("accountName", utilityService.nullToEmpty(fa.accountName));
+        dto.put("accountNumber", utilityService.nullToEmpty(fa.accountNo));
         dto.put("isActive", Boolean.TRUE);
         dto.put("signatories", fa.signatories);
 
@@ -7588,9 +7600,9 @@ public class MandatesResolutionUIController {
       for (FormDir d : formDirs) {
         Map<String, Object> payload = new java.util.LinkedHashMap<>();
         payload.put("companyId", companyId);
-        payload.put("firstname", nz(d.firstName));
-        payload.put("surname", nz(d.surname));
-        payload.put("designation", nz(d.designation));
+        payload.put("firstname", utilityService.nullToEmpty(d.firstName));
+        payload.put("surname", utilityService.nullToEmpty(d.surname));
+        payload.put("designation", utilityService.nullToEmpty(d.designation));
         payload.put("isActive", Boolean.TRUE);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
@@ -7684,24 +7696,6 @@ public class MandatesResolutionUIController {
   @PostMapping("/upload-error")
   public ResponseEntity<String> uploadError() {
     return ResponseEntity.ok("<page><error>Upload error</error></page>");
-  }
-
-  private String generateErrorPage(String message) {
-    return """
-        <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-        <page xmlns:comm="http://ws.online.fnb.co.za/common/"
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              id=""
-              heading=" "
-              template="error"
-              version="1">
-            <error xsi:type="validationError">
-                <name>login</name>
-                <code>0</code>
-                <message>%s</message>
-            </error>
-        </page>
-        """.formatted(message);
   }
 
   /**
@@ -8092,10 +8086,10 @@ public class MandatesResolutionUIController {
       ensureAccounts(dto, i);
       RequestDTO.Account acc = dto.getAccounts().get(i - 1);
       if (name != null) {
-        acc.setAccountName(nz(name));
+        acc.setAccountName(utilityService.nullToEmpty(name));
       }
       if (no != null) {
-        setAccountNumber(acc, nz(no));
+        setAccountNumber(acc, utilityService.nullToEmpty(no));
       }
 
       for (int j = 1; ; j++) {
@@ -8111,19 +8105,19 @@ public class MandatesResolutionUIController {
         ensureSignatories(acc, j);
         RequestDTO.Signatory s = acc.getSignatories().get(j - 1);
         if (fn != null) {
-          s.setFullName(nz(fn));
+          s.setFullName(utilityService.nullToEmpty(fn));
         }
         if (id != null) {
-          s.setIdNumber(nz(id));
+          s.setIdNumber(utilityService.nullToEmpty(id));
         }
         if (ins != null) {
-          s.setInstruction(nz(ins));  // singular
+          s.setInstruction(utilityService.nullToEmpty(ins));  // singular
         }
         if (cp != null) {
-          s.setCapacity(nz(cp));
+          s.setCapacity(utilityService.nullToEmpty(cp));
         }
         if (gp != null) {
-          s.setGroup(nz(gp));
+          s.setGroup(utilityService.nullToEmpty(gp));
         }
       }
     }
@@ -8407,7 +8401,7 @@ public class MandatesResolutionUIController {
   /**
    * Treat untouched signatory rows as empty.
    */
-  private static boolean isEmptySignatory(RequestDTO.Signatory s) {
+  private static boolean validationServiceHelper.isEmptySignatory(RequestDTO.Signatory s) {
     if (s == null) {
       return true;
     }
@@ -8421,7 +8415,7 @@ public class MandatesResolutionUIController {
 
   // ===== Session helpers (ALL RequestDTO.* types, no SignatoryDTO here) =====
 
-  private static String nz(String s) {
+  private static String utilityService.nullToEmpty(String s) {
     return s == null ? "" : s.trim();
   }
 
@@ -8436,7 +8430,7 @@ public class MandatesResolutionUIController {
   /**
    * show "Saved" in table, but keep "@PAGE" in DB so we can reopen there
    */
-  private static String cleanSubStatus(String sub) {
+  private static String utilityService.cleanSubStatus(String sub) {
     if (sub == null) {
       return null;
     }
@@ -8488,7 +8482,7 @@ public class MandatesResolutionUIController {
   }
 
   private static String dedupeComma(String s) {
-    String t = nz(s);
+    String t = utilityService.nullToEmpty(s);
     if (t.isEmpty()) {
       return t;
     }
@@ -8502,7 +8496,7 @@ public class MandatesResolutionUIController {
     return String.join(", ", set);
   }
 
-  private static String mapRequestType(String raw) {
+  private static String utilityService.mapRequestType(String raw) {
     if (raw == null) {
       return null;
     }
@@ -8847,7 +8841,7 @@ public class MandatesResolutionUIController {
     RequestWrapper wrapper = new RequestWrapper();
     wrapper.setRequest(dto);
 
-    String page = xsltProcessor.generatePage(xslPagePath("CreateRequest"), wrapper);
+    String page = xsltProcessor.generatePage(pageGenerationService.xslPagePath("CreateRequest"), wrapper);
     return ResponseEntity.ok()
         .contentType(MediaType.APPLICATION_XML)
         .body(page);
@@ -9114,7 +9108,7 @@ public class MandatesResolutionUIController {
     }
 
     if (id.isEmpty() && request != null && request.getUserPrincipal() != null) {
-      id = nz(request.getUserPrincipal().getName());
+      id = utilityService.nullToEmpty(request.getUserPrincipal().getName());
     }
     return id.isEmpty() ? "UI" : id;
   }
@@ -9123,8 +9117,8 @@ public class MandatesResolutionUIController {
   private String loggedInUsername(HttpSession session, HttpServletRequest req) {
     var u = (za.co.rmb.tts.mandates.resolutions.ui.model.dto.UserDTO)
         session.getAttribute("currentUser");
-    String un = (u == null) ? "" : nz(u.getUsername());
-    return !un.isEmpty() ? un : nz(currentDisplayId(session, req));
+    String un = (u == null) ? "" : utilityService.nullToEmpty(u.getUsername());
+    return !un.isEmpty() ? un : utilityService.nullToEmpty(currentDisplayId(session, req));
   }
 
   private boolean isAdmin(HttpSession session) {
@@ -9169,7 +9163,7 @@ public class MandatesResolutionUIController {
     RestTemplate rt = new RestTemplate();
 
     RequestDTO ui = new RequestDTO();
-    ui.setPdfSessionId(nz(pdfSessionId));
+    ui.setPdfSessionId(utilityService.nullToEmpty(pdfSessionId));
     ui.setStagingId(stagingId);
 
     if (stagingId != null) {
@@ -9178,15 +9172,15 @@ public class MandatesResolutionUIController {
 
       if (s != null) {
         //Company
-        ui.setCompanyName(nz(s.getCompanyName()));
-        ui.setCompanyAddress(nz(s.getCompanyAddress()));
-        ui.setRegistrationNumber(nz(s.getCompanyRegistrationNumber()));
+        ui.setCompanyName(utilityService.nullToEmpty(s.getCompanyName()));
+        ui.setCompanyAddress(utilityService.nullToEmpty(s.getCompanyAddress()));
+        ui.setRegistrationNumber(utilityService.nullToEmpty(s.getCompanyRegistrationNumber()));
 
         //Dropdown "1|2|3" mapped from text Mandates|Resolutions|Both
         ui.setMandateResolution(unmapRequestTypeToDropdown(s.getRequestType()));
 
         //Waiver tools -> hydrate as list for XSL
-        ui.setDocumentumTools(csvToList(nz(s.getWaiverPermittedTools())));
+        ui.setDocumentumTools(csvToList(utilityService.nullToEmpty(s.getWaiverPermittedTools())));
 
         //Authorities -> Directors (needed for Mandates AutoFill)
         if (s.getAuthorities() != null && !s.getAuthorities().isEmpty()) {
@@ -9196,9 +9190,9 @@ public class MandatesResolutionUIController {
               continue;
             }
             RequestDTO.Director d = new RequestDTO.Director();
-            d.setName(nz(a.getFirstname()));
-            d.setSurname(nz(a.getSurname()));
-            d.setDesignation(nz(a.getDesignation()));
+            d.setName(utilityService.nullToEmpty(a.getFirstname()));
+            d.setSurname(utilityService.nullToEmpty(a.getSurname()));
+            d.setDesignation(utilityService.nullToEmpty(a.getDesignation()));
             directors.add(d);
           }
           if (!directors.isEmpty()) {
@@ -9215,8 +9209,8 @@ public class MandatesResolutionUIController {
             }
 
             RequestDTO.Account ua = new RequestDTO.Account();
-            ua.setAccountName(nz(a.getAccountName()));
-            setAccountNumber(ua, nz(a.getAccountNumber())); //Sets accountNo in UI DTO
+            ua.setAccountName(utilityService.nullToEmpty(a.getAccountName()));
+            setAccountNumber(ua, utilityService.nullToEmpty(a.getAccountNumber())); //Sets accountNo in UI DTO
 
             java.util.List<RequestDTO.Signatory> sigs = new java.util.ArrayList<>();
             if (a.getSignatories() != null) {
@@ -9226,11 +9220,11 @@ public class MandatesResolutionUIController {
                 }
 
                 RequestDTO.Signatory us = new RequestDTO.Signatory();
-                us.setFullName(nz(sd.getFullName()));
-                us.setIdNumber(nz(sd.getIdNumber()));
-                us.setInstruction(nz(sd.getInstructions())); //"ADD"/"REMOVE"
-                us.setCapacity(nz(sd.getCapacity()));
-                us.setGroup(nz(sd.getGroupCategory()));
+                us.setFullName(utilityService.nullToEmpty(sd.getFullName()));
+                us.setIdNumber(utilityService.nullToEmpty(sd.getIdNumber()));
+                us.setInstruction(utilityService.nullToEmpty(sd.getInstructions())); //"ADD"/"REMOVE"
+                us.setCapacity(utilityService.nullToEmpty(sd.getCapacity()));
+                us.setGroup(utilityService.nullToEmpty(sd.getGroupCategory()));
                 sigs.add(us);
               }
             }
@@ -9591,11 +9585,11 @@ public class MandatesResolutionUIController {
       }
       RequestDTO.Account dst = target.getAccounts().get(i);
 
-      if (nz(src.getAccountName()).length() > 0) {
-        dst.setAccountName(nz(src.getAccountName()));
+      if (utilityService.nullToEmpty(src.getAccountName()).length() > 0) {
+        dst.setAccountName(utilityService.nullToEmpty(src.getAccountName()));
       }
       String srcNo = getAccountNumber(src);
-      if (nz(srcNo).length() > 0) {
+      if (utilityService.nullToEmpty(srcNo).length() > 0) {
         setAccountNumber(dst, srcNo);
       }
 
@@ -9610,20 +9604,20 @@ public class MandatesResolutionUIController {
         for (int s = 0; s < src.getSignatories().size(); s++) {
           RequestDTO.Signatory ss = src.getSignatories().get(s);
           RequestDTO.Signatory dd = dst.getSignatories().get(s);
-          if (nz(ss.getFullName()).length() > 0) {
-            dd.setFullName(nz(ss.getFullName()));
+          if (utilityService.nullToEmpty(ss.getFullName()).length() > 0) {
+            dd.setFullName(utilityService.nullToEmpty(ss.getFullName()));
           }
-          if (nz(ss.getIdNumber()).length() > 0) {
-            dd.setIdNumber(nz(ss.getIdNumber()));
+          if (utilityService.nullToEmpty(ss.getIdNumber()).length() > 0) {
+            dd.setIdNumber(utilityService.nullToEmpty(ss.getIdNumber()));
           }
-          if (nz(ss.getInstruction()).length() > 0) {
-            dd.setInstruction(nz(ss.getInstruction())); // << singular
+          if (utilityService.nullToEmpty(ss.getInstruction()).length() > 0) {
+            dd.setInstruction(utilityService.nullToEmpty(ss.getInstruction())); // << singular
           }
-          if (nz(ss.getCapacity()).length() > 0) {
-            dd.setCapacity(nz(ss.getCapacity()));
+          if (utilityService.nullToEmpty(ss.getCapacity()).length() > 0) {
+            dd.setCapacity(utilityService.nullToEmpty(ss.getCapacity()));
           }
-          if (nz(ss.getGroup()).length() > 0) {
-            dd.setGroup(nz(ss.getGroup()));             // << group
+          if (utilityService.nullToEmpty(ss.getGroup()).length() > 0) {
+            dd.setGroup(utilityService.nullToEmpty(ss.getGroup()));             // << group
           }
         }
       }
@@ -9700,17 +9694,17 @@ public class MandatesResolutionUIController {
       }
       RequestDTO.Director s = parsed.get(i);
       RequestDTO.Director d = dst.get(i);
-      if (nz(s.getName()).length() > 0) {
-        d.setName(nz(s.getName()));
+      if (utilityService.nullToEmpty(s.getName()).length() > 0) {
+        d.setName(utilityService.nullToEmpty(s.getName()));
       }
-      if (nz(s.getSurname()).length() > 0) {
-        d.setSurname(nz(s.getSurname()));
+      if (utilityService.nullToEmpty(s.getSurname()).length() > 0) {
+        d.setSurname(utilityService.nullToEmpty(s.getSurname()));
       }
-      if (nz(s.getDesignation()).length() > 0) {
-        d.setDesignation(nz(s.getDesignation()));
+      if (utilityService.nullToEmpty(s.getDesignation()).length() > 0) {
+        d.setDesignation(utilityService.nullToEmpty(s.getDesignation()));
       }
-      if (nz(s.getInstruction()).length() > 0) {
-        d.setInstruction(nz(s.getInstruction()));
+      if (utilityService.nullToEmpty(s.getInstruction()).length() > 0) {
+        d.setInstruction(utilityService.nullToEmpty(s.getInstruction()));
       }
     }
   }
@@ -9772,17 +9766,17 @@ public class MandatesResolutionUIController {
 
     // --- Company ---
     SubmissionPayload.Company c = new SubmissionPayload.Company();
-    c.setRegistrationNumber(nz(ui.getRegistrationNumber()));
-    c.setName(nz(ui.getCompanyName()));
-    c.setAddress(nz(ui.getCompanyAddress()));
-    c.setCreator(nz(ui.getLoggedInUsername()));
-    c.setUpdator(nz(ui.getLoggedInUsername()));
+    c.setRegistrationNumber(utilityService.nullToEmpty(ui.getRegistrationNumber()));
+    c.setName(utilityService.nullToEmpty(ui.getCompanyName()));
+    c.setAddress(utilityService.nullToEmpty(ui.getCompanyAddress()));
+    c.setCreator(utilityService.nullToEmpty(ui.getLoggedInUsername()));
+    c.setUpdator(utilityService.nullToEmpty(ui.getLoggedInUsername()));
     out.setCompany(c);
 
     // --- Request (normalize "1|2|3" -> "Mandates|Resolutions|Both") ---
-    String typeNorm = mapRequestType(requestTypeRaw);
+    String typeNorm = utilityService.mapRequestType(requestTypeRaw);
     if (typeNorm == null) {
-      String t = nz(requestTypeRaw).toLowerCase();
+      String t = utilityService.nullToEmpty(requestTypeRaw).toLowerCase();
       if (t.contains("both")) {
         typeNorm = BackendEnums.TYPE_BOTH;
       } else if (t.contains("resol")) {
@@ -9795,9 +9789,9 @@ public class MandatesResolutionUIController {
     }
 
     // Ensure a non-blank creator (also used for assignedUser)
-    String creator = nz(ui.getLoggedInUsername());
+    String creator = utilityService.nullToEmpty(ui.getLoggedInUsername());
     if (creator.isBlank()) {
-      creator = nz(ui.getLoggedInEmail());
+      creator = utilityService.nullToEmpty(ui.getLoggedInEmail());
     }
     if (creator.isBlank()) {
       creator = "UI_USER";
@@ -9811,7 +9805,7 @@ public class MandatesResolutionUIController {
     r.setType(typeNorm);
 
     // SubStatus: use UI value if already allowed, else choose an initial valid one
-    String uiSub = nz(ui.getSubStatus());
+    String uiSub = utilityService.nullToEmpty(ui.getSubStatus());
     String startSub =
         ALLOWED_SUBSTATUSES.contains(uiSub) ? uiSub : initialSubStatusForType(typeNorm);
     r.setSubStatus(startSub);
@@ -9831,8 +9825,8 @@ public class MandatesResolutionUIController {
         }
 
         SubmissionPayload.Account pa = new SubmissionPayload.Account();
-        pa.setAccountName(nz(a.getAccountName()));
-        pa.setAccountNumber(nz(getAccountNumber(a)));
+        pa.setAccountName(utilityService.nullToEmpty(a.getAccountName()));
+        pa.setAccountNumber(utilityService.nullToEmpty(getAccountNumber(a)));
         pa.setCreator(creator);
         pa.setUpdator(creator);
 
@@ -9842,16 +9836,16 @@ public class MandatesResolutionUIController {
             if (s == null) {
               continue;
             }
-            if (isEmptySignatory(s)) {
+            if (validationServiceHelper.isEmptySignatory(s)) {
               continue;
             }
 
             SubmissionPayload.Signatory ns = new SubmissionPayload.Signatory();
-            ns.setFullName(nz(s.getFullName()));
-            ns.setIdNumber(nz(s.getIdNumber()));
-            ns.setInstructions(normalizeInstruction(nz(s.getInstruction()))); // "Add" | "Remove"
-            ns.setCapacity(nz(s.getCapacity()));
-            ns.setGroupCategory(nz(s.getGroup()));
+            ns.setFullName(utilityService.nullToEmpty(s.getFullName()));
+            ns.setIdNumber(utilityService.nullToEmpty(s.getIdNumber()));
+            ns.setInstructions(utilityService.normalizeInstruction(utilityService.nullToEmpty(s.getInstruction()))); // "Add" | "Remove"
+            ns.setCapacity(utilityService.nullToEmpty(s.getCapacity()));
+            ns.setGroupCategory(utilityService.nullToEmpty(s.getGroup()));
             ns.setInstructionsDate(java.time.LocalDateTime.now());
             ns.setCreator(creator);
             ns.setUpdator(creator);
@@ -9860,8 +9854,8 @@ public class MandatesResolutionUIController {
         }
         pa.setSignatories(ps);
 
-        if (!nz(pa.getAccountName()).isEmpty()
-            || !nz(pa.getAccountNumber()).isEmpty()
+        if (!utilityService.nullToEmpty(pa.getAccountName()).isEmpty()
+            || !utilityService.nullToEmpty(pa.getAccountNumber()).isEmpty()
             || (ps != null && !ps.isEmpty())) {
           payloadAccounts.add(pa);
         }
@@ -9882,16 +9876,16 @@ public class MandatesResolutionUIController {
         if (s == null) {
           continue;
         }
-        if (isEmptySignatory(s)) {
+        if (validationServiceHelper.isEmptySignatory(s)) {
           continue;
         }
 
         SubmissionPayload.Signatory ns = new SubmissionPayload.Signatory();
-        ns.setFullName(nz(s.getFullName()));
-        ns.setIdNumber(nz(s.getIdNumber()));
-        ns.setInstructions(normalizeInstruction(nz(s.getInstruction())));
-        ns.setCapacity(nz(s.getCapacity()));
-        ns.setGroupCategory(nz(s.getGroup()));
+        ns.setFullName(utilityService.nullToEmpty(s.getFullName()));
+        ns.setIdNumber(utilityService.nullToEmpty(s.getIdNumber()));
+        ns.setInstructions(utilityService.normalizeInstruction(utilityService.nullToEmpty(s.getInstruction())));
+        ns.setCapacity(utilityService.nullToEmpty(s.getCapacity()));
+        ns.setGroupCategory(utilityService.nullToEmpty(s.getGroup()));
         ns.setInstructionsDate(java.time.LocalDateTime.now());
         ns.setCreator(creator);
         ns.setUpdator(creator);
@@ -9906,9 +9900,9 @@ public class MandatesResolutionUIController {
     // --- Authorities (Directors) ---
     boolean hasDirectorsInput =
         ui.getDirectors() != null && ui.getDirectors().stream().anyMatch(d ->
-            d != null && !(nz(d.getName()).isEmpty()
-                           && nz(d.getSurname()).isEmpty()
-                           && nz(d.getDesignation()).isEmpty())
+            d != null && !(utilityService.nullToEmpty(d.getName()).isEmpty()
+                           && utilityService.nullToEmpty(d.getSurname()).isEmpty()
+                           && utilityService.nullToEmpty(d.getDesignation()).isEmpty())
         );
 
     boolean includeAuthorities =
@@ -9922,18 +9916,18 @@ public class MandatesResolutionUIController {
         if (d == null) {
           continue;
         }
-        boolean allBlank = nz(d.getName()).isEmpty()
-                           && nz(d.getSurname()).isEmpty()
-                           && nz(d.getDesignation()).isEmpty();
+        boolean allBlank = utilityService.nullToEmpty(d.getName()).isEmpty()
+                           && utilityService.nullToEmpty(d.getSurname()).isEmpty()
+                           && utilityService.nullToEmpty(d.getDesignation()).isEmpty();
         if (allBlank) {
           continue;
         }
 
         SubmissionPayload.Authority a = new SubmissionPayload.Authority();
-        a.setFirstname(nz(d.getName()));
-        a.setSurname(nz(d.getSurname()));
-        a.setDesignation(nz(d.getDesignation()));
-        a.setInstructions(normalizeInstruction(nz(d.getInstruction()))); // "Add" | "Remove"
+        a.setFirstname(utilityService.nullToEmpty(d.getName()));
+        a.setSurname(utilityService.nullToEmpty(d.getSurname()));
+        a.setDesignation(utilityService.nullToEmpty(d.getDesignation()));
+        a.setInstructions(utilityService.normalizeInstruction(utilityService.nullToEmpty(d.getInstruction()))); // "Add" | "Remove"
         a.setCreator(creator);
         a.setUpdator(creator);
         payloadAuthorities.add(a);
@@ -10049,7 +10043,7 @@ public class MandatesResolutionUIController {
   /**
    * Map any raw instruction to backend-valid ones ("Add" or "Remove"). Defaults to Add.
    */
-  private static String normalizeInstruction(String raw) {
+  private static String utilityService.normalizeInstruction(String raw) {
     if (raw == null || raw.trim().isEmpty()) {
       return "Add";
     }
@@ -10820,13 +10814,5 @@ public class MandatesResolutionUIController {
       java.time.LocalDateTime created;
       java.time.LocalDateTime updated;
     }
-  }
-
-  private String xmlPagePath(String pageName) {
-    return XML_PAGE_PATH + pageName + ".xml";
-  }
-
-  private String xslPagePath(String pageName) {
-    return XSL_PAGE_PATH + pageName + ".xsl";
   }
 }
