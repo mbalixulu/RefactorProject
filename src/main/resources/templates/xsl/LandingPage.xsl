@@ -52,18 +52,18 @@
                                         ns1:defaultSortIndex="7"
                                         ns1:defaultSortDirection="descending"
                                         ns1:showTotal="true">
-                            <xsl:attribute name="ns1:heading">
-                                <xsl:choose>
-                                    <xsl:when test="status = 'onhold'">On hold</xsl:when>
-                                    <xsl:when test="status = 'completed'">Completed</xsl:when>
-                                    <xsl:otherwise>In Progress tickets</xsl:otherwise>
-                                </xsl:choose>
-                            </xsl:attribute>
+                                <xsl:attribute name="ns1:heading">
+                                    <xsl:choose>
+                                        <xsl:when test="status = 'onhold'">On hold</xsl:when>
+                                        <xsl:when test="status = 'completed'">Completed</xsl:when>
+                                        <xsl:otherwise>In Progress tickets</xsl:otherwise>
+                                    </xsl:choose>
+                                </xsl:attribute>
 
-                            <!--Search-->
-                            <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
+                                <!--Search-->
+                                <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
-                            <!--Columns-->
+                                <!--Columns-->
                                 <ns1:tableColumn ns1:id="requestID"
                                                  ns1:heading="Request ID"
                                                  ns1:fieldName="requestID"
@@ -97,34 +97,33 @@
                                                  ns1:heading="Date Created"
                                                  ns1:fieldName="dateCreated"
                                                  ns1:widthPercent="9"/>
-                            <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel="">
-                                <ns1:totalsRow/>
-                                <!--Create Request Button-->
-                                <ns1:groupTableButton xsi:type="ns1:imageButton"
-                                                      ns1:target="main"
-                                                      ns1:id="createRequestbtn"
-                                                      ns1:label="Create Request"
-                                                      ns1:tooltip="true"
-                                                      ns1:tip="tip"
-                                                      ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                                      ns1:formName="ticketForm">
-                                    <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
-                                                            ns1:id="createRequestbtn">
-                                        <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                               ns1:target="main"
-                                                               ns1:label="Create Request"
-                                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                        <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
-                                            <ns1:hyperlinkListItem ns1:label="Export CSV"
-                                                                   ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                        </xsl:if>
-                                    </ns1:imageButtonOptions>
-                                </ns1:groupTableButton>
-                            </ns1:rowGroup>
+                                <ns1:rowGroup ns1:groupId="rows" ns1:groupHeaderLabel="">
+                                    <!--Create Request Button-->
+                                    <ns1:groupTableButton xsi:type="ns1:imageButton"
+                                                          ns1:target="main"
+                                                          ns1:id="createRequestbtn"
+                                                          ns1:label="Create Request"
+                                                          ns1:tooltip="true"
+                                                          ns1:tip="tip"
+                                                          ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                                          ns1:formName="ticketForm">
+                                        <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                                ns1:id="createRequestbtn">
+                                            <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                                   ns1:target="main"
+                                                                   ns1:label="Create Request"
+                                                                   ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                            <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                                <ns1:hyperlinkListItem ns1:label="Export CSV"
+                                                                       ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
+                                            </xsl:if>
+                                        </ns1:imageButtonOptions>
+                                    </ns1:groupTableButton>
+                                </ns1:rowGroup>
 
-                            <!--Rows-->
-                            <xsl:for-each select="requests/request">
-                                <ns1:row ns1:groupId="rows">
+                                <!--Rows-->
+                                <xsl:for-each select="requests/request">
+                                    <ns1:row ns1:groupId="rows">
                                     <!-- Request ID (now shows requestIdForDisplay when available) -->
                                     <ns1:cell ns1:col_id="requestID">
                                         <ns1:cellItem>
