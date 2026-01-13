@@ -54,26 +54,15 @@
                                 </xsl:choose>
                             </xsl:attribute>
 
-                            <!--Create Request + Export as CSV Button-->
+                            <!--Export as CSV Button-->
                             <ns1:addButton xsi:type="ns1:imageButton"
                                            ns1:target="main"
-                                           ns1:id="createRequestbtn"
-                                           ns1:label="Actions"
+                                           ns1:id="exportCSVbtn"
+                                           ns1:label="Export CSV"
                                            ns1:tooltip="true"
-                                           ns1:tip="tip"
-                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                           ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="tableActionsList">
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:label="Create Request"
-                                                           ns1:target="main"
-                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:label="Export CSV"
-                                                           ns1:target="main"
-                                                           ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                </ns1:imageButtonOptions>
-                            </ns1:addButton>
+                                           ns1:tip="Export CSV"
+                                           ns1:url="app-domain/mandates-and-resolutions/exportCSV"
+                                           ns1:formName="ticketForm"/>
 
                             <!--Search-->
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
@@ -218,6 +207,22 @@
                                     </ns1:cell>
                                 </ns1:row>
                             </xsl:for-each>
+
+                            <!--Create Request Button-->
+                            <ns1:groupTableButton xsi:type="ns1:imageButton"
+                                                  ns1:id="createRequestBtn"
+                                                  ns1:label="Create Request"
+                                                  ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                                  ns1:target="main"
+                                                  ns1:formName="ticketForm">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="createRequestList">
+                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                           ns1:label="Create Request"
+                                                           ns1:target="main"
+                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                </ns1:imageButtonOptions>
+                            </ns1:groupTableButton>
+
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
                     </ns1:sections>
