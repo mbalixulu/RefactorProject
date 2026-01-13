@@ -60,7 +60,7 @@
                                            ns1:id="exportCSVbtn"
                                            ns1:label="Export CSV"
                                            ns1:tooltip="true"
-                                           ns1:tip="Download CSV"
+                                           ns1:tip="Export CSV"
                                            ns1:url="app-domain/mandates-and-resolutions/exportCSV"
                                            ns1:formName="ticketForm"/>
 
