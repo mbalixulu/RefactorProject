@@ -60,28 +60,6 @@
                                 </xsl:choose>
                             </xsl:attribute>
 
-                            <!--Create Request Button-->
-                                <ns1:addButton xsi:type="ns1:imageButton"
-                                               ns1:target="main"
-                                               ns1:id="createRequestbtn"
-                                               ns1:label="Create Request"
-                                               ns1:tooltip="true"
-                                               ns1:tip="tip"
-                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                           ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
-                                                        ns1:id="createRequestbtn">
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:target="main"
-                                                           ns1:label="Create Request"
-                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                    <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
-                                        <ns1:hyperlinkListItem ns1:label="Export CSV"
-                                                               ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                    </xsl:if>
-                                </ns1:imageButtonOptions>
-                            </ns1:addButton>
-
                             <!--Search-->
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
 
@@ -217,6 +195,29 @@
                                     </ns1:cell>
                                 </ns1:row>
                             </xsl:for-each>
+
+                            <!--Create Request Button-->
+                                <ns1:addButton xsi:type="ns1:imageButton"
+                                               ns1:target="main"
+                                               ns1:id="createRequestbtn"
+                                               ns1:label="Create Request"
+                                               ns1:tooltip="true"
+                                               ns1:tip="tip"
+                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                               ns1:formName="ticketForm">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                        ns1:id="createRequestbtn">
+                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                           ns1:target="main"
+                                                           ns1:label="Create Request"
+                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                    <xsl:if test="requests/requestDTO/subStatus = 'Admin'">
+                                        <ns1:hyperlinkListItem ns1:label="Export CSV"
+                                                               ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
+                                    </xsl:if>
+                                </ns1:imageButtonOptions>
+                            </ns1:addButton>
+
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
                         </xsl:if>
@@ -234,24 +235,6 @@
                                         <xsl:otherwise>In Progress tickets</xsl:otherwise>
                                     </xsl:choose>
                                 </xsl:attribute>
-
-                                <!--Create Request Button-->
-                                <ns1:addButton xsi:type="ns1:imageButton"
-                                               ns1:target="main"
-                                               ns1:id="createRequestbtn"
-                                               ns1:label="Create Request"
-                                               ns1:tooltip="true"
-                                               ns1:tip="tip"
-                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                               ns1:formName="ticketForm">
-                                    <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
-                                                            ns1:id="createRequestbtn">
-                                        <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                               ns1:target="main"
-                                                               ns1:label="Create Request"
-                                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
-                                    </ns1:imageButtonOptions>
-                                </ns1:addButton>
 
                                 <!--Search-->
                                 <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
@@ -385,7 +368,26 @@
                                             </ns1:cellItem>
                                         </ns1:cell>
                                 </ns1:row>
-                            </xsl:for-each>
+                             </xsl:for-each>
+
+                            <!--Create Request Button-->
+                                <ns1:addButton xsi:type="ns1:imageButton"
+                                               ns1:target="main"
+                                               ns1:id="createRequestbtn"
+                                               ns1:label="Create Request"
+                                               ns1:tooltip="true"
+                                               ns1:tip="tip"
+                                               ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                               ns1:formName="ticketForm">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList"
+                                                        ns1:id="createRequestbtn">
+                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                           ns1:target="main"
+                                                           ns1:label="Create Request"
+                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                </ns1:imageButtonOptions>
+                            </ns1:addButton>
+
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
                         </xsl:if>
