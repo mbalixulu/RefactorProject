@@ -207,18 +207,24 @@
                                     </ns1:cell>
                                 </ns1:row>
                             </xsl:for-each>
+
+                            <!--Create Request Button-->
+                            <ns1:groupTableButton xsi:type="ns1:imageButton"
+                                                  ns1:id="createRequestBtn"
+                                                  ns1:label="Create Request"
+                                                  ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                                  ns1:target="main"
+                                                  ns1:formName="ticketForm">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="createRequestList">
+                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                           ns1:label="Create Request"
+                                                           ns1:target="main"
+                                                           ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                </ns1:imageButtonOptions>
+                            </ns1:groupTableButton>
+
                             <ns1:tableNavigator ns1:pageSize="10"/>
                         </ns1:symbol>
-
-                        <!--Create Request Button-->
-                        <ns1:symbol xsi:type="ns1:button"
-                                    ns1:id="createRequestBtn"
-                                    ns1:label="Create Request"
-                                    ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                    ns1:target="main"
-                                    ns1:formSubmit="false"
-                                    ns1:type="highlight"
-                                    ns1:width="3"/>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
