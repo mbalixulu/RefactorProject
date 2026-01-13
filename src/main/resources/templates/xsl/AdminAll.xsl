@@ -217,7 +217,8 @@
                                     ns1:url="app-domain/mandates-and-resolutions/createRequest"
                                     ns1:target="main"
                                     ns1:formSubmit="false"
-                                    ns1:type="highlight"/>
+                                    ns1:type="highlight"
+                                    ns1:width="3"/>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
