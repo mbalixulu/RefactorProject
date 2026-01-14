@@ -212,15 +212,15 @@
                         </ns1:symbol>
 
                         <!--Create Request Button-->
-                        <ns1:symbol xsi:type="ns1:imageButton"
-                                    ns1:target="main"
-                                    ns1:id="createRequestbtn"
-                                    ns1:label="Create Request"
-                                    ns1:icon="addGrey"
-                                    ns1:tooltip="true"
-                                    ns1:tip="tip"
-                                    ns1:url="app-domain/mandates-and-resolutions/createRequest"
-                                    ns1:formName="ticketForm"/>
+                        <symbol xsi:type="ns1:imageButton"
+                                ns1:target="main"
+                                ns1:id="createRequestbtn"
+                                ns1:label="Create Request"
+                                ns1:icon="addGrey"
+                                ns1:tooltip="true"
+                                ns1:tip="tip"
+                                ns1:url="app-domain/mandates-and-resolutions/createRequest"
+                                ns1:formName="ticketForm"/>
                     </ns1:sections>
                 </ns1:form>
             </symbol>
