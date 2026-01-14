@@ -58,19 +58,12 @@
                             <ns1:addButton xsi:type="ns1:imageButton"
                                            ns1:target="main"
                                            ns1:id="exportCSVbtn"
-                                           ns1:label="Download"
+                                           ns1:label="Export CSV"
                                            ns1:icon="downloadGrey"
                                            ns1:tooltip="true"
                                            ns1:tip="tip"
                                            ns1:url="app-domain/mandates-and-resolutions/exportCSV"
-                                           ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="exportActionsList">
-                                    <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:label="Export CSV"
-                                                           ns1:target="main"
-                                                           ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
-                                </ns1:imageButtonOptions>
-                            </ns1:addButton>
+                                           ns1:formName="ticketForm"/>
 
                             <!--Search-->
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
