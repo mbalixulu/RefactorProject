@@ -61,7 +61,7 @@
                                            ns1:label="Export CSV"
                                            ns1:icon="downloadGrey"
                                            ns1:url="app-domain/mandates-and-resolutions/exportCSV"
-                                           ns1:formName="ticketForm"/>
+                                           ns1:formName="ticketForm"></ns1:addButton>
 
                             <!--Search-->
                             <ns1:tableSearch ns1:searchPlaceholder="Search Ticket"/>
