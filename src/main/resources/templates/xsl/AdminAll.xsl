@@ -216,6 +216,7 @@
                                     ns1:target="main"
                                     ns1:id="createRequestbtn"
                                     ns1:label="Create Request"
+                                    ns1:icon="addGrey"
                                     ns1:tooltip="true"
                                     ns1:tip="tip"
                                     ns1:url="app-domain/mandates-and-resolutions/createRequest"
