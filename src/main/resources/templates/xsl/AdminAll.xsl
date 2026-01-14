@@ -212,7 +212,8 @@
                         </ns1:symbol>
 
                         <!--Create Request Button-->
-                        <symbol xsi:type="ns1:imageButton"
+                        <symbol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                xsi:type="ns1:imageButton"
                                 ns1:target="main"
                                 ns1:id="createRequestbtn"
                                 ns1:label="Create Request"
