@@ -54,23 +54,36 @@
                                 </xsl:choose>
                             </xsl:attribute>
 
-                            <!--Create Request + Export as CSV Button-->
+                            <!--Create Request Button-->
                             <ns1:addButton xsi:type="ns1:imageButton"
                                            ns1:target="main"
                                            ns1:id="createRequestbtn"
-                                           ns1:label="Actions"
+                                           ns1:label="Create Request"
                                            ns1:tooltip="true"
                                            ns1:tip="tip"
                                            ns1:url="app-domain/mandates-and-resolutions/createRequest"
                                            ns1:formName="ticketForm">
-                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="tableActionsList">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="createRequestbtn">
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
+                                                           ns1:target="main"
                                                            ns1:label="Create Request"
-                                                           ns1:target="main"
                                                            ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
+                                </ns1:imageButtonOptions>
+                            </ns1:addButton>
+
+                            <!--Export CSV Button-->
+                            <ns1:addButton xsi:type="ns1:imageButton"
+                                           ns1:target="main"
+                                           ns1:id="exportCSVbtn"
+                                           ns1:label="Export CSV"
+                                           ns1:tooltip="true"
+                                           ns1:tip="tip"
+                                           ns1:url="app-domain/mandates-and-resolutions/exportCSV"
+                                           ns1:formName="ticketForm">
+                                <ns1:imageButtonOptions xsi:type="ns1:hyperlinkList" ns1:id="exportCSVbtn">
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:label="Export CSV"
                                                            ns1:target="main"
+                                                           ns1:label="Export CSV"
                                                            ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
                                 </ns1:imageButtonOptions>
                             </ns1:addButton>
