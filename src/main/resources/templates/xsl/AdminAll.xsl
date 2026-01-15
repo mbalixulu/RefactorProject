@@ -54,7 +54,7 @@
                                 </xsl:choose>
                             </xsl:attribute>
 
-                            <!--Create Request + Export as CSV Button-->
+                            <!--Create Request + Download Button-->
                             <ns1:addButton xsi:type="ns1:imageButton"
                                            ns1:target="main"
                                            ns1:id="createRequestbtn"
@@ -69,7 +69,7 @@
                                                            ns1:target="main"
                                                            ns1:url="app-domain/mandates-and-resolutions/createRequest"/>
                                     <ns1:hyperlinkListItem xsi:type="ns1:hyperlinkListItem"
-                                                           ns1:label="Export CSV"
+                                                           ns1:label="Download"
                                                            ns1:target="main"
                                                            ns1:url="app-domain/mandates-and-resolutions/exportCSV"/>
                                 </ns1:imageButtonOptions>
